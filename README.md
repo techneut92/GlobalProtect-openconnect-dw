@@ -394,7 +394,7 @@ See related issue: [#316](https://github.com/yuezk/GlobalProtect-openconnect/iss
 ### Trial and Pricing
 
 The **CLI version** is completely free and open source.
-The **GUI version** is a paid application with a **10-day trial period** after installation.
+The **GUI version** is a paid application with a **7-day trial period** after installation.
 
 ### Open Source Licenses
 

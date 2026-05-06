@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.5.2 - 2026-05-06
+
+- Experimental: GUI/CLI add session expiry warnings and support automatic session extension when allowed by the portal.
+- GUI/CLI: expose additional OpenConnect connection options.
+- Fix Linux packages to vendor the `vpnc-script`.
+- Remove OpenConnect from the packaging dependency.
+- Fix reconnect handling by preserving GlobalProtect cookie fields.
+- Fix auth callback data parsing
+- Improve NixOS packaging and user-level installation docs.
+- Upgrade Rust, Tauri, Vite, frontend, and Rust dependencies.
+
 ## 2.5.1 - 2025-12-22
 
 - Fix the `.deb` package installation issue (fix [#563](https://github.com/yuezk/GlobalProtect-openconnect/issues/563))
