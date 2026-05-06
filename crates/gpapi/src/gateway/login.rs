@@ -58,7 +58,7 @@ async fn gateway_login_with_options(
 
   // It's possible to get an empty response, log the response headers for debugging
   if res.trim().is_empty() {
-    debug!("Empty gateway login response headers: {:?}", res);
+    info!("Empty gateway login response headers: {:?}", res);
     bail!("Got empty gateway login response");
   }
 

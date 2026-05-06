@@ -89,8 +89,8 @@ impl GuiUpdater {
 
   pub async fn update(&self) {
     if !cfg!(any(target_arch = "x86_64", target_arch = "aarch64")) {
-        info!("GUI version is not supported on this architecture.");
-        return;
+      info!("GUI version is not supported on this architecture.");
+      return;
     }
     info!("Update GUI, version: {}", self.version);
 
@@ -104,9 +104,9 @@ impl GuiUpdater {
     };
 
     let arch = if cfg!(target_arch = "x86_64") {
-        "x86_64"
+      "x86_64"
     } else {
-        "aarch64"
+      "aarch64"
     };
 
     let file_url = format!(
