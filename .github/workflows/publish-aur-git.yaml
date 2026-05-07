@@ -49,13 +49,11 @@ jobs:
             desktop-file-utils \
             file \
             git \
-            jq \
             libappindicator-gtk3 \
             libsecret \
             libxml2 \
             namcap \
             openconnect \
-            openssh \
             openssl \
             pkgconf \
             librsvg \
@@ -96,7 +94,7 @@ jobs:
       - name: Run namcap
         run: |
           cd "$AUR_PACKAGE_DIR"
-          runuser -u builder -- namcap PKGBUILD .SRCINFO
+          runuser -u builder -- namcap PKGBUILD
 
       - name: Build package
         if: ${{ github.event_name == 'workflow_dispatch' && inputs['build-package'] }}
@@ -118,13 +116,6 @@ jobs:
           printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
           chmod 600 ~/.ssh/aur
           ssh-keyscan -t rsa,ecdsa,ed25519 aur.archlinux.org > ~/.ssh/known_hosts
-          printf '%s\n' \
-            "Host aur.archlinux.org" \
-            "  IdentityFile ~/.ssh/aur" \
-            "  UserKnownHostsFile ~/.ssh/known_hosts" \
-            "  User aur" \
-            "  StrictHostKeyChecking yes" \
-            > ~/.ssh/config
 
       - name: Publish to AUR
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
