@@ -83,8 +83,7 @@ jobs:
       - name: Check committed .SRCINFO
         if: ${{ github.event_name == 'push' }}
         run: |
-          cd "$AUR_PACKAGE_DIR"
-          git diff --exit-code -- .SRCINFO
+          git -C "$GITHUB_WORKSPACE" diff --exit-code -- "$AUR_PACKAGE_DIR/.SRCINFO"
 
       - name: Run namcap
         run: |
