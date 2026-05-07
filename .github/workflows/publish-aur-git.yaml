@@ -129,7 +129,7 @@ jobs:
       - name: Publish to AUR
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
         env:
-          GIT_SSH_COMMAND: ssh -i ~/.ssh/aur -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes
+          GIT_SSH_COMMAND: ssh -i /github/home/.ssh/aur -o UserKnownHostsFile=/github/home/.ssh/known_hosts -o StrictHostKeyChecking=yes
         run: |
           workdir="$(mktemp -d)"
           git clone "$AUR_REPO" "$workdir/aur"
