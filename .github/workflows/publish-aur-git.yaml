@@ -64,6 +64,10 @@ jobs:
             wget \
             webkit2gtk-4.1
 
+      - name: Save committed .SRCINFO
+        if: ${{ github.event_name == 'push' }}
+        run: cp "$AUR_PACKAGE_DIR/.SRCINFO" /tmp/committed.SRCINFO
+
       - name: Prepare build user
         run: |
           useradd -m builder
@@ -83,7 +87,11 @@ jobs:
       - name: Check committed .SRCINFO
         if: ${{ github.event_name == 'push' }}
         run: |
-          git -C "$GITHUB_WORKSPACE" diff --exit-code -- "$AUR_PACKAGE_DIR/.SRCINFO"
+          cmp -s /tmp/committed.SRCINFO "$AUR_PACKAGE_DIR/.SRCINFO" || {
+            diff -u /tmp/committed.SRCINFO "$AUR_PACKAGE_DIR/.SRCINFO"
+            echo ".SRCINFO is out of date. Regenerate it with makepkg --printsrcinfo." >&2
+            exit 1
+          }
 
       - name: Run namcap
         run: |
@@ -109,16 +117,19 @@ jobs:
           install -d -m 700 ~/.ssh
           printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
           chmod 600 ~/.ssh/aur
-          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+          ssh-keyscan -t rsa,ecdsa,ed25519 aur.archlinux.org > ~/.ssh/known_hosts
           printf '%s\n' \
             "Host aur.archlinux.org" \
             "  IdentityFile ~/.ssh/aur" \
+            "  UserKnownHostsFile ~/.ssh/known_hosts" \
             "  User aur" \
             "  StrictHostKeyChecking yes" \
             > ~/.ssh/config
 
       - name: Publish to AUR
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+        env:
+          GIT_SSH_COMMAND: ssh -i ~/.ssh/aur -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes
         run: |
           workdir="$(mktemp -d)"
           git clone "$AUR_REPO" "$workdir/aur"
