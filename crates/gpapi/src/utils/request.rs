@@ -20,6 +20,20 @@ pub enum RequestIdentityError {
 /// The file is expected to be the PKCS#8 PEM or PKCS#12 format
 /// When using a PKCS#12 file, the key is NOT required, but a passphrase is required
 pub fn create_identity(cert: &str, key: Option<&str>, passphrase: Option<&str>) -> anyhow::Result<Identity> {
+  // PKCS#11 (smart-card / YubiKey PIV) client certs cannot be expressed as a
+  // reqwest native-tls Identity (no key material to read). The openconnect tunnel
+  // side accepts `pkcs11:` URIs natively, but the portal/gateway *prelogin* runs
+  // through reqwest+native-tls here.
+  // TODO(pkcs11): present the pkcs11 client cert for prelogin via a rustls
+  // ClientConfig with a cryptoki-backed signing key, wired in through
+  // `reqwest::ClientBuilder::use_preconfigured_tls` in gp_params.rs.
+  if cert.starts_with("pkcs11:") {
+    anyhow::bail!(
+      "PKCS#11 client certificates are not yet supported for the portal/gateway prelogin \
+       (only the openconnect tunnel accepts pkcs11 URIs). See TODO(pkcs11) in gpapi/src/utils/request.rs."
+    );
+  }
+
   if cert.ends_with(".p12") || cert.ends_with(".pfx") {
     create_identity_from_pkcs12(cert, passphrase)
   } else {

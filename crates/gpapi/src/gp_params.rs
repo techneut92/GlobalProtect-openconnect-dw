@@ -255,9 +255,24 @@ impl TryFrom<&GpParams> for Client {
       .user_agent(&value.user_agent);
 
     if let Some(cert) = value.certificate.as_deref() {
-      info!("Using client certificate authentication...");
-      let identity = create_identity(cert, value.sslkey.as_deref(), value.key_password.as_deref())?;
-      builder = builder.identity(identity);
+      if crate::utils::pkcs11::is_pkcs11_uri(cert) {
+        info!("Using PKCS#11 (smart-card) client certificate authentication...");
+        let tls = crate::utils::pkcs11::create_pkcs11_client_config(
+          cert,
+          value.sslkey.as_deref(),
+          value.key_password.as_deref(),
+          value.ignore_tls_errors,
+        )?;
+        builder = builder.use_preconfigured_tls(tls);
+      } else if crate::utils::winsign::is_winsign_uri(cert) {
+        info!("Using Windows (powershell.exe) client certificate signer...");
+        let tls = crate::utils::winsign::create_winsign_client_config(cert, value.ignore_tls_errors)?;
+        builder = builder.use_preconfigured_tls(tls);
+      } else {
+        info!("Using client certificate authentication...");
+        let identity = create_identity(cert, value.sslkey.as_deref(), value.key_password.as_deref())?;
+        builder = builder.identity(identity);
+      }
     }
 
     let client = builder.build()?;
