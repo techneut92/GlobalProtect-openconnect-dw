@@ -474,7 +474,10 @@ impl<'a> ConnectHandler<'a> {
       .os(Some(os))
       .os_version(Some(os_version))
       .client_version(client_version)
-      .certificate(self.args.certificate.clone())
+      // openconnect can't use our custom `winsign:` scheme (it'd try to open it as
+      // a file). Drop it so the tunnel attempts cookie-only mTLS — works if the
+      // gateway doesn't require the client cert for the tunnel itself.
+      .certificate(self.args.certificate.clone().filter(|c| !gpapi::utils::winsign::is_winsign_uri(c)))
       .sslkey(self.args.sslkey.clone())
       .key_password(self.latest_key_password.borrow().clone())
       .hip(hip)

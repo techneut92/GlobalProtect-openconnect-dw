@@ -31,8 +31,12 @@ env_logger = "0.11"
 is_executable = "1.0"
 log = "0.4"
 regex = "1"
-reqwest = { version = "0.12", features = ["native-tls", "json"] }
+reqwest = { version = "0.12", features = ["native-tls", "rustls-tls", "json"] }
 openssl = "0.10"
+# PKCS#11 (smart-card / YubiKey PIV) client-cert support for prelogin mTLS
+cryptoki = "0.8"
+rustls = { version = "0.23", features = ["ring"] }
+rustls-native-certs = "0.8"
 pem = "3"
 xmltree = "0.12"
 serde = { version = "1.0", features = ["derive"] }

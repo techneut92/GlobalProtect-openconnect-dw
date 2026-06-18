@@ -8,6 +8,8 @@ pub mod env_utils;
 pub mod host_utils;
 pub mod lock_file;
 pub mod openssl;
+pub mod pkcs11;
+pub mod winsign;
 pub mod redact;
 pub mod request;
 #[cfg(feature = "tauri")]
