@@ -84,6 +84,9 @@ impl VpnTaskContext {
 
       vpn_handle.blocking_read().as_ref().map(|vpn| {
         vpn.connect(move |vpn_session_info| {
+          let tun_iface = vpn_session_info.tun_iface.clone();
+          let ipv4 = vpn_session_info.ipv4.clone();
+          let ipv6 = vpn_session_info.ipv6.clone();
           let session_info = SessionInfo::from_vpn_session_fields(
             vpn_session_info.lifetime_secs,
             vpn_session_info.user_expires,
@@ -94,7 +97,9 @@ impl VpnTaskContext {
             allow_extend_session,
           );
           info!("VPN session info: {}", session_info.log_summary());
-          let connected_info = Box::new(ConnectedInfo::new(info.clone(), Some(session_info)));
+          info!("Tunnel: iface={:?} ipv4={:?} ipv6={:?}", tun_iface, ipv4, ipv6);
+          let connected_info =
+            Box::new(ConnectedInfo::new(info.clone(), Some(session_info)).with_tunnel(tun_iface, ipv4, ipv6));
           vpn_state_tx.send(VpnState::Connected(connected_info)).ok();
         })
       });

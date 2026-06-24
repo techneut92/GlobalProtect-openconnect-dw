@@ -16,6 +16,10 @@ pub struct VpnSessionInfo {
   pub lifetime_secs: Option<u32>,
   pub user_expires: Option<u32>,
   pub lifetime_warning: Option<VpnSessionWarning>,
+  /// Tunnel interface name (e.g. `tun0`), set once the tun device is up.
+  pub tun_iface: Option<String>,
+  pub ipv4: Option<String>,
+  pub ipv6: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,6 +45,9 @@ pub(crate) fn session_info_from_raw(raw: *const ffi::VpnSessionInfoRaw) -> VpnSe
       (Some(prior_secs), Some(message)) => Some(VpnSessionWarning { prior_secs, message }),
       _ => None,
     },
+    tun_iface: unsafe { optional_c_string(raw.tun_name) }.filter(|s| !s.is_empty()),
+    ipv4: unsafe { optional_c_string(raw.ipaddr) }.filter(|s| !s.is_empty()),
+    ipv6: unsafe { optional_c_string(raw.ipaddr6) }.filter(|s| !s.is_empty()),
   }
 }
 

@@ -1,4 +1,5 @@
 mod cli;
+mod dbus_service;
 mod handlers;
 mod routes;
 mod vpn_task;
