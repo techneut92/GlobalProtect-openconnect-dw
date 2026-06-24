@@ -43,6 +43,13 @@ Requires:       opensc
 Requires:       pcsc-lite
 Requires:       polkit
 Requires:       dbus
+# gpauth is built with webview-auth (embedded SSO), so it links webkit.
+%if 0%{?suse_version}
+Requires:       webkit2gtk3
+%else
+Requires:       webkit2gtk4.1
+%endif
+Requires:       libsecret
 
 # This package ships the same /usr/bin/gp* binaries as upstream.
 Conflicts:      globalprotect-openconnect

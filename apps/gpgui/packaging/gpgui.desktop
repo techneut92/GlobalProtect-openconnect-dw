@@ -3,7 +3,7 @@ Type=Application
 Name=GlobalProtect
 GenericName=VPN Client
 Comment=Connect to GlobalProtect VPN (smart-card / certificate)
-Exec=/usr/bin/gpgui
+Exec=env WEBKIT_DISABLE_DMABUF_RENDERER=1 /usr/bin/gpgui
 Icon=gpgui
 Terminal=false
 Categories=Network;Security;
