@@ -1,11 +1,11 @@
-Name:           globalprotect-openconnect
+Name:           globalprotect-openconnect-dw
 Version:        @VERSION@
 Release:        @REVISION@
-Summary:        A GlobalProtect VPN client powered by OpenConnect
+Summary:        GlobalProtect VPN backend (PKCS#11 fork) powered by OpenConnect
 Group:          Productivity/Networking/PPP
 
 License:        GPL-3.0
-URL:            https://github.com/yuezk/GlobalProtect-openconnect
+URL:            https://github.com/techneut92/GlobalProtect-openconnect-dw
 Source:         @SOURCE@
 
 BuildRequires:  make
@@ -27,71 +27,89 @@ BuildRequires:  gmp-devel
 BuildRequires:  wget
 BuildRequires:  file
 BuildRequires:  perl
-
+# GUI (gpgui, Tauri) build dependencies — needed to build the -gui subpackage.
 %if 0%{?suse_version}
 BuildRequires:  webkit2gtk3-devel
 %else
 BuildRequires:  webkit2gtk4.1-devel
 %endif
-
-BuildRequires:  (libappindicator-gtk3-devel or libappindicator3-1)
+BuildRequires:  (libappindicator-gtk3-devel or libayatana-appindicator-gtk3-devel)
 BuildRequires:  (librsvg2-devel or librsvg-devel)
+BuildRequires:  libxdo-devel
 
-Requires:       (libappindicator-gtk3 or libayatana-appindicator)
+# Runtime: openconnect tunnel + PKCS#11 / smart-card (YubiKey PIV) + polkit/D-Bus.
+Requires:       openconnect
+Requires:       opensc
+Requires:       pcsc-lite
+Requires:       polkit
+Requires:       dbus
+
+# This package ships the same /usr/bin/gp* binaries as upstream.
+Conflicts:      globalprotect-openconnect
 Conflicts:      globalprotect-openconnect-snapshot
 
 %global debug_package %{nil}
 
 %description
-A GUI for GlobalProtect VPN, based on OpenConnect, supports the SSO authentication method.
+The GlobalProtect VPN backend (PKCS#11 fork): the gpservice root daemon, gpauth
+SAML helper, and gpclient CLI, based on OpenConnect. Supports SSO, smart-card /
+PKCS#11 (YubiKey PIV), certificate, and password authentication. The graphical
+client is packaged separately (the -gui subpackage, or a Flatpak).
+
+%package gui
+Summary:        GlobalProtect VPN graphical client (Tauri)
+Requires:       %{name} = %{version}-%{release}
+%if 0%{?suse_version}
+Requires:       webkit2gtk3
+%else
+Requires:       webkit2gtk4.1
+%endif
+Requires:       libsecret
+Conflicts:      globalprotect-openconnect
+
+%description gui
+The GlobalProtect VPN graphical client (gpgui), a Tauri front-end that drives
+the gpservice backend over D-Bus. Requires the %{name} backend package.
 
 %prep
 %setup
 
-%postun
-rm -f %{_bindir}/gpgui
-
 %build
 # The injected RUSTFLAGS could fail the build
 unset RUSTFLAGS
-make build
+make build INCLUDE_GUI=1
 
 %install
-%make_install
+%make_install INCLUDE_GUI=1
 
 %files
 %defattr(-,root,root)
-%{_bindir}/*
+%{_bindir}/gpclient
+%{_bindir}/gpauth
+%{_bindir}/gpservice
 %{_libexecdir}/gpclient/vpnc-script
 %{_libexecdir}/gpclient/hipreport.sh
-%{_datadir}/applications/gpgui.desktop
-%{_datadir}/icons/hicolor/32x32/apps/gpgui.png
-%{_datadir}/icons/hicolor/128x128/apps/gpgui.png
-%{_datadir}/icons/hicolor/256x256@2/apps/gpgui.png
-%{_datadir}/icons/hicolor/scalable/apps/gpgui.svg
-%{_datadir}/polkit-1/actions/com.yuezk.gpgui.policy
 
 %dir /usr/lib/NetworkManager
 %dir /usr/lib/NetworkManager/dispatcher.d
 %dir /usr/lib/NetworkManager/dispatcher.d/pre-down.d
-
 /usr/lib/NetworkManager/dispatcher.d/pre-down.d/gpclient.down
 /usr/lib/NetworkManager/dispatcher.d/gpclient-nm-hook
 
-%dir %{_libexecdir}
+# D-Bus system service (the host backend a Flatpak/native GUI talks to) + polkit.
+%{_datadir}/dbus-1/system-services/io.github.techneut92.GPService.service
+%{_datadir}/dbus-1/system.d/io.github.techneut92.GPService.conf
+%{_datadir}/polkit-1/rules.d/49-gpservice.rules
+%{_datadir}/polkit-1/actions/io.github.techneut92.gpservice.policy
+
 %dir %{_libexecdir}/gpclient
-%dir %{_datadir}/icons/hicolor
-%dir %{_datadir}/icons/hicolor/32x32
-%dir %{_datadir}/icons/hicolor/32x32/apps
-%dir %{_datadir}/icons/hicolor/128x128
-%dir %{_datadir}/icons/hicolor/128x128/apps
-%dir %{_datadir}/icons/hicolor/256x256@2
-%dir %{_datadir}/icons/hicolor/256x256@2/apps
-%dir %{_datadir}/icons/hicolor/scalable
-%dir %{_datadir}/icons/hicolor/scalable/apps
-%dir %{_datadir}/polkit-1
-%dir %{_datadir}/polkit-1/actions
+
+%files gui
+%defattr(-,root,root)
+%{_bindir}/gpgui
+%{_datadir}/applications/gpgui.desktop
+%{_datadir}/icons/hicolor/128x128/apps/gpgui.png
 
 %changelog
-* @DATE@ Kevin Yue <k3vinyue@gmail.com> - @VERSION@
-- Bugfix and improvements
+* @DATE@ Dylan Westra <dylanwestra@gmail.com> - @VERSION@
+- Backend-only fork with PKCS#11 / smart-card prelogin mTLS support

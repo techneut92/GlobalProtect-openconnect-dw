@@ -1,25 +1,25 @@
-# Maintainer: Kevin Yue <k3vinyue@gmail.com>
+# Maintainer: Dylan Westra <dylanwestra@gmail.com>
 
 pkgname=@PKG_NAME@
 pkgver=@VERSION@
 pkgrel=@REVISION@
-pkgdesc="A GUI client for GlobalProtect VPN, based on OpenConnect, supports the SSO authentication method."
-url="https://github.com/yuezk/GlobalProtect-openconnect"
+pkgdesc="GlobalProtect VPN backend (PKCS#11 fork), based on OpenConnect. Smart-card / SSO / certificate auth."
+url="https://github.com/techneut92/GlobalProtect-openconnect-dw"
 arch="x86_64 aarch64"
 license="GPL-3.0-only"
 depends="
+	dbus
 	gmp
 	gnutls
-	libayatana-appindicator
-	libsecret
 	libxml2
 	lz4
 	nettle
+	openconnect
+	opensc
 	openssl
 	p11-kit
+	pcsc-lite
 	polkit
-	webkit2gtk-4.1
-	xdg-utils
 	zlib
 	"
 makedepends="
@@ -30,12 +30,9 @@ makedepends="
 	gettext-dev
 	gmp-dev
 	gnutls-dev
-	gtk+3.0-dev
-	libayatana-appindicator-dev
-	libsecret-dev
-	librsvg-dev
 	libtool
 	libxml2-dev
+	librsvg-dev
 	lz4-dev
 	make
 	nettle-dev
@@ -43,8 +40,10 @@ makedepends="
 	p11-kit-dev
 	patch
 	pkgconf
+	webkit2gtk-4.1-dev
 	zlib-dev
 	"
+subpackages="$pkgname-gui"
 source="$pkgname-$pkgver.tar.gz"
 builddir="$srcdir/$pkgname-$pkgver"
 options="!check"
@@ -55,18 +54,24 @@ build() {
 	unset CFLAGS
 	unset RUSTFLAGS
 
-	make build \
-		INCLUDE_GUI="${INCLUDE_GUI:-0}" \
-		BUILD_GUI_HELPER="${BUILD_GUI_HELPER:-1}" \
-		LIBXML2_STATIC="${LIBXML2_STATIC:-1}"
+	make build INCLUDE_GUI=1 LIBXML2_STATIC="${LIBXML2_STATIC:-1}"
 }
 
 package() {
 	cd "$builddir"
 
-	make install \
-		DESTDIR="$pkgdir" \
-		BUILD_GUI_HELPER="${BUILD_GUI_HELPER:-1}"
+	# Backend only; the GUI lands in the -gui subpackage below.
+	make install DESTDIR="$pkgdir" INCLUDE_GUI=0
+}
+
+gui() {
+	pkgdesc="GlobalProtect VPN graphical client (Tauri)"
+	depends="$pkgname webkit2gtk-4.1 libsecret"
+
+	cd "$builddir"
+	install -Dm755 target/release/gpgui "$subpkgdir/usr/bin/gpgui"
+	install -Dm644 apps/gpgui/packaging/gpgui.desktop "$subpkgdir/usr/share/applications/gpgui.desktop"
+	install -Dm644 apps/gpgui/icons/128x128.png "$subpkgdir/usr/share/icons/hicolor/128x128/apps/gpgui.png"
 }
 
 sha512sums="

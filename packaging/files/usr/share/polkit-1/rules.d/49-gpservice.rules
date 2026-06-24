@@ -1,0 +1,21 @@
+// Let active local users start the GlobalProtect backend (gpservice) as root
+// without a password prompt, for the native (loopback) transport where the GUI
+// launches gpservice via `pkexec gpservice --api-key-on-stdin`.
+//
+// This is safe because:
+//   * the rule matches ONLY the installed /usr/bin/gpservice binary, and
+//   * the GUI hands gpservice a per-user 32-byte key on stdin, so only the GUI
+//     that launched it can drive the VPN over the loopback socket.
+//
+// The Flatpak transport does not use this rule — it reaches the D-Bus system
+// service and is gated by the `io.github.techneut92.gpservice.manage` polkit *action*
+// (see io.github.techneut92.gpservice.policy) instead.
+//
+// Remove this file to require a polkit password on every native launch instead.
+polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.policykit.exec" &&
+        action.lookup("program") == "/usr/bin/gpservice" &&
+        subject.local && subject.active) {
+        return polkit.Result.YES;
+    }
+});
