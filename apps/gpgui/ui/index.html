@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GlobalProtect</title>
+  <link rel="stylesheet" href="theme.css" />
+</head>
+<body>
+  <header data-tauri-drag-region>
+    <div class="brand" data-tauri-drag-region>
+      <div class="mark">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.4-3 7.4-7 9-4-1.6-7-4.6-7-9V6l7-3z"/></svg>
+      </div>
+      <div class="title">Global<span class="ng">Protect</span></div>
+    </div>
+    <div class="hbar-right">
+      <div class="pill"><span class="dot" id="dot"></span><span id="statusText">Disconnected</span></div>
+      <div class="winctl">
+        <button class="wbtn" id="winManage" title="Manage identities">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 4.5a3 3 0 0 1 0 6M18 20a5.5 5.5 0 0 0-3-4.9"/></svg>
+        </button>
+        <button class="wbtn" id="winSettings" title="Advanced settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></svg>
+        </button>
+        <button class="wbtn" id="winMin" title="Minimize">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg>
+        </button>
+        <button class="wbtn close" id="winClose" title="Close">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ SETUP (first run) ============ -->
+    <div class="view center" id="setupView">
+      <div class="stack vault">
+        <div class="vault-badge">
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.4-3 7.4-7 9-4-1.6-7-4.6-7-9V6l7-3z"/><rect x="9" y="11" width="6" height="5" rx="1"/><path d="M10.5 11V9.5a1.5 1.5 0 0 1 3 0V11"/></svg>
+        </div>
+        <h2 class="h2">Set a master PIN</h2>
+        <p class="sub">It encrypts the identities you save. You'll enter it to unlock GlobalProtect.</p>
+        <input class="field pin-input" id="newMasterPin" type="password" placeholder="Choose a PIN" />
+        <p class="formlog" id="setupLog"></p>
+        <div class="actions" style="width:100%"><button class="btn-action" id="setupBtn">Create vault</button></div>
+      </div>
+    </div>
+
+    <!-- ============ LOCK ============ -->
+    <div class="view center" id="lockView">
+      <div class="stack vault">
+        <div class="vault-badge">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.4"/></svg>
+        </div>
+        <h2 class="h2">Unlock</h2>
+        <p class="sub">Enter your master PIN to access your identities.</p>
+        <input class="field pin-input" id="masterPin" type="password" placeholder="Master PIN" />
+        <p class="formlog" id="lockLog"></p>
+        <div class="actions" style="width:100%"><button class="btn-action" id="unlockBtn">Unlock</button></div>
+      </div>
+    </div>
+
+    <!-- ============ UNLOCKED (connect + connected share the orb) ============ -->
+    <div class="view" id="unlockedView">
+      <div class="hero">
+        <div class="orb-wrap" id="orb">
+          <div class="orb-glow"></div>
+          <div class="orb-ring"></div>
+          <div class="orb-disc">
+            <svg id="orbGlyph" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3l7 3v5c0 4.4-3 7.4-7 9-4-1.6-7-4.6-7-9V6l7-3z"/>
+              <path id="orbGlyphInner" d="M12 8v4M12 15.5h.01"/>
+            </svg>
+          </div>
+        </div>
+        <div class="status-title" id="statusTitle">Not connected</div>
+        <div class="status-sub" id="statusSub">Your traffic is not encrypted</div>
+      </div>
+
+      <!-- disconnected: pick identity + connect -->
+      <div id="formContent">
+        <div class="card" id="idCard">
+          <div class="lbl">Identity</div>
+          <div id="identityDD" class="mb14"></div>
+          <div class="detail-card" id="idInfo"></div>
+        </div>
+        <div class="card hidden" id="emptyCard" style="text-align:center;">
+          <div class="sub" style="margin:2px 0 12px;">No identities yet. Add one to connect.</div>
+          <button class="btn-action auto" id="emptyAddBtn" style="padding:11px 18px;">+ Add identity</button>
+        </div>
+        <div class="actions">
+          <button class="btn-action" id="connectBtn">Connect</button>
+          <button class="link" id="manageBtn">Manage identities…</button>
+        </div>
+        <p class="formlog" id="formLog"></p>
+      </div>
+
+      <!-- connected: details -->
+      <div id="connContent" hidden>
+        <div class="tiles">
+          <div class="tile ip"><div class="k">Your IP</div><div class="v" id="cIp">—</div></div>
+          <div class="tile"><div class="k">Interface</div><div class="v" id="cIface">—</div></div>
+        </div>
+        <div class="detail-card">
+          <div class="drow"><div class="k">Portal</div><div class="v" id="cPortal">—</div></div>
+          <div class="drow"><div class="k">Gateway</div><div class="v" id="cGateway">—</div></div>
+          <div class="drow"><div class="k">Session expires</div><div class="v" id="cExpires">—</div></div>
+        </div>
+        <div class="actions"><button class="btn-action danger" id="disconnectBtn">Disconnect</button></div>
+        <p class="formlog" id="connLog"></p>
+      </div>
+    </div>
+  </main>
+
+  <script src="dropdown.js"></script>
+  <script>
+    const TAURI = window.__TAURI__;
+    const hasTauri = !!(TAURI && TAURI.core);
+    const invoke = hasTauri ? TAURI.core.invoke : null;
+    const appWindow = hasTauri ? TAURI.window.getCurrentWindow() : null;
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    const RAW = ['#6b7286', '#fbbf24', '#34d399', '#fb7185'];
+    const AUTH_NAME = { '-1': 'Auto-detect', '0': 'Smart card', '1': 'Certificate file', '2': 'SAML / SSO', '3': 'Username & password' };
+    function authIcon(m, size) {
+      size = size || 13;
+      const I = {
+        '0': '<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/>',
+        '1': '<path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/>',
+        '2': '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5M15 12H3"/>',
+        '3': '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+        '-1': '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/>',
+      };
+      return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + (I[String(m)] || I['-1']) + '</svg>';
+    }
+
+    // ───────── demo data (replaced by backend when on Tauri) ─────────
+    let identities = [
+      { name: 'Acme Corp', portal: 'vpn.acme-corp.com', auth_method: 0, as_gateway: true, module_path: '/usr/lib/opensc-pkcs11.so', cert_id: '01', cert_manufacturer: 'Yubico' },
+      { name: 'Personal Lab', portal: 'lab.example.net', auth_method: 3, as_gateway: false, username: 'jane' },
+    ];
+    const DEMO_CERTS = [
+      { id: '01', manufacturer: 'Yubico', slot: 'Slot 01', expiry: '2026-07-10' },
+      { id: '02', manufacturer: 'Yubico', slot: 'Slot 02', expiry: '2027-04-12' },
+    ];
+    let selected = identities[0] ? identities[0].name : null;
+    let active = false;
+
+    // ───────── window controls ─────────
+    $('winMin').onclick = () => { if (appWindow) appWindow.minimize(); };
+    $('winClose').onclick = () => { if (appWindow) appWindow.close(); };
+    $('winSettings').onclick = () => { if (hasTauri) invoke('open_settings'); else window.open('settings.html', 'gp-settings', 'width=560,height=600'); };
+    function openManager() { if (hasTauri) invoke('open_manager'); else window.open('manager.html', 'gp-manager', 'width=720,height=620'); }
+    $('winManage').onclick = openManager;
+    $('manageBtn').onclick = openManager;
+    $('emptyAddBtn').onclick = openManager;
+
+    // ───────── view switching ─────────
+    function show(view) {
+      ['setupView', 'lockView', 'unlockedView'].forEach((v) => $(v).classList.toggle('show', v === view));
+    }
+
+    // ───────── rich identity picker ─────────
+    const CHEV = '<svg class="dd-chev" width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="#8a91a8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1.5l5 5 5-5"/></svg>';
+    let picker;
+    function createIdentityPicker(mount) {
+      let open = false;
+      const trigger = document.createElement('button');
+      trigger.type = 'button'; trigger.className = 'id-trigger';
+      const menu = document.createElement('div'); menu.className = 'dd-menu'; menu.hidden = true;
+      document.body.appendChild(menu);
+      const initials = (n) => (n || '?').trim().slice(0, 1).toUpperCase();
+      function cur() { return identities.find((i) => i.name === selected); }
+      function renderTrigger() {
+        const id = cur();
+        if (!id) { trigger.innerHTML = '<div class="avatar" style="background:#2a3142;color:#8a91a8">+</div><div class="meta"><div class="name">No identity</div><div class="portal">Add one to connect</div></div>' + CHEV; return; }
+        trigger.innerHTML = '<div class="avatar">' + esc(initials(id.name)) + '</div><div class="meta"><div class="name">' + esc(id.name) + '</div><div class="portal">' + esc(id.portal || '') + '</div></div>' + CHEV;
+      }
+      function buildMenu() {
+        menu.innerHTML = '';
+        identities.forEach((id) => {
+          const b = document.createElement('button'); b.type = 'button';
+          b.className = 'id-item' + (id.name === selected ? ' active' : '');
+          b.innerHTML = '<span class="ico">' + authIcon(id.auth_method, 15) + '</span><span class="txt"><span class="nm">' + esc(id.name) + '</span><span class="pt">' + esc(id.portal || '') + '</span></span>';
+          b.onclick = () => { selected = id.name; close(); renderTrigger(); renderChips(); };
+          menu.appendChild(b);
+        });
+      }
+      function position() { const r = trigger.getBoundingClientRect(); menu.style.top = (r.bottom + 6) + 'px'; menu.style.left = r.left + 'px'; menu.style.width = r.width + 'px'; }
+      function openMenu() { buildMenu(); position(); menu.hidden = false; open = true; trigger.classList.add('active'); }
+      function close() { menu.hidden = true; open = false; trigger.classList.remove('active'); }
+      trigger.addEventListener('click', (e) => { e.stopPropagation(); open ? close() : openMenu(); });
+      document.addEventListener('mousedown', (e) => { if (open && !menu.contains(e.target) && !trigger.contains(e.target)) close(); }, true);
+      window.addEventListener('scroll', () => { if (open) close(); }, true);
+      window.addEventListener('resize', () => { if (open) close(); });
+      mount.appendChild(trigger);
+      renderTrigger();
+      return { refresh() { renderTrigger(); } };
+    }
+
+    async function renderChips() {
+      const id = identities.find((i) => i.name === selected);
+      const el = $('idInfo');
+      if (!id) { el.innerHTML = ''; return; }
+      const row = (k, v, color) => {
+        const vv = color ? '<span style="color:' + color + '">' + esc(v || '—') + '</span>' : esc(v || '—');
+        return '<div class="drow"><div class="k">' + esc(k) + '</div><div class="v">' + vv + '</div></div>';
+      };
+      const head = row('Portal', id.portal) + row('Auth', AUTH_NAME[String(id.auth_method)] || '—') + row('Gateway', id.as_gateway ? 'Direct' : 'Via portal');
+      let mid = '';
+      if (id.auth_method === 1) mid = row('Cert file', (id.cert_file || '').split('/').pop());
+      else if (id.auth_method === 3) mid = row('Username', id.username);
+      el.innerHTML = head + mid;
+
+      // smart-card: read cert live so expiry reflects renewals
+      if (id.auth_method === 0 && id.cert_id) {
+        el.innerHTML = head + row('Certificate', 'reading token…');
+        let c = DEMO_CERTS.find((x) => x.id === id.cert_id);
+        if (hasTauri) { try { const list = await invoke('scan_certs', { module: id.module_path }); c = list.find((x) => x.id === id.cert_id && x.manufacturer === id.cert_manufacturer); } catch (e) { c = null; } }
+        if (selected !== id.name) return;
+        let cm = '';
+        if (c) {
+          cm = row('Certificate', c.slot || ('id ' + id.cert_id));
+          if (c.expiry) {
+            const soon = (new Date(c.expiry) - Date.now()) < 30 * 864e5;
+            cm += row('Expires', c.expiry, soon ? 'var(--yellow)' : 'var(--green)');
+          }
+        } else {
+          cm = row('Certificate', 'id ' + id.cert_id) + row('', 'token not present', 'var(--muted)');
+        }
+        el.innerHTML = head + cm;
+      }
+    }
+
+    function renderIdentityUI() {
+      const has = identities.length > 0;
+      $('idCard').classList.toggle('hidden', !has);
+      $('emptyCard').classList.toggle('hidden', has);
+      $('connectBtn').style.display = has ? '' : 'none';
+      if (has) { if (!identities.find((i) => i.name === selected)) selected = identities[0].name; picker.refresh(); renderChips(); }
+    }
+
+    // ───────── state / orb ─────────
+    function setLog(el, msg, err) { const e = $(el); e.textContent = msg || ''; e.classList.toggle('err', !!err); }
+    function render(s) {
+      const kind = s.kind || 0;
+      $('statusText').textContent = s.status;
+      const dot = $('dot'); dot.style.background = RAW[kind] || '#6b7286'; dot.style.color = RAW[kind] || '#6b7286';
+      dot.classList.toggle('live', kind === 1 || kind === 2);
+      const orb = $('orb');
+      orb.style.setProperty('--c', RAW[kind] || '#6b7286');
+      orb.classList.toggle('connecting', kind === 1);
+      orb.classList.toggle('connected', kind === 2);
+      $('orbGlyphInner').setAttribute('d', kind === 2 ? 'M9 12l2 2 4-4' : 'M12 8v4M12 15.5h.01');
+      const titles = ['Not connected', 'Connecting…', 'Protected', 'Connection failed'];
+      $('statusTitle').textContent = titles[kind] || titles[0];
+      let sub = 'Your traffic is not encrypted';
+      if (kind === 1) sub = 'Establishing secure tunnel';
+      else if (kind === 2) sub = 'Connected · ' + (s.elapsed || '00:00:00');
+      else if (kind === 3) sub = 'Check your credentials and retry';
+      $('statusSub').textContent = sub;
+
+      active = !!s.active;
+      // only flip content when vault is unlocked
+      if (!$('unlockedView').classList.contains('show')) return;
+      $('formContent').hidden = active;
+      $('connContent').hidden = !active;
+      setLog('formLog', active ? '' : s.log);
+      setLog('connLog', active ? s.log : '');
+      const cb = $('connectBtn'); cb.textContent = s.busy ? 'Working…' : 'Connect';
+      if (active) {
+        $('cIp').textContent = s.ip || '—';
+        $('cIface').textContent = s.iface || '—';
+        $('cPortal').textContent = s.portal || '—';
+        $('cGateway').textContent = s.gateway || '—';
+        $('cExpires').textContent = s.expires || '—';
+      }
+    }
+
+    // ───────── connect flow ─────────
+    let timer = null, demoTimers = [];
+    async function connect() {
+      const id = identities.find((i) => i.name === selected);
+      if (!id) { setLog('formLog', 'Add an identity first.', true); return; }
+      if (hasTauri) {
+        try { await invoke('connect', { identity: id.name, portal: '' }); }
+        catch (e) { render({ kind: 3, status: 'Error', log: 'Error: ' + e }); }
+        return;
+      }
+      render({ kind: 1, status: 'Connecting', log: 'Authenticating with ' + id.portal + '…' });
+      demoTimers.push(setTimeout(() => {
+        render({ kind: 1, status: 'Connecting', log: 'Negotiating tunnel…' });
+        demoTimers.push(setTimeout(() => {
+          const t0 = Date.now();
+          const fmt = () => { const d = Math.floor((Date.now() - t0) / 1000); return [d / 3600, (d % 3600) / 60, d % 60].map((n) => String(Math.floor(n)).padStart(2, '0')).join(':'); };
+          const detail = { kind: 2, status: 'Connected', active: true, portal: id.portal, gateway: id.as_gateway ? id.portal : ('gw1.' + id.portal.replace(/^[^.]+\./, '')), ip: '10.42.7.' + (20 + Math.floor(Math.random() * 200)), iface: 'gpd0', expires: 'in 7h 58m', elapsed: fmt() };
+          render(detail);
+          timer = setInterval(() => { detail.elapsed = fmt(); if (active) $('statusSub').textContent = 'Connected · ' + detail.elapsed; }, 1000);
+        }, 1100));
+      }, 1300));
+    }
+    function disconnect() {
+      demoTimers.forEach(clearTimeout); demoTimers = [];
+      if (timer) { clearInterval(timer); timer = null; }
+      if (hasTauri) { invoke('disconnect'); return; }
+      render({ kind: 0, status: 'Disconnected', active: false, log: '' });
+    }
+    $('connectBtn').onclick = connect;
+    $('disconnectBtn').onclick = disconnect;
+
+    // ───────── vault ─────────
+    async function unlocked() {
+      if (hasTauri) { try { identities = await invoke('list_identities'); } catch (e) { identities = []; } }
+      if (!identities.find((i) => i.name === selected)) selected = identities[0] ? identities[0].name : null;
+      show('unlockedView');
+      renderIdentityUI();
+      render(active ? { kind: 2, status: 'Connected', active: true } : { kind: 0, status: 'Disconnected', active: false, log: '' });
+    }
+    $('setupBtn').onclick = async () => {
+      if (hasTauri) { try { await invoke('set_master_pin', { pin: $('newMasterPin').value }); } catch (e) { setLog('setupLog', '' + e, true); return; } }
+      await unlocked();
+    };
+    $('unlockBtn').onclick = async () => {
+      if (hasTauri) { try { await invoke('unlock_vault', { pin: $('masterPin').value }); } catch (e) { setLog('lockLog', '' + e, true); return; } }
+      await unlocked();
+    };
+    $('masterPin').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('unlockBtn').click(); });
+    $('newMasterPin').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('setupBtn').click(); });
+
+    // ───────── init ─────────
+    picker = createIdentityPicker($('identityDD'));
+    (async function init() {
+      if (hasTauri) {
+        const vs = await invoke('vault_status');
+        if (!vs.exists) show('setupView');
+        else if (!vs.unlocked) show('lockView');
+        else await unlocked();
+        render(await invoke('get_state'));
+        await TAURI.event.listen('state', (e) => render(e.payload));
+        await TAURI.event.listen('identities-changed', async () => { try { identities = await invoke('list_identities'); } catch (e) {} renderIdentityUI(); });
+      } else {
+        // demo: start locked to show the vault unlock, any PIN unlocks
+        show('lockView');
+      }
+    })();
+  </script>
+</body>
+</html>
