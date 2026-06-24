@@ -21,3 +21,6 @@ log.workspace = true
 compile-time.workspace = true
 xz2 = "0.1"
 tar = "0.4"
+# D-Bus system-service front-end (Flatpak transport) + polkit authorization.
+zbus = "5"
+zbus_polkit = "5"

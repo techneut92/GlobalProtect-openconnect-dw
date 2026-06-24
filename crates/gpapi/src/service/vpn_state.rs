@@ -15,6 +15,14 @@ pub struct ConnectInfo {
 pub struct ConnectedInfo {
   info: Box<ConnectInfo>,
   session_info: Option<SessionInfo>,
+  /// Tunnel interface name (e.g. `tun0`), reported by openconnect once the tun
+  /// device is up.
+  #[serde(skip_serializing_if = "Option::is_none", default)]
+  tun_iface: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none", default)]
+  ipv4: Option<String>,
+  #[serde(skip_serializing_if = "Option::is_none", default)]
+  ipv6: Option<String>,
 }
 
 impl ConnectedInfo {
@@ -22,7 +30,18 @@ impl ConnectedInfo {
     Self {
       info: Box::new(info),
       session_info,
+      tun_iface: None,
+      ipv4: None,
+      ipv6: None,
     }
+  }
+
+  /// Attach the tunnel facts captured from openconnect.
+  pub fn with_tunnel(mut self, tun_iface: Option<String>, ipv4: Option<String>, ipv6: Option<String>) -> Self {
+    self.tun_iface = tun_iface;
+    self.ipv4 = ipv4;
+    self.ipv6 = ipv6;
+    self
   }
 
   pub fn info(&self) -> &ConnectInfo {

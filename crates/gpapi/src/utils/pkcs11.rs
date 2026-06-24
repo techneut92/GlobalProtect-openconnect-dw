@@ -30,13 +30,31 @@ use rustls::{
   ClientConfig, DigitallySignedStruct, RootCertStore, SignatureAlgorithm, SignatureScheme,
 };
 
-/// p11-kit proxy aggregates every registered token (SoftHSM, YubiKey via OpenSC,
-/// …). Using it means we don't need to know the concrete module path. Overridable
-/// via `GP_PKCS11_MODULE`.
-const PROXY_CANDIDATES: &[&str] = &[
-  "/usr/lib64/pkcs11/p11-kit-proxy.so",
-  "/usr/lib/x86_64-linux-gnu/pkcs11/p11-kit-proxy.so",
-  "/usr/lib/pkcs11/p11-kit-proxy.so",
+/// Library directories searched for a PKCS#11 module, across common distros
+/// (Fedora/openSUSE multilib, Debian/Ubuntu/Arch multiarch, Alpine, /usr/local).
+const MODULE_DIRS: &[&str] = &[
+  "/usr/lib64/pkcs11",
+  "/usr/lib/pkcs11",
+  "/usr/lib/x86_64-linux-gnu/pkcs11",
+  "/usr/lib/aarch64-linux-gnu/pkcs11",
+  "/usr/lib64",
+  "/usr/lib",
+  "/usr/lib/x86_64-linux-gnu",
+  "/usr/lib/aarch64-linux-gnu",
+  "/usr/local/lib",
+];
+
+/// Module filenames in preference order. Concrete token modules come first —
+/// each exposes exactly one real, loginable token. p11-kit-proxy is the last
+/// resort: it aggregates *every* registered token including the system trust
+/// store, whose tokens can't satisfy a client-cert login and would derail slot
+/// selection when the URI carries no `token=`. Overridable via `GP_PKCS11_MODULE`.
+const MODULE_NAMES: &[&str] = &[
+  "opensc-pkcs11.so", // PIV smart cards incl. YubiKey
+  "libykcs11.so.2",   // YubiKey native PIV
+  "libykcs11.so",
+  "libsofthsm2.so",   // SoftHSM test tokens
+  "p11-kit-proxy.so", // aggregate, last resort
 ];
 
 pub fn is_pkcs11_uri(s: &str) -> bool {
@@ -105,16 +123,42 @@ fn parse_pkcs11_uri(uri: &str) -> Result<Pkcs11Uri> {
   Ok(out)
 }
 
-fn module_path() -> Result<String> {
-  if let Ok(m) = std::env::var("GP_PKCS11_MODULE") {
-    return Ok(m);
-  }
-  for c in PROXY_CANDIDATES {
-    if std::path::Path::new(c).exists() {
-      return Ok((*c).to_string());
+/// Locate a `name` (or any of `names`) under the known module directories.
+fn find_module_file(names: &[&str]) -> Option<String> {
+  for name in names {
+    for dir in MODULE_DIRS {
+      let p = std::path::Path::new(dir).join(name);
+      if p.exists() {
+        return Some(p.to_string_lossy().into_owned());
+      }
     }
   }
-  bail!("no PKCS#11 module found; set GP_PKCS11_MODULE to your module (e.g. opensc-pkcs11.so or libsofthsm2.so)")
+  None
+}
+
+/// Resolve the PKCS#11 module: explicit `GP_PKCS11_MODULE` wins (an absolute
+/// path is used as-is, a bare filename is resolved against the search dirs),
+/// otherwise auto-detect a known module.
+fn module_path() -> Result<String> {
+  if let Ok(m) = std::env::var("GP_PKCS11_MODULE") {
+    if m.is_empty() {
+      // fall through to auto-detection
+    } else if m.contains('/') {
+      return Ok(m);
+    } else if let Some(p) = find_module_file(&[m.as_str()]) {
+      return Ok(p);
+    } else {
+      // Not found under the search dirs; hand the bare name to the loader so a
+      // library on the linker search path still works.
+      return Ok(m);
+    }
+  }
+  find_module_file(MODULE_NAMES).ok_or_else(|| {
+    anyhow!(
+      "no PKCS#11 module found; install opensc (provides opensc-pkcs11.so) or set \
+       GP_PKCS11_MODULE to your module path (e.g. libsofthsm2.so)"
+    )
+  })
 }
 
 /// rustls signing key backed by a PKCS#11 private key handle.

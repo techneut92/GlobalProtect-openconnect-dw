@@ -9,7 +9,7 @@ use gpapi::logger;
 use gpapi::{
   process::gui_launcher::GuiLauncher,
   service::{request::WsRequest, vpn_state::VpnState},
-  utils::{crypto::generate_key, env_utils, lock_file::LockFile, redact::Redaction, shutdown_signal},
+  utils::{base64, crypto::generate_key, env_utils, lock_file::LockFile, redact::Redaction, shutdown_signal},
 };
 use log::{info, warn};
 use tokio::sync::{mpsc, watch};
@@ -25,6 +25,15 @@ struct Cli {
   minimized: bool,
   #[clap(long)]
   env_file: Option<String>,
+  /// Read the 32-byte API key as base64 on stdin (shared with the launching GUI),
+  /// instead of generating one. Used when an unprivileged GUI launches the
+  /// service via pkexec.
+  #[clap(long)]
+  api_key_on_stdin: bool,
+  /// Run as a D-Bus system service instead of the loopback WebSocket server.
+  /// This is the transport a Flatpak-sandboxed GUI uses.
+  #[clap(long)]
+  dbus: bool,
   #[cfg(debug_assertions)]
   #[clap(long)]
   no_gui: bool,
@@ -53,7 +62,44 @@ impl Cli {
     let (vpn_state_tx, vpn_state_rx) = watch::channel(VpnState::Disconnected);
 
     let mut vpn_task = VpnTask::new(ws_req_rx, vpn_state_tx);
-    let ws_server = WsServer::new(api_key.clone(), ws_req_tx, vpn_state_rx, lock_file.clone(), redaction);
+
+    // D-Bus system-service front-end (Flatpak transport). Feeds the same
+    // VpnTask channels as the WS server; no lock file / loopback port.
+    if self.dbus {
+      let _ = lock_file; // unused on this path
+      let (shutdown_tx, mut shutdown_rx) = mpsc::channel::<()>(4);
+      let vpn_task_cancel_token = vpn_task.cancel_token();
+      let server_token = tokio_util::sync::CancellationToken::new();
+
+      let vpn_task_handle = tokio::spawn(async move { vpn_task.start(server_token).await });
+      let dbus_handle = tokio::spawn(async move {
+        if let Err(err) = crate::dbus_service::run(ws_req_tx, vpn_state_rx).await {
+          warn!("D-Bus service error: {}", err);
+        }
+        let _ = shutdown_tx.send(()).await;
+      });
+
+      tokio::select! {
+        _ = shutdown_signal() => info!("Shutdown signal received"),
+        _ = shutdown_rx.recv() => info!("D-Bus service stopped"),
+      }
+
+      vpn_task_cancel_token.cancel();
+      let _ = tokio::join!(vpn_task_handle, dbus_handle);
+      info!("gpservice stopped");
+      return Ok(());
+    }
+
+    // When the key came in on stdin, an external GUI launched us — tie our
+    // lifetime to that GUI so we don't linger after it exits.
+    let ws_server = WsServer::new(
+      api_key.clone(),
+      ws_req_tx,
+      vpn_state_rx,
+      lock_file.clone(),
+      redaction,
+      self.api_key_on_stdin,
+    );
 
     let (shutdown_tx, mut shutdown_rx) = mpsc::channel::<()>(4);
     let shutdown_tx_clone = shutdown_tx.clone();
@@ -71,14 +117,16 @@ impl Cli {
     let vpn_task_handle = tokio::spawn(async move { vpn_task.start(server_token).await });
     let ws_server_handle = tokio::spawn(async move { ws_server.start(shutdown_tx_clone).await });
 
+    // When the key is supplied on stdin, the service was launched by an already-
+    // running (external) GUI, so it must not try to launch its own GUI.
     #[cfg(debug_assertions)]
-    let no_gui = self.no_gui;
+    let no_gui = self.no_gui || self.api_key_on_stdin;
 
     #[cfg(not(debug_assertions))]
-    let no_gui = false;
+    let no_gui = self.api_key_on_stdin;
 
     if no_gui {
-      info!("GUI is disabled");
+      info!("GUI is disabled (externally managed)");
     } else {
       let envs = self.env_file.as_ref().map(env_utils::load_env_vars).transpose()?;
 
@@ -137,12 +185,37 @@ impl Cli {
   }
 
   fn prepare_api_key(&self) -> Vec<u8> {
+    if self.api_key_on_stdin {
+      return read_api_key_from_stdin();
+    }
+
     #[cfg(debug_assertions)]
     if self.no_gui {
       return gpapi::GP_API_KEY.to_vec();
     }
 
     generate_key().to_vec()
+  }
+}
+
+/// Read a base64-encoded 32-byte API key from stdin (one line). Falls back to a
+/// random key on any error so the service still starts (the GUI will just fail
+/// to authenticate, which is the safe outcome).
+fn read_api_key_from_stdin() -> Vec<u8> {
+  use std::io::BufRead;
+
+  let mut line = String::new();
+  if std::io::stdin().lock().read_line(&mut line).is_err() {
+    warn!("Failed to read API key from stdin, generating a random one");
+    return generate_key().to_vec();
+  }
+
+  match base64::decode_to_vec(line.trim()) {
+    Ok(key) if key.len() == 32 => key,
+    _ => {
+      warn!("Invalid API key on stdin, generating a random one");
+      generate_key().to_vec()
+    }
   }
 }
 

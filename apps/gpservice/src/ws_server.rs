@@ -1,4 +1,6 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Duration;
 
 use axum::extract::ws::Message;
 use common::constants::GP_AUTH_BINARY;
@@ -23,6 +25,13 @@ pub(crate) struct WsServerContext {
   vpn_state_rx: watch::Receiver<VpnState>,
   redaction: Arc<Redaction>,
   connections: RwLock<Vec<Arc<WsConnection>>>,
+  /// Live client count, used for the idle-shutdown check.
+  active: Arc<AtomicUsize>,
+  /// When true (the GUI launched us via `--api-key-on-stdin`), shut the whole
+  /// service down shortly after the last client disconnects.
+  exit_on_idle: bool,
+  /// Cancelling this stops the WS server, which cascades to a full shutdown.
+  cancel_token: CancellationToken,
 }
 
 impl WsServerContext {
@@ -31,6 +40,8 @@ impl WsServerContext {
     ws_req_tx: mpsc::Sender<WsRequest>,
     vpn_state_rx: watch::Receiver<VpnState>,
     redaction: Arc<Redaction>,
+    exit_on_idle: bool,
+    cancel_token: CancellationToken,
   ) -> Self {
     Self {
       crypto: Arc::new(Crypto::new(api_key)),
@@ -38,6 +49,9 @@ impl WsServerContext {
       vpn_state_rx,
       redaction,
       connections: Default::default(),
+      active: Arc::new(AtomicUsize::new(0)),
+      exit_on_idle,
+      cancel_token,
     }
   }
 
@@ -71,13 +85,29 @@ impl WsServerContext {
     }
 
     self.connections.write().await.push(Arc::clone(&conn));
+    self.active.fetch_add(1, Ordering::SeqCst);
 
     (conn, rx)
   }
 
   pub async fn remove_connection(&self, conn: Arc<WsConnection>) {
-    let mut connections = self.connections.write().await;
-    connections.retain(|c| !Arc::ptr_eq(c, &conn));
+    self.connections.write().await.retain(|c| !Arc::ptr_eq(c, &conn));
+    let remaining = self.active.fetch_sub(1, Ordering::SeqCst).saturating_sub(1);
+
+    // Externally managed (GUI-launched) service: when the launching GUI goes
+    // away, no clients remain — shut down after a short grace period so a quick
+    // GUI reconnect doesn't kill the service mid-flight.
+    if self.exit_on_idle && remaining == 0 {
+      let active = Arc::clone(&self.active);
+      let token = self.cancel_token.clone();
+      tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        if active.load(Ordering::SeqCst) == 0 {
+          info!("No GUI client connected; shutting the service down");
+          token.cancel();
+        }
+      });
+    }
   }
 
   fn vpn_state_rx(&self) -> watch::Receiver<VpnState> {
@@ -110,9 +140,17 @@ impl WsServer {
     vpn_state_rx: watch::Receiver<VpnState>,
     lock_file: Arc<LockFile>,
     redaction: Arc<Redaction>,
+    exit_on_idle: bool,
   ) -> Self {
-    let ctx = Arc::new(WsServerContext::new(api_key, ws_req_tx, vpn_state_rx, redaction));
     let cancel_token = CancellationToken::new();
+    let ctx = Arc::new(WsServerContext::new(
+      api_key,
+      ws_req_tx,
+      vpn_state_rx,
+      redaction,
+      exit_on_idle,
+      cancel_token.clone(),
+    ));
 
     Self {
       ctx,

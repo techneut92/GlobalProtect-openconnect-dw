@@ -51,6 +51,12 @@ static void setup_tun_handler(void *_vpninfo)
 	}
 
 	if (!ret) {
+		/* The tun device is up now, so the assigned addresses and the
+		 * interface name are available. These pointers are owned by
+		 * vpninfo and stay valid for this synchronous callback. */
+		const struct oc_ip_info *ip_info = NULL;
+		openconnect_get_ip_info(_vpninfo, &ip_info, NULL, NULL);
+
 		vpn_session_info session_info = {
 			.auth_expiration = (long)openconnect_get_auth_expiration(_vpninfo),
 			.lifetime_secs = openconnect_get_gp_session_lifetime(_vpninfo),
@@ -59,6 +65,9 @@ static void setup_tun_handler(void *_vpninfo)
 			    openconnect_get_gp_lifetime_notify_prior(_vpninfo),
 			.lifetime_warning_message =
 			    openconnect_get_gp_lifetime_notify_message(_vpninfo),
+			.tun_name = openconnect_get_ifname(_vpninfo),
+			.ipaddr = ip_info ? ip_info->addr : NULL,
+			.ipaddr6 = ip_info ? ip_info->addr6 : NULL,
 		};
 		on_vpn_connected(g_cmd_pipe_fd, &session_info, g_user_data);
 	}
