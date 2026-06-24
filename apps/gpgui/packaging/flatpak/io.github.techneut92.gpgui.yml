@@ -1,0 +1,78 @@
+# Flatpak manifest for the gpgui front-end.
+#
+# IMPORTANT — this packages the **GUI only**. The privileged backend
+# (gpservice + openconnect + tun) cannot be sandboxed; it ships as a host
+# .deb/.rpm/.apk and is reached over D-Bus (`--system-talk-name` below).
+#
+# Smart-card / YubiKey notes:
+#   * `--socket=pcsc` bridges the host pcscd into the sandbox, so the YubiKey is
+#     read by the host (no USB passthrough). This is what makes PKCS#11 work.
+#   * The runtime has no opensc, so we bundle pcsc-lite (client lib) + opensc.
+#     The bundled module lands at /app/lib/pkcs11/opensc-pkcs11.so, which
+#     gpgui's module picker now includes.
+#
+# A real build also needs the cargo registry vendored (flatpak-cargo-generator
+# → cargo-sources.json) for an offline build; omitted here for brevity.
+app-id: io.github.techneut92.gpgui
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: gpgui
+
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Smart card: talk to the host pcscd (YubiKey PIV).
+  - --socket=pcsc
+  # The root backend, over the system bus.
+  - --system-talk-name=io.github.techneut92.GPService
+  # Desktop integration.
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # Portals: file chooser (cert-file auth) + OpenURI (system-browser SSO).
+  - --talk-name=org.freedesktop.portal.Desktop
+
+modules:
+  # libpcsclite client (to reach host pcscd via --socket=pcsc)
+  - name: pcsc-lite
+    config-opts:
+      - --disable-libsystemd
+      - --disable-libudev
+      - --disable-polkit
+      - --enable-confdir=/app/etc
+    sources:
+      - type: archive
+        url: https://pcsclite.apdu.fr/files/pcsc-lite-2.3.0.tar.bz2
+        sha256: PLACEHOLDER
+
+  # opensc — provides /app/lib/pkcs11/opensc-pkcs11.so
+  - name: opensc
+    config-opts:
+      - --disable-static
+    sources:
+      - type: archive
+        url: https://github.com/OpenSC/OpenSC/releases/download/0.26.0/opensc-0.26.0.tar.gz
+        sha256: PLACEHOLDER
+
+  - name: gpgui
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/gpgui/cargo
+        # Resolve the auth helper inside the sandbox, not /usr/bin.
+        GP_AUTH_BINARY: /app/bin/gpauth
+    build-commands:
+      - cargo build --release -p gpgui -p gpauth --offline
+      - install -Dm755 target/release/gpgui /app/bin/gpgui
+      # Bundle gpauth (unprivileged SAML helper) for embedded-webview SSO.
+      - install -Dm755 target/release/gpauth /app/bin/gpauth
+      - install -Dm644 apps/gpgui/packaging/flatpak/io.github.techneut92.gpgui.desktop /app/share/applications/io.github.techneut92.gpgui.desktop
+      - install -Dm644 apps/gpgui/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.techneut92.gpgui.png
+    sources:
+      - type: dir
+        path: ../../../

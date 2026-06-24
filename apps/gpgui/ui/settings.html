@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced settings</title>
+  <link rel="stylesheet" href="theme.css" />
+</head>
+<body class="settings">
+  <header data-tauri-drag-region>
+    <div class="brand" data-tauri-drag-region>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6fb6ff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/></svg>
+      <div class="title">Advanced settings</div>
+    </div>
+    <div class="winctl">
+      <button class="wbtn close" id="winClose" title="Close">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="settings-layout">
+    <nav class="settings-rail">
+      <button class="settings-nav active" data-sec="auth">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <span>Authentication</span>
+      </button>
+      <button class="settings-nav" data-sec="conn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5a7 7 0 0 1 14 0"/><path d="M8.5 15a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="18.5" r="1.3" fill="currentColor" stroke="none"/></svg>
+        <span>Connection</span>
+      </button>
+    </nav>
+
+    <div class="settings-content">
+      <!-- AUTH -->
+      <div class="settings-sec" id="sec-auth">
+        <h2>Authentication</h2>
+        <p class="desc">How single sign-on runs.</p>
+        <div class="lbl">SSO method</div>
+        <div id="ssoDD"></div>
+        <p class="help">Embedded webview keeps login inside the app. System browser hands off to your default browser for IdPs that block embedded views.</p>
+      </div>
+
+      <!-- CONNECTION -->
+      <div class="settings-sec" id="sec-conn" hidden>
+        <h2>Connection</h2>
+        <p class="desc">Reported client identity and tunnel tuning.</p>
+
+        <div class="grid2 mb14">
+          <div><div class="lbl">Operating system</div><div id="osDD"></div></div>
+          <div><div class="lbl">OS version</div><input class="field" id="osVersion" placeholder="auto" /></div>
+        </div>
+
+        <div class="lbl">User-Agent</div>
+        <input class="field mb14" id="userAgent" />
+
+        <div class="lbl">Client version</div>
+        <input class="field mb16" id="clientVersion" placeholder="default" />
+
+        <div class="grid3 mb16">
+          <div><div class="lbl">MTU</div><input class="field" id="mtu" type="number" min="0" /></div>
+          <div><div class="lbl">Reconnect (s)</div><input class="field" id="reconnectTimeout" type="number" min="0" /></div>
+          <div><div class="lbl">Force DPD (s)</div><input class="field" id="forceDpd" type="number" min="0" /></div>
+        </div>
+
+        <div class="lbl">VPNC script</div>
+        <input class="field mb14" id="vpncScript" placeholder="/usr/libexec/openconnect/vpnc-script" />
+
+        <div class="lbl">Local hostname</div>
+        <input class="field mb18" id="localHostname" placeholder="auto" />
+
+        <div class="toggle-list">
+          <div class="toggle-item">
+            <div><div class="t" style="font-size:13px;color:var(--text-soft);font-weight:500;">Disable IPv6</div><div class="d" style="font-size:11.5px;color:var(--faint);margin-top:2px;">Force an IPv4-only tunnel</div></div>
+            <button class="switch" type="button" data-key="disableIpv6"><span class="knob"></span></button>
+          </div>
+          <div class="toggle-item">
+            <div><div class="t" style="font-size:13px;color:var(--text-soft);font-weight:500;">Disable DTLS (UDP)</div><div class="d" style="font-size:11.5px;color:var(--faint);margin-top:2px;">Tunnel over TLS only</div></div>
+            <button class="switch" type="button" data-key="noDtls"><span class="knob"></span></button>
+          </div>
+          <div class="toggle-item">
+            <div><div class="t" style="font-size:13px;color:var(--text-soft);font-weight:500;">No XML POST</div><div class="d" style="font-size:11.5px;color:var(--faint);margin-top:2px;">Skip the XML POST handshake step</div></div>
+            <button class="switch" type="button" data-key="noXmlpost"><span class="knob"></span></button>
+          </div>
+          <div class="toggle-item">
+            <div><div class="t" style="font-size:13px;color:var(--text-soft);font-weight:500;">Ignore TLS errors</div><div class="d" style="font-size:11.5px;color:var(--faint);margin-top:2px;">Accept untrusted gateway certificates</div></div>
+            <button class="switch" type="button" data-key="ignoreTlsErrors"><span class="knob"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <span class="saved" id="saved">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#06281c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg>
+        <span>Saved</span>
+      </span>
+    </div>
+  </div>
+
+  <script src="dropdown.js"></script>
+  <script>
+    const TAURI = window.__TAURI__;
+    const hasTauri = !!(TAURI && TAURI.core);
+    const invoke = hasTauri ? TAURI.core.invoke : null;
+    const appWindow = hasTauri ? TAURI.window.getCurrentWindow() : null;
+    const $ = (id) => document.getElementById(id);
+
+    $('winClose').onclick = () => { if (appWindow) appWindow.close(); else window.close(); };
+
+    // rail nav
+    document.querySelectorAll('.settings-nav').forEach((b) => {
+      b.onclick = () => {
+        document.querySelectorAll('.settings-nav').forEach((x) => x.classList.toggle('active', x === b));
+        $('sec-auth').hidden = b.dataset.sec !== 'auth';
+        $('sec-conn').hidden = b.dataset.sec !== 'conn';
+      };
+    });
+
+    // form model — camelCase keys match Rust SettingsForm; cfg holds snake_case config keys
+    const F = {
+      authView:         { id: null, cfg: 'auth_view', t: 's' },
+      os:               { id: null, cfg: 'os', t: 's' },
+      osVersion:        { id: 'osVersion', cfg: 'os_version', t: 's' },
+      userAgent:        { id: 'userAgent', cfg: 'user_agent', t: 's' },
+      clientVersion:    { id: 'clientVersion', cfg: 'client_version', t: 's' },
+      mtu:              { id: 'mtu', cfg: 'mtu', t: 'n' },
+      reconnectTimeout: { id: 'reconnectTimeout', cfg: 'reconnect_timeout', t: 'n' },
+      forceDpd:         { id: 'forceDpd', cfg: 'force_dpd', t: 'n' },
+      vpncScript:       { id: 'vpncScript', cfg: 'vpnc_script', t: 's' },
+      localHostname:    { id: 'localHostname', cfg: 'local_hostname', t: 's' },
+      disableIpv6:      { id: null, cfg: 'disable_ipv6', t: 'b' },
+      noDtls:           { id: null, cfg: 'no_dtls', t: 'b' },
+      noXmlpost:        { id: null, cfg: 'no_xmlpost', t: 'b' },
+      ignoreTlsErrors:  { id: null, cfg: 'ignore_tls_errors', t: 'b' },
+    };
+
+    const model = {
+      authView: 'webview', os: 'Linux', osVersion: '', userAgent: 'PAN GlobalProtect/6.2.1-1290',
+      clientVersion: '', mtu: 0, reconnectTimeout: 30, forceDpd: 0, vpncScript: '', localHostname: '',
+      disableIpv6: false, noDtls: false, noXmlpost: false, ignoreTlsErrors: false,
+    };
+
+    const ssoDD = createDropdown($('ssoDD'), {
+      options: [
+        { value: 'webview', label: 'Embedded webview', sub: 'Login stays inside the app' },
+        { value: 'browser', label: 'System browser', sub: 'Hand off to your default browser' },
+      ],
+      value: model.authView,
+      onChange: (v) => { model.authView = v; save(); },
+    });
+    const osDD = createDropdown($('osDD'), {
+      options: [{ value: 'Linux', label: 'Linux' }, { value: 'Windows', label: 'Windows' }, { value: 'Mac', label: 'Mac' }],
+      value: model.os,
+      onChange: (v) => { model.os = v; save(); },
+    });
+
+    // text / number inputs
+    Object.entries(F).forEach(([k, f]) => {
+      if (!f.id) return;
+      const el = $(f.id);
+      el.oninput = () => { model[k] = f.t === 'n' ? (parseInt(el.value, 10) || 0) : el.value; save(); };
+    });
+
+    // toggle switches
+    document.querySelectorAll('.switch[data-key]').forEach((sw) => {
+      sw.onclick = () => {
+        const k = sw.dataset.key;
+        model[k] = !model[k];
+        sw.classList.toggle('on', model[k]);
+        save();
+      };
+    });
+
+    function applyToInputs() {
+      Object.entries(F).forEach(([k, f]) => {
+        if (f.id) $(f.id).value = model[k];
+      });
+      ssoDD.value = model.authView;
+      osDD.value = model.os;
+      document.querySelectorAll('.switch[data-key]').forEach((sw) => sw.classList.toggle('on', !!model[sw.dataset.key]));
+    }
+
+    let savedTimer;
+    async function save() {
+      $('saved').classList.add('show');
+      clearTimeout(savedTimer);
+      savedTimer = setTimeout(() => $('saved').classList.remove('show'), 1300);
+      if (hasTauri) { try { await invoke('save_settings', { form: model }); } catch (e) {} }
+    }
+
+    (async function init() {
+      if (hasTauri) {
+        const cfg = await invoke('get_config');
+        Object.entries(F).forEach(([k, f]) => {
+          const v = cfg[f.cfg];
+          if (f.t === 'b') model[k] = !!v;
+          else model[k] = v != null ? v : (f.t === 'n' ? 0 : '');
+        });
+      }
+      applyToInputs();
+    })();
+  </script>
+</body>
+</html>

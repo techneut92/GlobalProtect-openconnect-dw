@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=GlobalProtect
+GenericName=VPN Client
+Comment=Connect to GlobalProtect VPN (smart-card / certificate)
+Exec=/usr/bin/gpgui
+Icon=gpgui
+Terminal=false
+Categories=Network;Security;
+Keywords=VPN;GlobalProtect;OpenConnect;PKCS11;
+StartupNotify=true
