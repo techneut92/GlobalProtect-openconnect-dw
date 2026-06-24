@@ -1,7 +1,7 @@
 {
   "$schema": "https://cdn.jsdelivr.net/gh/tauri-apps/tauri@tauri-v2.1.1/crates/tauri-cli/config.schema.json",
   "productName": "GlobalProtect",
-  "version": "2.5.4",
+  "version": "1.0.0",
   "identifier": "io.github.techneut92.gpgui",
   "build": {
     "frontendDist": "ui",
