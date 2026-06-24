@@ -6,7 +6,7 @@
     "devUrl": "http://localhost:1421",
     "frontendDist": "../dist"
   },
-  "identifier": "com.yuezk.gpgui-helper",
+  "identifier": "io.github.techneut92.gpgui-helper",
   "productName": "gpgui-helper",
   "app": {
     "withGlobalTauri": false,

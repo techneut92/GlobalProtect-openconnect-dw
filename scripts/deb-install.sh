@@ -35,7 +35,7 @@ LIB_WEBKIT_x86="http://launchpadlibrarian.net/704701349/libwebkit2gtk-4.0-37_2.4
 LIB_JAVASCRIPT_arm="http://launchpadlibrarian.net/704735771/libjavascriptcoregtk-4.0-18_2.43.3-1_arm64.deb"
 LIB_WEBKIT_arm="http://launchpadlibrarian.net/704735777/libwebkit2gtk-4.0-37_2.43.3-1_arm64.deb"
 
-DEB_URL="https://github.com/yuezk/GlobalProtect-openconnect/releases/download/v${VERSION}/globalprotect-openconnect_${VERSION}-1_${ARCH}.deb"
+DEB_URL="https://github.com/techneut92/GlobalProtect-openconnect-dw/releases/download/v${VERSION}/globalprotect-openconnect_${VERSION}-1_${ARCH}.deb"
 
 # Install the dependencies
 if [ "$ARCH" == "amd64" ]; then

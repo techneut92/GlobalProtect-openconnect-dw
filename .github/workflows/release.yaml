@@ -111,7 +111,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GH_PAT }}
       run: |
-        gh -R yuezk/GlobalProtect-openconnect \
+        gh -R techneut92/GlobalProtect-openconnect-dw \
           release download ${{ inputs.tag }} \
           --pattern '*[^offline].tar.gz' \
           --dir build-${{ matrix.package }}
@@ -169,7 +169,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GH_PAT }}
       run: |
-        gh -R yuezk/GlobalProtect-openconnect \
+        gh -R techneut92/GlobalProtect-openconnect-dw \
           release download ${{ inputs.tag }} \
           --pattern '*[^offline].tar.gz' \
           --dir docker-image
@@ -189,10 +189,10 @@ jobs:
         context: docker-image/source
         file: docker-image/source/packaging/docker/alpine/Dockerfile
         platforms: ${{ matrix.platform }}
-        outputs: type=image,name=yuezk/globalprotect-openconnect,push-by-digest=true,name-canonical=true,push=true
+        outputs: type=image,name=techneut92/globalprotect-openconnect-dw,push-by-digest=true,name-canonical=true,push=true
     - name: Verify CLI tools
       env:
-        IMAGE: yuezk/globalprotect-openconnect
+        IMAGE: techneut92/globalprotect-openconnect-dw
         DIGEST: ${{ steps.build.outputs.digest }}
       run: |
         docker run --rm "$IMAGE@$DIGEST" --help
@@ -233,7 +233,7 @@ jobs:
     - name: Publish Docker manifest
       working-directory: /tmp/digests
       env:
-        IMAGE: yuezk/globalprotect-openconnect
+        IMAGE: techneut92/globalprotect-openconnect-dw
         TAG: ${{ inputs.tag }}
       run: |
         VERSION="${TAG#v}"

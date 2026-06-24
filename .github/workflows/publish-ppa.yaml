@@ -103,7 +103,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GH_PAT }}
       run: |
-        gh -R yuezk/GlobalProtect-openconnect \
+        gh -R techneut92/GlobalProtect-openconnect-dw \
           release download ${{ inputs.tag }} \
           --pattern '*.offline.tar.gz' \
           --dir publish-ppa
@@ -138,13 +138,13 @@ jobs:
     - name: Publish to PPA
       uses: yuezk/publish-ppa-package@gp
       with:
-        repository: "yuezk/globalprotect-openconnect"
+        repository: "techneut92/globalprotect-openconnect-dw"
         gpg_private_key: ${{ secrets.PPA_GPG_PRIVATE_KEY }}
         gpg_passphrase: ${{ secrets.PPA_GPG_PASSPHRASE }}
         tarball: publish-ppa/globalprotect-openconnect-*.tar.gz
         debian_dir: publish-ppa/globalprotect-openconnect-*/.build/debian
         deb_email: ${{ vars.DEB_EMAIL }}
         deb_fullname: ${{ vars.DEB_FULLNAME }}
-        extra_ppa: "yuezk/globalprotect-openconnect"
+        extra_ppa: "techneut92/globalprotect-openconnect-dw"
         series: ${{ matrix.series }}
         revision: ${{ inputs.revision }}
