@@ -28,7 +28,7 @@ build() {
 
 package_globalprotect-openconnect-dw() {
   pkgdesc="GlobalProtect VPN backend (PKCS#11 fork) — gpservice/gpclient/gpauth."
-  depends=('openconnect' 'opensc' 'pcsclite' 'polkit' 'dbus'
+  depends=('openconnect' 'opensc' 'pcsclite' 'polkit' 'dbus' 'webkit2gtk-4.1' 'libsecret'
            'gnutls' 'libxml2' 'zlib' 'lz4' 'libp11-kit' 'nettle' 'gmp' 'openssl')
   provides=('gpclient' 'gpservice' 'gpauth')
   conflicts=('globalprotect-openconnect')

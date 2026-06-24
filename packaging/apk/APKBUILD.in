@@ -11,6 +11,7 @@ depends="
 	dbus
 	gmp
 	gnutls
+	libsecret
 	libxml2
 	lz4
 	nettle
@@ -20,6 +21,7 @@ depends="
 	p11-kit
 	pcsc-lite
 	polkit
+	webkit2gtk-4.1
 	zlib
 	"
 makedepends="
