@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-REPO="yuezk/GlobalProtect-openconnect"
+REPO="techneut92/GlobalProtect-openconnect-dw"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -78,7 +78,7 @@ SOURCE_HASH="$source_hash" \
 GPGUI_X86_64_HASH="$gpgui_x86_64_hash" \
 GPGUI_AARCH64_HASH="$gpgui_aarch64_hash" \
 perl -0pi -e '
-  s|(url = "https://github\.com/yuezk/GlobalProtect-openconnect/releases/download/v\$\{version\}/globalprotect-openconnect-\$\{version\}\.tar\.gz";\n\s*hash = ")[^"]+(";)|$1 . $ENV{"SOURCE_HASH"} . $2|e;
+  s|(url = "https://github\.com/techneut92/GlobalProtect-openconnect-dw/releases/download/v\$\{version\}/globalprotect-openconnect-\$\{version\}\.tar\.gz";\n\s*hash = ")[^"]+(";)|$1 . $ENV{"SOURCE_HASH"} . $2|e;
   s|(x86_64 = ")[^"]+(";)|$1 . $ENV{"GPGUI_X86_64_HASH"} . $2|e;
   s|(aarch64 = ")[^"]+(";)|$1 . $ENV{"GPGUI_AARCH64_HASH"} . $2|e;
 ' "$FLAKE_FILE"

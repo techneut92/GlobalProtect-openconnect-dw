@@ -5,7 +5,7 @@
     "beforeDevCommand": "",
     "beforeBuildCommand": ""
   },
-  "identifier": "com.yuezk.gpauth",
+  "identifier": "io.github.techneut92.gpauth",
   "productName": "gpauth",
   "app": {
     "withGlobalTauri": false,
