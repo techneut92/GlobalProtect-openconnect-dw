@@ -6,10 +6,6 @@ on:
         description: 'GlobalProtect-openconnect branch to use for the snapshot release'
         required: true
         default: dev
-      gpgui_branch:
-        description: 'gpgui branch to use for the snapshot release'
-        required: true
-        default: dev
   push:
     paths-ignore:
       - LICENSE
@@ -53,7 +49,7 @@ jobs:
       uses: actions/checkout@v6
       with:
         token: ${{ secrets.GH_PAT }}
-        repository: yuezk/GlobalProtect-openconnect
+        repository: techneut92/GlobalProtect-openconnect-dw
         ref: ${{ github.event_name == 'workflow_dispatch' && inputs.gp_branch || github.ref }}
         path: source/gp
         submodules: recursive
@@ -77,7 +73,7 @@ jobs:
 
         make init-rpm \
           REVISION='1%{?dist}' \
-          RPM_SOURCE=https://github.com/yuezk/GlobalProtect-openconnect/releases/download/${RELEASE_TAG}/%{name}-%{version}.tar.gz
+          RPM_SOURCE=https://github.com/techneut92/GlobalProtect-openconnect-dw/releases/download/${RELEASE_TAG}/%{name}-%{version}.tar.gz
 
         mv -v .build/rpm/*.spec ../artifacts/
 
@@ -198,7 +194,7 @@ jobs:
       uses: actions/checkout@v6
       with:
         token: ${{ secrets.GH_PAT }}
-        repository: yuezk/GlobalProtect-openconnect
+        repository: techneut92/GlobalProtect-openconnect-dw
         ref: ${{ github.event_name == 'workflow_dispatch' && inputs.gp_branch || github.ref }}
         submodules: recursive
     - name: Set up Docker Buildx
@@ -215,10 +211,10 @@ jobs:
         context: .
         file: packaging/docker/alpine/Dockerfile
         platforms: ${{ matrix.platform }}
-        outputs: type=image,name=yuezk/globalprotect-openconnect,push-by-digest=true,name-canonical=true,push=true
+        outputs: type=image,name=techneut92/globalprotect-openconnect-dw,push-by-digest=true,name-canonical=true,push=true
     - name: Verify CLI tools
       env:
-        IMAGE: yuezk/globalprotect-openconnect
+        IMAGE: techneut92/globalprotect-openconnect-dw
         DIGEST: ${{ steps.build.outputs.digest }}
       run: |
         docker run --rm "$IMAGE@$DIGEST" --help
@@ -237,71 +233,6 @@ jobs:
         if-no-files-found: error
         retention-days: 1
 
-  build-gpgui:
-    needs:
-    - setup-matrix
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ${{fromJson(needs.setup-matrix.outputs.matrix)}}
-        libc:
-          - name: glibc
-            builder: gpgui-builder-tauri2
-            artifact_suffix: ""
-          - name: musl
-            builder: gpgui-alpine-builder-tauri2
-            artifact_suffix: "-musl"
-    runs-on: ${{ matrix.os.runner }}
-    name: build-gpgui (${{ matrix.libc.name }}, ${{ matrix.os.arch }})
-    steps:
-    - uses: pnpm/action-setup@v5
-      with:
-        version: 9
-    - name: Prepare workspace
-      run: rm -rf gpgui-source && mkdir gpgui-source
-    - name: Checkout GlobalProtect-openconnect
-      uses: actions/checkout@v6
-      with:
-        token: ${{ secrets.GH_PAT }}
-        repository: yuezk/GlobalProtect-openconnect
-        ref: ${{ github.event_name == 'workflow_dispatch' && inputs.gp_branch || github.ref }}
-        path: gpgui-source/gp
-        submodules: recursive
-    - name: Checkout gpgui
-      uses: actions/checkout@v6
-      with:
-        token: ${{ secrets.GH_PAT }}
-        repository: yuezk/gpgui
-        ref: ${{ github.event_name == 'workflow_dispatch' && inputs.gpgui_branch || github.ref_name }}
-        path: gpgui-source/gpgui
-    - name: Tarball
-      run: |
-        cd gpgui-source
-        tar -czf gpgui.tar.gz gpgui gp
-    - name: Docker Login
-      run: echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
-    - name: Build gpgui in Docker
-      run: |
-        docker run --pull=always --rm \
-          -e COREPACK_INTEGRITY_KEYS=0 \
-          -v $(pwd)/gpgui-source:/workspace yuezk/gpdev:${{ matrix.libc.builder }}
-    - name: Install gpgui in Docker
-      run: |
-        cd gpgui-source
-        tar -xJf *.bin.tar.xz
-        docker run --pull=always --rm \
-          -e COREPACK_INTEGRITY_KEYS=0 \
-          -v $(pwd):/workspace yuezk/gpdev:${{ matrix.libc.builder }} \
-          bash -c "cd /workspace/gpgui_*/ && ./gpgui --version"
-    - name: Upload gpgui
-      uses: actions/upload-artifact@v7
-      with:
-        name: artifact-gpgui${{ matrix.libc.artifact_suffix }}-${{ matrix.os.arch }}
-        if-no-files-found: error
-        path: |
-          gpgui-source/*.bin.tar.xz
-          gpgui-source/*.bin.tar.xz.sha256
-
   gh-release:
     if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
@@ -310,7 +241,6 @@ jobs:
       - tarball-offline
       - build-gp
       - build-docker-image
-      - build-gpgui
 
     steps:
     - name: Prepare workspace
@@ -320,7 +250,7 @@ jobs:
       uses: actions/checkout@v6
       with:
         token: ${{ secrets.GH_PAT }}
-        repository: yuezk/GlobalProtect-openconnect
+        repository: techneut92/GlobalProtect-openconnect-dw
         ref: ${{ github.event_name == 'workflow_dispatch' && inputs.gp_branch || github.ref }}
         path: gh-release/gp
         submodules: recursive
@@ -370,7 +300,7 @@ jobs:
     - name: Publish Docker manifest
       working-directory: /tmp/digests
       env:
-        IMAGE: yuezk/globalprotect-openconnect
+        IMAGE: techneut92/globalprotect-openconnect-dw
         RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && 'snapshot' || github.ref_name }}
       run: |
         docker buildx imagetools create -t "$IMAGE:$RELEASE_TAG" \
