@@ -1,0 +1,6 @@
+[D-BUS Service]
+# Installed to /usr/share/dbus-1/system-services/. D-Bus activates gpservice as
+# root on the first method call from the (Flatpak or native) GUI.
+Name=io.github.techneut92.GPService
+Exec=/usr/bin/gpservice --dbus
+User=root

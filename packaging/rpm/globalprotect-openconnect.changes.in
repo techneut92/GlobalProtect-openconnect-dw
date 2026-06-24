@@ -1,5 +1,5 @@
 -------------------------------------------------------------------
-@DATE@ - k3vinyue@gmail.com - @VERSION@
+@DATE@ - dylanwestra@gmail.com - @VERSION@
 
 - Update to @VERSION@
-  * Bugfix and improvements.
+  * Backend-only fork with PKCS#11 / smart-card support.

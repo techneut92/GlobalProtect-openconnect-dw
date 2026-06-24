@@ -1,0 +1,11 @@
+usr/bin/gpclient
+usr/bin/gpauth
+usr/bin/gpservice
+usr/libexec/gpclient/vpnc-script
+usr/libexec/gpclient/hipreport.sh
+usr/lib/NetworkManager/dispatcher.d/pre-down.d/gpclient.down
+usr/lib/NetworkManager/dispatcher.d/gpclient-nm-hook
+usr/share/dbus-1/system-services/io.github.techneut92.GPService.service
+usr/share/dbus-1/system.d/io.github.techneut92.GPService.conf
+usr/share/polkit-1/rules.d/49-gpservice.rules
+usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy

@@ -1,19 +1,16 @@
-# Maintainer: Keinv Yue <k3vinyue@gmail.com>
+# Maintainer: Dylan Westra <dylanwestra@gmail.com>
 
 _pkgname=@PKG_NAME@
-pkgname=${_pkgname}
+pkgbase=${_pkgname}
+pkgname=("${_pkgname}" "${_pkgname}-gui")
 pkgver="@VERSION@"
 pkgrel=@REVISION@
-pkgdesc="A GUI client for GlobalProtect VPN, based on OpenConnect, supports the SSO authentication method."
+pkgdesc="GlobalProtect VPN (PKCS#11 fork), based on OpenConnect. Smart-card / SSO / certificate auth."
 arch=('x86_64' 'aarch64')
-url="https://github.com/yuezk/GlobalProtect-openconnect"
+url="https://github.com/techneut92/GlobalProtect-openconnect-dw"
 license=('GPL3')
-makedepends=('make' 'pkg-config' 'cargo' 'file' 'autoconf' 'automake' 'gettext' 'libtool' 'patch')
-depends=('webkit2gtk-4.1' 'libappindicator-gtk3' 'librsvg' 'libsecret' 'openssl' 'appmenu-gtk-module'
-         'gnutls' 'libxml2' 'zlib' 'lz4' 'libp11-kit' 'nettle' 'gmp' 'xdg-utils')
-optdepends=('wmctrl: for window management')
-
-provides=('globalprotect-openconnect' 'gpclient' 'gpservice' 'gpauth' 'gpgui')
+makedepends=('make' 'pkg-config' 'cargo' 'file' 'autoconf' 'automake' 'gettext' 'libtool' 'patch'
+             'webkit2gtk-4.1' 'libxdo' 'librsvg')
 
 source=("${_pkgname}-${pkgver}.tar.gz")
 sha256sums=('SKIP')
@@ -21,16 +18,32 @@ sha256sums=('SKIP')
 options=('!strip')
 
 build() {
-  cd "$pkgname-$pkgver"
+  cd "$_pkgname-$pkgver"
 
   # Must unset the CFLAGS, otherwise the build fails
   unset CFLAGS
 
-  make build
+  make build INCLUDE_GUI=1
 }
 
-package() {
-  cd "$pkgname-$pkgver"
+package_globalprotect-openconnect-dw() {
+  pkgdesc="GlobalProtect VPN backend (PKCS#11 fork) — gpservice/gpclient/gpauth."
+  depends=('openconnect' 'opensc' 'pcsclite' 'polkit' 'dbus'
+           'gnutls' 'libxml2' 'zlib' 'lz4' 'libp11-kit' 'nettle' 'gmp' 'openssl')
+  provides=('gpclient' 'gpservice' 'gpauth')
+  conflicts=('globalprotect-openconnect')
 
-  make install DESTDIR="$pkgdir"
+  cd "$_pkgname-$pkgver"
+  make install DESTDIR="$pkgdir" INCLUDE_GUI=0
+}
+
+package_globalprotect-openconnect-dw-gui() {
+  pkgdesc="GlobalProtect VPN graphical client (Tauri)."
+  depends=("globalprotect-openconnect-dw" 'webkit2gtk-4.1' 'libsecret')
+  conflicts=('globalprotect-openconnect')
+
+  cd "$_pkgname-$pkgver"
+  install -Dm755 target/release/gpgui "$pkgdir/usr/bin/gpgui"
+  install -Dm644 apps/gpgui/packaging/gpgui.desktop "$pkgdir/usr/share/applications/gpgui.desktop"
+  install -Dm644 apps/gpgui/icons/128x128.png "$pkgdir/usr/share/icons/hicolor/128x128/apps/gpgui.png"
 }

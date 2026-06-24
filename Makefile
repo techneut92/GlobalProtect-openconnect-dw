@@ -7,32 +7,25 @@ RUST_VERSION ?= 1.89
 IGNORE_RUST_VERSION ?= 0
 
 VERSION = $(shell grep '^version' Cargo.toml | head -1 | sed 's/version *= *"\(.*\)"/\1/')
-GUI_LIBC_SUFFIX ?= $(shell ldd --version 2>&1 | grep -qi musl && echo -musl || true)
 REVISION ?= 1
 RPM_SOURCE ?= %{name}.tar.gz
 
 PPA_REVISION ?= 1
-PKG_NAME = globalprotect-openconnect
+# Fork package name — kept distinct from upstream's `globalprotect-openconnect`
+# (their PPA/AUR) so the two never collide. This package is the BACKEND only
+# (gpservice/gpclient/gpauth); the GUI ships separately as a Flatpak.
+PKG_NAME = globalprotect-openconnect-dw
 PKG = $(PKG_NAME)-$(VERSION)
 SERIES ?= $(shell lsb_release -cs)
 PUBLISH ?= 0
 
-# Indicates whether to build the GUI components
-BUILD_GUI_HELPER ?= 1
-
-export DEBEMAIL = k3vinyue@gmail.com
-export DEBFULLNAME = Kevin Yue
+export DEBEMAIL = dylanwestra@gmail.com
+export DEBFULLNAME = Dylan Westra
 export SNAPSHOT = $(shell test -f SNAPSHOT && echo "true" || echo "false")
 export OFFLINE_BUILD = $(shell test -f OFFLINE_BUILD && echo "1" || echo "0")
 # If OFFLINE is not set, use OFFLINE_BUILD
 ifndef OFFLINE
 	OFFLINE = $(OFFLINE_BUILD)
-endif
-
-ifeq ($(SNAPSHOT), true)
-	RELEASE_TAG = snapshot
-else
-	RELEASE_TAG = v$(VERSION)
 endif
 
 CARGO_BUILD_ARGS = --release
@@ -72,20 +65,7 @@ tarball: clean-tarball
 	@echo "Creating tarball..."
 	tar --exclude .vendor --exclude target --transform 's,^,${PKG}/,' -czf .build/tarball/${PKG}.tar.gz * .cargo
 
-download-gui:
-	rm -rf .build/gpgui
-
-	if [ $(INCLUDE_GUI) -eq 1 ]; then \
-		echo "Downloading GlobalProtect GUI..."; \
-		mkdir -p .build/gpgui; \
-		curl -sSL https://github.com/yuezk/GlobalProtect-openconnect/releases/download/$(RELEASE_TAG)/gpgui_$(shell uname -m)$(GUI_LIBC_SUFFIX).bin.tar.xz \
-			-o .build/gpgui/gpgui_$(shell uname -m)$(GUI_LIBC_SUFFIX).bin.tar.xz; \
-		tar -xJf .build/gpgui/*.tar.xz -C .build/gpgui; \
-	else \
-		echo "Skipping GlobalProtect GUI download (INCLUDE_GUI=0)"; \
-	fi
-
-build: download-gui build-rs
+build: build-rs
 
 build-rs:
 	if [ $(OFFLINE) -eq 1 ]; then \
@@ -97,11 +77,14 @@ build-rs:
 		rm -vf rust-toolchain.toml; \
 	fi
 
-	# Only build the GUI components if BUILD_GUI_HELPER is set to 1
-	if [ $(BUILD_GUI_HELPER) -eq 1 ]; then \
-		$(CARGO) build $(CARGO_BUILD_ARGS) -p gpclient -p gpservice -p gpauth -p gpgui-helper; \
-	else \
-		$(CARGO) build $(CARGO_BUILD_ARGS) -p gpclient -p gpservice -p gpauth --no-default-features; \
+	# Backend only (no GUI deps; gpauth/gpclient use browser SSO here). The GUI
+	# ships as a Flatpak, so it is NOT built into the native package by default.
+	$(CARGO) build $(CARGO_BUILD_ARGS) -p gpclient -p gpservice -p gpauth --no-default-features
+
+	# Optional: build OUR Tauri GUI from source (apps/gpgui) for a native+GUI
+	# package. This is never the upstream proprietary gpgui binary.
+	if [ $(INCLUDE_GUI) -eq 1 ]; then \
+		$(CARGO) build $(CARGO_BUILD_ARGS) -p gpgui; \
 	fi
 
 clean:
@@ -111,34 +94,33 @@ clean:
 	rm -rf apps/gpgui-helper/node_modules
 
 install:
-	@echo "Installing $(PKG_NAME)..."
+	@echo "Installing $(PKG_NAME) (backend)..."
 
 	install -Dm755 target/release/gpclient $(DESTDIR)/usr/bin/gpclient
 	install -Dm755 target/release/gpauth $(DESTDIR)/usr/bin/gpauth
 	install -Dm755 target/release/gpservice $(DESTDIR)/usr/bin/gpservice
 
-	# Install the GUI components if BUILD_GUI_HELPER is set to 1
-	if [ $(BUILD_GUI_HELPER) -eq 1 ]; then \
-		install -Dm755 target/release/gpgui-helper $(DESTDIR)/usr/bin/gpgui-helper; \
-	fi
-
-	if [ -f .build/gpgui/gpgui_*/gpgui ]; then \
-		install -Dm755 .build/gpgui/gpgui_*/gpgui $(DESTDIR)/usr/bin/gpgui; \
-	fi
-
+	# openconnect helper scripts
 	install -Dm755 packaging/files/usr/libexec/gpclient/vpnc-script $(DESTDIR)/usr/libexec/gpclient/vpnc-script
 	install -Dm755 packaging/files/usr/libexec/gpclient/hipreport.sh $(DESTDIR)/usr/libexec/gpclient/hipreport.sh
 
-	# Install the disconnect hooks
+	# NetworkManager disconnect hooks
 	install -Dm755 packaging/files/usr/lib/NetworkManager/dispatcher.d/pre-down.d/gpclient.down $(DESTDIR)/usr/lib/NetworkManager/dispatcher.d/pre-down.d/gpclient.down
 	install -Dm755 packaging/files/usr/lib/NetworkManager/dispatcher.d/gpclient-nm-hook $(DESTDIR)/usr/lib/NetworkManager/dispatcher.d/gpclient-nm-hook
 
-	install -Dm644 packaging/files/usr/share/applications/gpgui.desktop $(DESTDIR)/usr/share/applications/gpgui.desktop
-	install -Dm644 packaging/files/usr/share/icons/hicolor/scalable/apps/gpgui.svg $(DESTDIR)/usr/share/icons/hicolor/scalable/apps/gpgui.svg
-	install -Dm644 packaging/files/usr/share/icons/hicolor/32x32/apps/gpgui.png $(DESTDIR)/usr/share/icons/hicolor/32x32/apps/gpgui.png
-	install -Dm644 packaging/files/usr/share/icons/hicolor/128x128/apps/gpgui.png $(DESTDIR)/usr/share/icons/hicolor/128x128/apps/gpgui.png
-	install -Dm644 packaging/files/usr/share/icons/hicolor/256x256@2/apps/gpgui.png $(DESTDIR)/usr/share/icons/hicolor/256x256@2/apps/gpgui.png
-	install -Dm644 packaging/files/usr/share/polkit-1/actions/com.yuezk.gpgui.policy $(DESTDIR)/usr/share/polkit-1/actions/com.yuezk.gpgui.policy
+	# D-Bus system service (the host backend a Flatpak/native GUI talks to) + polkit:
+	# the gpservice.manage action (D-Bus) and the passwordless pkexec rule (loopback).
+	install -Dm644 packaging/files/usr/share/dbus-1/system-services/io.github.techneut92.GPService.service $(DESTDIR)/usr/share/dbus-1/system-services/io.github.techneut92.GPService.service
+	install -Dm644 packaging/files/usr/share/dbus-1/system.d/io.github.techneut92.GPService.conf $(DESTDIR)/usr/share/dbus-1/system.d/io.github.techneut92.GPService.conf
+	install -Dm644 packaging/files/usr/share/polkit-1/rules.d/49-gpservice.rules $(DESTDIR)/usr/share/polkit-1/rules.d/49-gpservice.rules
+	install -Dm644 packaging/files/usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy $(DESTDIR)/usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy
+
+	# Optional: install OUR Tauri GUI (built from source) for a native+GUI package.
+	if [ $(INCLUDE_GUI) -eq 1 ]; then \
+		install -Dm755 target/release/gpgui $(DESTDIR)/usr/bin/gpgui; \
+		install -Dm644 apps/gpgui/packaging/gpgui.desktop $(DESTDIR)/usr/share/applications/gpgui.desktop; \
+		install -Dm644 apps/gpgui/icons/128x128.png $(DESTDIR)/usr/share/icons/hicolor/128x128/apps/gpgui.png; \
+	fi
 
 uninstall:
 	@echo "Uninstalling $(PKG_NAME)..."
@@ -146,7 +128,6 @@ uninstall:
 	rm -f $(DESTDIR)/usr/bin/gpclient
 	rm -f $(DESTDIR)/usr/bin/gpauth
 	rm -f $(DESTDIR)/usr/bin/gpservice
-	rm -f $(DESTDIR)/usr/bin/gpgui-helper
 	rm -f $(DESTDIR)/usr/bin/gpgui
 
 	rm -f $(DESTDIR)/usr/libexec/gpclient/vpnc-script
@@ -155,12 +136,15 @@ uninstall:
 	rm -f $(DESTDIR)/usr/lib/NetworkManager/dispatcher.d/pre-down.d/gpclient.down
 	rm -f $(DESTDIR)/usr/lib/NetworkManager/dispatcher.d/gpclient-nm-hook
 
+	rm -f $(DESTDIR)/usr/share/dbus-1/system-services/io.github.techneut92.GPService.service
+	rm -f $(DESTDIR)/usr/share/dbus-1/system.d/io.github.techneut92.GPService.conf
+	rm -f $(DESTDIR)/usr/share/polkit-1/rules.d/49-gpservice.rules
+	rm -f $(DESTDIR)/usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy
+
+	# Optional GUI (native+GUI package)
+	rm -f $(DESTDIR)/usr/bin/gpgui
 	rm -f $(DESTDIR)/usr/share/applications/gpgui.desktop
-	rm -f $(DESTDIR)/usr/share/icons/hicolor/scalable/apps/gpgui.svg
-	rm -f $(DESTDIR)/usr/share/icons/hicolor/32x32/apps/gpgui.png
 	rm -f $(DESTDIR)/usr/share/icons/hicolor/128x128/apps/gpgui.png
-	rm -f $(DESTDIR)/usr/share/icons/hicolor/256x256@2/apps/gpgui.png
-	rm -f $(DESTDIR)/usr/share/polkit-1/actions/com.yuezk.gpgui.policy
 
 clean-debian:
 	rm -rf .build/deb
@@ -178,17 +162,12 @@ init-debian: clean-debian tarball
 	cp -f packaging/deb/postrm .build/deb/$(PKG)/debian/postrm
 	cp -f packaging/deb/compat .build/deb/$(PKG)/debian/compat
 
+	# Split into backend + GUI binary packages (dh_install reads these globs)
+	cp -f packaging/deb/globalprotect-openconnect-dw.install .build/deb/$(PKG)/debian/globalprotect-openconnect-dw.install
+	cp -f packaging/deb/globalprotect-openconnect-dw-gui.install .build/deb/$(PKG)/debian/globalprotect-openconnect-dw-gui.install
+
 	sed -i "s/@RUST_VERSION@/$(RUST_VERSION)/g" .build/deb/$(PKG)/debian/control
 
-	# Remove the GUI dependencies if BUILD_GUI_HELPER is set to 0
-	if [ $(BUILD_GUI_HELPER) -eq 0 ]; then \
-		sed -i "/libsecret-1-0/d" .build/deb/$(PKG)/debian/control; \
-		sed -i "/libayatana-appindicator3-1/d" .build/deb/$(PKG)/debian/control; \
-		sed -i "/gnome-keyring/d" .build/deb/$(PKG)/debian/control; \
-		sed -i "/libwebkit2gtk-4.1-dev/d" .build/deb/$(PKG)/debian/control; \
-	fi
-
-	sed -i "s/@BUILD_GUI_HELPER@/$(BUILD_GUI_HELPER)/g" .build/deb/$(PKG)/debian/rules
 	sed -i "s/@RUST_VERSION@/$(RUST_VERSION)/g" .build/deb/$(PKG)/debian/rules
 
 	rm -f .build/deb/$(PKG)/debian/changelog
@@ -217,7 +196,7 @@ ppa: check-ppa init-debian
 	cd .build/deb/$(PKG) && echo "y" | debuild -e PATH -S -sa -k"$(GPG_KEY_ID)" -p"gpg --batch --passphrase $(GPG_KEY_PASS) --pinentry-mode loopback"
 
 	if [ $(PUBLISH) -eq 1 ]; then \
-		cd .build/deb/$(PKG) && dput ppa:yuezk/globalprotect-openconnect ../*.changes; \
+		cd .build/deb/$(PKG) && dput ppa:techneut92/globalprotect-openconnect-dw ../*.changes; \
 	else \
 		echo "Skipping ppa publish (PUBLISH=0)"; \
 	fi
