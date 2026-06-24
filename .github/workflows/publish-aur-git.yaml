@@ -25,6 +25,9 @@ permissions:
 
 jobs:
   aur:
+    # Disabled: publishes the PKGBUILD to the Arch AUR (needs AUR_SSH_PRIVATE_KEY
+    # and an AUR account). Re-enable when you set up AUR publishing.
+    if: false
     runs-on: ubuntu-latest
     container: archlinux:base-devel
     defaults:

@@ -24,6 +24,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# The built-in GITHUB_TOKEN is used (no GH_PAT secret needed); it needs write
+# access to create the GitHub release and upload package assets.
+permissions:
+  contents: write
+
 jobs:
   setup-matrix:
     runs-on: ubuntu-latest
@@ -48,7 +53,7 @@ jobs:
     - name: Checkout GlobalProtect-openconnect
       uses: actions/checkout@v6
       with:
-        token: ${{ secrets.GH_PAT }}
+        token: ${{ github.token }}
         repository: techneut92/GlobalProtect-openconnect-dw
         ref: ${{ github.event_name == 'workflow_dispatch' && inputs.gp_branch || github.ref }}
         path: source/gp
@@ -147,8 +152,11 @@ jobs:
       with:
         name: artifact-source
         path: build-gp-${{ matrix.package }}
-    - name: Docker Login
-      run: echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+    # Docker Hub login disabled — the yuezk/gpdev builder images are public and
+    # pulled anonymously. Re-enable with DOCKER_HUB_TOKEN/USERNAME secrets if you
+    # hit Docker Hub pull rate limits.
+    # - name: Docker Login
+    #   run: echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
     - name: Build ${{ matrix.package }} package in Docker
       # LIBXML2_STATIC is needed to avoid the dynamic linking issue on different distros
       run: |
@@ -176,6 +184,9 @@ jobs:
           build-gp-${{ matrix.package }}/artifacts/*
 
   build-docker-image:
+    # Disabled: builds and pushes a container image to Docker Hub (needs
+    # DOCKER_HUB_USERNAME/TOKEN secrets). Re-enable when you set up publishing.
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -193,7 +204,7 @@ jobs:
     - name: Checkout GlobalProtect-openconnect
       uses: actions/checkout@v6
       with:
-        token: ${{ secrets.GH_PAT }}
+        token: ${{ github.token }}
         repository: techneut92/GlobalProtect-openconnect-dw
         ref: ${{ github.event_name == 'workflow_dispatch' && inputs.gp_branch || github.ref }}
         submodules: recursive
@@ -240,7 +251,6 @@ jobs:
       - tarball
       - tarball-offline
       - build-gp
-      - build-docker-image
 
     steps:
     - name: Prepare workspace
@@ -249,7 +259,7 @@ jobs:
     - name: Checkout GlobalProtect-openconnect
       uses: actions/checkout@v6
       with:
-        token: ${{ secrets.GH_PAT }}
+        token: ${{ github.token }}
         repository: techneut92/GlobalProtect-openconnect-dw
         ref: ${{ github.event_name == 'workflow_dispatch' && inputs.gp_branch || github.ref }}
         path: gh-release/gp
@@ -273,15 +283,17 @@ jobs:
 
     - name: Create GH release
       env:
-        GH_TOKEN: ${{ secrets.GH_PAT }}
+        GH_TOKEN: ${{ github.token }}
         RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && 'snapshot' || github.ref_name }}
       run: |
         cd gh-release/gp/scripts && ./gh-release.sh "$RELEASE_TAG"
 
   publish-docker-image:
+    # Disabled: publishes the multi-arch image manifest to Docker Hub (needs
+    # DOCKER_HUB_USERNAME/TOKEN secrets). Re-enable alongside build-docker-image.
+    if: false
     needs:
       - build-docker-image
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     steps:
     - name: Download digests

@@ -76,6 +76,9 @@ jobs:
         echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   publish-ppa:
+    # Disabled: publishes source packages to a Launchpad PPA (needs
+    # PPA_GPG_PRIVATE_KEY/PASSPHRASE and a PPA). Re-enable when you set up the PPA.
+    if: false
     needs: [check, resolve-series]
     name: publish-ppa (${{ matrix.series }})
     runs-on: ubuntu-latest
