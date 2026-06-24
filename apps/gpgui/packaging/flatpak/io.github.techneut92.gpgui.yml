@@ -15,7 +15,7 @@
 # → cargo-sources.json) for an offline build; omitted here for brevity.
 app-id: io.github.techneut92.gpgui
 runtime: org.gnome.Platform
-runtime-version: '47'
+runtime-version: '50'
 sdk: org.gnome.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
