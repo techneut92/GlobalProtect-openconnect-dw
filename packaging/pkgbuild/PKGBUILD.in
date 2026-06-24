@@ -10,7 +10,7 @@ arch=('x86_64' 'aarch64')
 url="https://github.com/techneut92/GlobalProtect-openconnect-dw"
 license=('GPL3')
 makedepends=('make' 'pkg-config' 'cargo' 'file' 'autoconf' 'automake' 'gettext' 'libtool' 'patch'
-             'webkit2gtk-4.1' 'libxdo' 'librsvg')
+             'webkit2gtk-4.1' 'librsvg')
 
 source=("${_pkgname}-${pkgver}.tar.gz")
 sha256sums=('SKIP')

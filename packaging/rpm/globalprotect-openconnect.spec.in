@@ -35,7 +35,6 @@ BuildRequires:  webkit2gtk4.1-devel
 %endif
 BuildRequires:  (libappindicator-gtk3-devel or libayatana-appindicator-gtk3-devel)
 BuildRequires:  (librsvg2-devel or librsvg-devel)
-BuildRequires:  libxdo-devel
 
 # Runtime: openconnect tunnel + PKCS#11 / smart-card (YubiKey PIV) + polkit/D-Bus.
 Requires:       openconnect
