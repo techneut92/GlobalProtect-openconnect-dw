@@ -81,6 +81,8 @@ modules:
         CARGO_HOME: /run/build/gpgui/cargo
         # Resolve the auth helper inside the sandbox, not /usr/bin.
         GP_AUTH_BINARY: /app/bin/gpauth
+        # Baked into the binary so About shows the build kind unambiguously.
+        GP_BUILD_KIND: flatpak
     build-commands:
       - cargo build --release -p gpgui -p gpauth --offline
       - install -Dm755 target/release/gpgui /app/bin/gpgui
