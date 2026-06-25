@@ -22,8 +22,10 @@ pub fn ensure_float_exceptions() {
 /// Pop Shell keeps float exceptions in `~/.config/pop-shell/config.json`
 /// (`{ "float": [{ "class": <regex> }] }`). Add ours if absent.
 fn ensure_pop_shell() {
-  let Some(base) = directories::BaseDirs::new() else { return };
-  let dir = base.config_dir().join("pop-shell");
+  // Pop Shell reads ~/.config/pop-shell on the host, so target the host config
+  // (exposed under Flatpak via --filesystem=xdg-config/pop-shell).
+  let Some(base) = crate::system::host_config_dir() else { return };
+  let dir = base.join("pop-shell");
   // Only act when Pop Shell is actually present (it creates this dir).
   if !dir.exists() {
     return;
