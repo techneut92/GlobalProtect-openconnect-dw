@@ -191,6 +191,7 @@
         <div class="lbl" style="margin-top:18px;">System</div>
         <div class="detail-card">
           <div class="drow"><div class="k">Operating system</div><div class="v" id="aboutOs">—</div></div>
+          <div class="drow" id="aboutRuntimeRow" hidden><div class="k">Flatpak runtime</div><div class="v" id="aboutRuntime">—</div></div>
           <div class="drow"><div class="k">Install type</div><div class="v" id="aboutKind">—</div></div>
           <div class="drow"><div class="k">Backend service</div><div class="v" id="aboutBackend">—</div></div>
         </div>
@@ -244,6 +245,7 @@
         const s = await invoke('system_info');
         $('aboutVer').textContent = 'v' + s.guiVersion;
         $('aboutOs').textContent = s.osName;
+        if (s.flatpakRuntime) { $('aboutRuntimeRow').hidden = false; $('aboutRuntime').textContent = s.flatpakRuntime; }
         $('aboutKind').textContent = s.running + (s.running === 'Native package' ? ' (' + s.installKind + ')' : '');
         $('aboutBackend').innerHTML = !s.backendInstalled
           ? '<span style="color:var(--red)">not installed</span>'

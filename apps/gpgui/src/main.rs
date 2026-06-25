@@ -203,6 +203,8 @@ struct SystemInfo {
   /// The OS package manager (used for install/update commands).
   install_kind: String,
   is_flatpak: bool,
+  /// The Flatpak runtime ("GNOME Platform 50"), shown as its own row; None natively.
+  flatpak_runtime: Option<String>,
   backend_installed: bool,
   backend_version: Option<String>,
   /// True when the backend version matches the GUI (or the backend isn't
@@ -226,10 +228,27 @@ fn system_info() -> SystemInfo {
     running: system::run_mode().to_string(),
     install_kind: system::install_kind_str(kind).to_string(),
     is_flatpak: system::is_flatpak(),
+    flatpak_runtime: system::flatpak_runtime(),
     backend_installed: system::backend_installed(),
     backend_version,
     compatible,
     install_options: system::install_options(),
+  }
+}
+
+/// One-click backend install: download + install via a single pkexec prompt,
+/// waiting for the real result so the UI reports success/failure honestly.
+#[tauri::command]
+async fn install_backend(kind: Option<String>) -> serde_json::Value {
+  let kind = kind.map(|s| system::kind_from_str(&s)).unwrap_or_else(system::detect);
+  let Some(script) = system::backend_install_script(kind) else {
+    return serde_json::json!({ "ok": false, "message": "No installer for this system type — use the steps below." });
+  };
+  let needs_reboot = kind == system::InstallKind::RpmOstree;
+  match tauri::async_runtime::spawn_blocking(move || system::run_root_script_wait(&script)).await {
+    Ok(Ok(())) => serde_json::json!({ "ok": true, "needsReboot": needs_reboot }),
+    Ok(Err(message)) => serde_json::json!({ "ok": false, "message": message }),
+    Err(_) => serde_json::json!({ "ok": false, "message": "The install task failed to run." }),
   }
 }
 
@@ -331,6 +350,26 @@ fn save_settings(app: tauri::AppHandle, state: State<AppState>, form: SettingsFo
   }
   // The main window rescans (module/cert) and uses these at connect time.
   let _ = app.emit("config-changed", ());
+}
+
+/// Whether the desktop secret store is reachable (for the "Unlock automatically"
+/// opt-in — disabled when no keyring is present).
+#[tauri::command]
+fn keyring_available() -> bool {
+  secrets::available()
+}
+
+/// Toggle "remember unlock". Set this to `true` **before** creating/unlocking the
+/// vault so the PIN gets stored; turning it off clears any stored PIN.
+#[tauri::command]
+fn set_remember_unlock(state: State<AppState>, enabled: bool) {
+  let mut c = state.cfg.lock().unwrap();
+  let was = c.remember_unlock;
+  c.remember_unlock = enabled;
+  c.save();
+  if was && !enabled {
+    secrets::clear_pin();
+  }
 }
 
 /// Connect using a saved identity (from the unlocked vault). `portal` overrides
@@ -634,6 +673,9 @@ fn main() {
       disconnect,
       open_url,
       system_info,
+      install_backend,
+      keyring_available,
+      set_remember_unlock,
       check_update,
       run_update,
       open_settings,

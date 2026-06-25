@@ -47,6 +47,19 @@
         <p class="sub">It encrypts the identities you save. You'll enter it to unlock GlobalProtect.</p>
         <input class="field pin-input" id="newMasterPin" type="password" placeholder="Choose a PIN" />
         <p class="formlog" id="setupLog"></p>
+
+        <div class="vault-optin" id="autoUnlockRow">
+          <div class="optin-main">
+            <div class="optin-head">
+              <span class="optin-label">Unlock automatically</span>
+              <button class="optin-info" id="autoInfoBtn" type="button" title="About automatic unlock" aria-label="About automatic unlock">?</button>
+            </div>
+            <div class="optin-help" id="autoHelp">Save your PIN to the system keyring so GlobalProtect opens without asking. You can turn this off anytime in Settings.</div>
+          </div>
+          <button class="switch" id="autoUnlockSwitch" type="button" role="switch" aria-checked="false" aria-label="Unlock automatically"><span class="knob"></span></button>
+        </div>
+        <div class="optin-note" id="autoInfoNote" hidden>Your PIN is stored by your desktop's secure keyring (GNOME Keyring, KWallet, or COSMIC), protected by your login. Anyone who can already unlock your user session will be able to open the vault. Leave this off on shared machines.</div>
+
         <div class="actions" style="width:100%"><button class="btn-action" id="setupBtn">Create vault</button></div>
       </div>
     </div>
@@ -92,6 +105,13 @@
           <div id="sysDD"></div>
         </div>
 
+        <button class="btn-action svc-install" id="bkInstall">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 11l4 4 4-4M5 21h14"/></svg>
+          <span id="bkInstallLabel">Install backend</span>
+        </button>
+        <div class="bk-status" id="bkInstallLog" hidden></div>
+        <div class="svc-or"><span>or set it up manually</span></div>
+
         <div class="term-card">
           <div class="term-head">
             <span class="term-dots"><i style="background:#fb6f6c"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i></span>
@@ -106,8 +126,8 @@
           </div>
         </div>
 
-        <button class="btn-action svc-copyall" id="copyAll">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path id="copyAllIcon" d="M9 9h11v11H9z M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+        <button class="svc-copyall svc-secondary" id="copyAll">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path id="copyAllIcon" d="M9 9h11v11H9z M5 15V5a2 2 0 0 1 2-2h10"/></svg>
           <span id="copyAllLabel">Copy all commands</span>
         </button>
 
@@ -226,7 +246,11 @@
     // ───────── view switching ─────────
     function show(view) {
       ['setupView', 'lockView', 'unlockedView', 'backendView'].forEach((v) => $(v).classList.toggle('show', v === view));
-      $('appFooter').hidden = view !== 'unlockedView';
+      const unlocked = view === 'unlockedView';
+      $('appFooter').hidden = !unlocked;
+      // Manage-identities and Settings only make sense with the vault open.
+      $('winManage').hidden = !unlocked;
+      $('winSettings').hidden = !unlocked;
     }
 
     // ───────── backend presence + version banners ─────────
@@ -307,6 +331,22 @@
       } catch (e) {}
       setBanner('');
     }
+    function setBkStatus(msg, kind) {
+      const el = $('bkInstallLog');
+      if (!msg) { el.hidden = true; el.textContent = ''; el.className = 'bk-status'; return; }
+      el.hidden = false; el.textContent = msg; el.className = 'bk-status' + (kind ? ' ' + kind : '');
+    }
+    $('bkInstall').onclick = async () => {
+      const btn = $('bkInstall');
+      btn.disabled = true; $('bkInstallLabel').textContent = 'Installing…';
+      setBkStatus('A password prompt should appear — approve it to continue.', '');
+      try {
+        const r = await invoke('install_backend', { kind: bkKind });
+        if (r.ok) setBkStatus(r.needsReboot ? 'Installed — reboot to finish, then Re-check.' : 'Installed — click Re-check to continue.', 'ok');
+        else setBkStatus(r.message || 'Install failed — try the manual steps below.', 'err');
+      } catch (e) { setBkStatus('' + e, 'err'); }
+      btn.disabled = false; $('bkInstallLabel').textContent = 'Install backend';
+    };
     $('copyAll').onclick = () => {
       const o = bkOption();
       if (!o) return;
@@ -498,8 +538,39 @@
       renderIdentityUI();
       render(active ? { kind: 2, status: 'Connected', active: true } : { kind: 0, status: 'Disconnected', active: false, log: '' });
     }
+    // ── "Unlock automatically" opt-in on the create-vault screen ──
+    let autoUnlock = false;        // default OFF — deliberate opt-in
+    let keyringAvailable = true;   // detected at runtime
+    const AU_CHECK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;"><path d="M5 12l5 5L20 6"/></svg>';
+    function renderAutoUnlock() {
+      const row = $('autoUnlockRow'), sw = $('autoUnlockSwitch'), help = $('autoHelp'), info = $('autoInfoBtn');
+      if (!keyringAvailable) {
+        autoUnlock = false;
+        row.classList.add('disabled'); row.classList.remove('on');
+        sw.classList.remove('on'); sw.disabled = true; sw.setAttribute('aria-checked', 'false');
+        info.hidden = true; $('autoInfoNote').hidden = true;
+        help.textContent = 'No system keyring detected — automatic unlock isn’t available on this device.';
+        return;
+      }
+      row.classList.remove('disabled'); sw.disabled = false; info.hidden = false;
+      sw.classList.toggle('on', autoUnlock);
+      sw.setAttribute('aria-checked', autoUnlock ? 'true' : 'false');
+      row.classList.toggle('on', autoUnlock);
+      help.innerHTML = autoUnlock
+        ? AU_CHECK + 'GlobalProtect will open automatically on this device.'
+        : 'Save your PIN to the system keyring so GlobalProtect opens without asking. You can turn this off anytime in Settings.';
+    }
+    $('autoUnlockSwitch').onclick = () => { if (!keyringAvailable) return; autoUnlock = !autoUnlock; renderAutoUnlock(); };
+    $('autoInfoBtn').onclick = () => { const n = $('autoInfoNote'); n.hidden = !n.hidden; };
+
     $('setupBtn').onclick = async () => {
-      if (hasTauri) { try { await invoke('set_master_pin', { pin: $('newMasterPin').value }); } catch (e) { setLog('setupLog', '' + e, true); return; } }
+      if (hasTauri) {
+        try {
+          // Enable remember-unlock first so set_master_pin stores the PIN.
+          if (autoUnlock && keyringAvailable) await invoke('set_remember_unlock', { enabled: true });
+          await invoke('set_master_pin', { pin: $('newMasterPin').value });
+        } catch (e) { setLog('setupLog', '' + e, true); return; }
+      }
       await unlocked();
     };
     $('unlockBtn').onclick = async () => {
@@ -525,8 +596,11 @@
     picker = createIdentityPicker($('identityDD'));
     async function bootVault() {
       const vs = await invoke('vault_status');
-      if (!vs.exists) show('setupView');
-      else if (!vs.unlocked) show('lockView');
+      if (!vs.exists) {
+        try { keyringAvailable = await invoke('keyring_available'); } catch (e) {}
+        renderAutoUnlock();
+        show('setupView');
+      } else if (!vs.unlocked) show('lockView');
       else await unlocked();
     }
     (async function init() {
