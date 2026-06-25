@@ -10,18 +10,20 @@
   },
   "app": {
     "withGlobalTauri": true,
+    "enableGTKAppId": true,
     "windows": [
       {
         "label": "main",
         "title": "GlobalProtect",
         "width": 460,
-        "height": 760,
+        "height": 812,
         "minWidth": 460,
-        "minHeight": 760,
+        "minHeight": 812,
         "maxWidth": 460,
-        "maxHeight": 760,
+        "maxHeight": 812,
         "resizable": false,
-        "decorations": false
+        "decorations": false,
+        "transparent": true
       }
     ],
     "security": {

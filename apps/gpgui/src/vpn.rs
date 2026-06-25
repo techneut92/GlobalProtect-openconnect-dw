@@ -90,8 +90,10 @@ impl Notifier {
       let was_connected = matches!(s.status, Status::Connected);
       let was_active = s.status.is_active();
 
-      // Clear the transient progress line once we reach a terminal state.
-      if matches!(status, Status::Connected | Status::Disconnected) {
+      // Clear the transient progress line once we reach any terminal state
+      // (connected, disconnected, or error) so a stale "Authenticating…" line
+      // never lingers — the status itself then conveys the outcome.
+      if matches!(status, Status::Connected | Status::Disconnected | Status::Error(_)) {
         s.log.clear();
       }
 
@@ -170,7 +172,9 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier) {
 
         match rt.block_on(connect(&params, &notifier, generation)) {
           Ok(h) => handle = Some(h),
-          Err(e) => notifier.set_status(generation, Status::Error(e.to_string())),
+          // `{:#}` includes the full anyhow context chain (e.g. "single sign-on
+          // was cancelled or failed: …") so the user sees the real reason.
+          Err(e) => notifier.set_status(generation, Status::Error(format!("{e:#}"))),
         }
       }
       UiCommand::Disconnect => {
@@ -237,7 +241,7 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64) -> Res
   };
 
   notifier.log("Authenticating (prelogin + SSO)…");
-  let request = build_connect_request(&auth).await.context("authentication failed")?;
+  let request = build_connect_request(&auth).await?;
 
   // Shared loopback secret (used only by the loopback transport).
   let key = crate::config::load_or_create_api_key();

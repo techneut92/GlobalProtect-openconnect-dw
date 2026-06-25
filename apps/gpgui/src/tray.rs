@@ -15,12 +15,13 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 
-use ksni::menu::{MenuItem, StandardItem};
+use ksni::menu::{MenuItem, StandardItem, SubMenu};
 use ksni::{Icon, ToolTip, Tray};
 use tauri::{AppHandle, Manager};
 
 use crate::config::Config;
 use crate::state::{Shared, Status};
+use crate::vault::Vault;
 use crate::vpn::UiCommand;
 
 pub type TrayHandle = ksni::blocking::Handle<GpTray>;
@@ -28,6 +29,7 @@ pub type TrayHandle = ksni::blocking::Handle<GpTray>;
 pub struct GpTray {
   pub shared: Arc<Mutex<Shared>>,
   pub cfg: Arc<Mutex<Config>>,
+  pub vault: Arc<Mutex<Vault>>,
   pub cmd_tx: Sender<UiCommand>,
   /// Tauri app handle, so the tray can show the main window after close-to-tray.
   pub app: AppHandle,
@@ -74,9 +76,9 @@ impl GpTray {
   fn icons(&self, animate: bool) -> Vec<Icon> {
     let c = self.concept();
     match self.status() {
-      Status::Connected => decode_all(c.connected),
+      Status::Connected => self.static_set(c.connected),
       // Error reuses the disconnected icon (per design — no separate error art).
-      Status::Disconnected | Status::Error(_) => decode_all(c.disconnected),
+      Status::Disconnected | Status::Error(_) => self.static_set(c.disconnected),
       Status::Connecting | Status::Disconnecting => {
         let i = if animate { self.frame.load(Ordering::Relaxed) } else { 0 };
         let frame = c.connecting_frames[i % c.connecting_frames.len()];
@@ -84,6 +86,68 @@ impl GpTray {
       }
     }
   }
+
+  /// Icons for a static (non-animated) state. The size order is flipped on odd
+  /// `frame` values: ksni dedups icon updates by hash, and the SNI host can
+  /// throttle icon re-fetches during the connecting animation and miss the final
+  /// repaint — so the animator bumps `frame` a few times after the animation to
+  /// force fresh hashes (the host re-fetches; the picked size is unchanged, so
+  /// it's visually identical) and the icon reliably lands on the static state.
+  fn static_set(&self, pngs: &[&'static [u8]]) -> Vec<Icon> {
+    let mut v = decode_all(pngs);
+    if self.frame.load(Ordering::Relaxed) % 2 == 1 {
+      v.reverse();
+    }
+    v
+  }
+
+  /// "Connect with ▸" submenu of the unlocked vault identities. Each item starts
+  /// a connection with that identity (same path as the window's connect button).
+  /// Disabled with a hint when already connected, the vault is locked, or there
+  /// are no saved identities.
+  fn connect_with_submenu(&self, status: &Status) -> MenuItem<Self> {
+    let names: Vec<String> = {
+      let v = self.vault.lock().unwrap();
+      if v.unlocked {
+        v.identities().iter().map(|i| i.name.clone()).collect()
+      } else {
+        Vec::new()
+      }
+    };
+
+    let submenu: Vec<MenuItem<Self>> = if status.is_active() {
+      vec![disabled_item("Already connected")]
+    } else if names.is_empty() {
+      vec![disabled_item("Unlock the app to list identities")]
+    } else {
+      names
+        .into_iter()
+        .map(|name| {
+          let id = name.clone();
+          StandardItem {
+            label: name,
+            activate: Box::new(move |this: &mut Self| {
+              let _ = crate::start_connect(&this.vault, &this.cfg, &this.cmd_tx, &id, "");
+            }),
+            ..Default::default()
+          }
+          .into()
+        })
+        .collect()
+    };
+
+    SubMenu {
+      label: "Connect with".into(),
+      enabled: !status.is_active(),
+      submenu,
+      ..Default::default()
+    }
+    .into()
+  }
+}
+
+fn disabled_item(label: &str) -> MenuItem<GpTray> {
+  StandardItem { label: label.into(), enabled: false, ..Default::default() }.into()
 }
 
 impl Tray for GpTray {
@@ -134,6 +198,7 @@ impl Tray for GpTray {
         ..Default::default()
       }
       .into(),
+      self.connect_with_submenu(&status),
       StandardItem {
         label: "Disconnect".into(),
         enabled: status.is_active(),

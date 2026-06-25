@@ -115,6 +115,18 @@ impl Vault {
     self.unlocked = false;
   }
 
+  /// Forgotten-PIN reset: delete the encrypted vault and return to the no-vault
+  /// state so the user can set a new master PIN. Saved identities are gone — they
+  /// were encrypted with the forgotten PIN and cannot be recovered.
+  pub fn reset(&mut self) {
+    let _ = std::fs::remove_file(&self.path);
+    self.salt = [0u8; SALT_LEN];
+    self.key = None;
+    self.identities.clear();
+    self.exists = false;
+    self.unlocked = false;
+  }
+
   pub fn upsert(&mut self, identity: Identity) -> Result<()> {
     if let Some(e) = self.identities.iter_mut().find(|i| i.name == identity.name) {
       *e = identity;
