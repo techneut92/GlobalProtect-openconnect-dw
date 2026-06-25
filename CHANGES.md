@@ -164,3 +164,26 @@ A second pass over the `apps/gpgui` client:
   command. Errors now surface the real reason (full anyhow context, e.g. "single
   sign-on was cancelled or failed") in red and never leave a stale
   "Authenticating…" line. `.github/FUNDING.yml` adds Ko-fi.
+
+## 2026-06-25 — GUI: About tab, update check, backend install
+
+A `system.rs` module backs an **About** settings tab and two new screens:
+
+- **Update check** against the GitHub Releases API (the GUI and backend ship from
+  the same release, so one check covers both): on demand and on startup, with a
+  non-blocking in-window banner when a newer version is out. "Update now" runs
+  `flatpak update` on Flatpak installs and otherwise opens the release page — the
+  native builds have no package repo to upgrade from yet.
+- **Backend-missing screen.** If the privileged `gpservice` isn't installed, the
+  window shows an install screen with **OS-fitting** guidance (it detects
+  Flatpak / rpm-ostree / dnf / apt / pacman / apk / zypper, e.g. the atomic
+  Fedora layered-package + reboot flow) and a best-effort **Install** button that
+  runs the package-manager command via `pkexec` (through `flatpak-spawn --host`
+  when sandboxed), falling back to the printed instructions.
+- **GUI↔backend version compatibility.** `gpservice --version` is compared with
+  the GUI version; a mismatch is flagged in About and via a banner.
+- **About tab** shows the version, OS, install type, backend status, and links
+  (the fork repo and the upstream project, GPL-3.0).
+- New Tauri commands `system_info` / `check_update` / `run_update` /
+  `install_backend`; the `open_url` command is now Flatpak-aware. New `reqwest`
+  dependency (already in the tree via `gpapi`).

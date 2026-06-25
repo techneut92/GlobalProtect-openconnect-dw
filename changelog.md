@@ -24,6 +24,12 @@
   shown instead of a generic message).
 - GUI: float reliably in tiling shells by registering an app float rule, and use
   a reverse-DNS app-id (`io.github.techneut92.gpgui`).
+- GUI: new **About** tab with an in-app **update check** (startup + on demand,
+  with an update banner); it warns if the GUI and backend service versions don't
+  match.
+- GUI: if the backend service isn't installed, an **install screen** with
+  instructions fitting your OS (Flatpak / dnf / rpm-ostree / apt / …) and a
+  best-effort install button.
 
 > Fork (`globalprotect-openconnect-dw`) entries are versioned independently from
 > upstream's releases below.
