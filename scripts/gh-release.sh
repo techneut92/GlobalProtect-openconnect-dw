@@ -37,14 +37,14 @@ release_tag() {
   gh -R "$REPO" release delete $TAG --yes --cleanup-tag || true
 
   echo "Creating release..."
-  # Only upload the source tarball and GUI components for tagged release.
-  # Other components will be built in `release.yml` from the standalone
-  # source tarball and uploaded. This is to ensure the source tarball is stable.
+  # Upload the source tarballs and all native packages (deb/rpm/apk/pkg/binary)
+  # built by the build-gp matrix. (The fork builds its own GUI from source, so
+  # there is no separate gpgui artifact.)
   gh -R "$REPO" release create $TAG \
     --title "$TAG" \
     --notes "$RELEASE_NOTES" \
     "$PROJECT_DIR"/.build/artifacts/artifact-source*/* \
-    "$PROJECT_DIR"/.build/artifacts/artifact-gpgui-*/*
+    "$PROJECT_DIR"/.build/artifacts/artifact-gp-*/*
 }
 
 if [[ $TAG == *"snapshot" ]]; then
