@@ -241,6 +241,11 @@ backend-install flow:
   package, so `GuiLauncher::download_program` and the helper app / launcher /
   `GP_GUI_HELPER_BINARY` constants are dropped. A GUI↔service version mismatch is
   now logged rather than triggering a download.
+- **Rebranded the app to "GP Client".** "GlobalProtect" is a Palo Alto Networks
+  trademark, so it's no longer used as the product name — only descriptively
+  ("connect to GlobalProtect VPN", keywords, the protocol user-agent). Updated
+  `productName`, the window title, the `.desktop` `Name`, the AppStream `<name>`,
+  and the in-app titlebar / About name.
 
 ### Third-party components
 

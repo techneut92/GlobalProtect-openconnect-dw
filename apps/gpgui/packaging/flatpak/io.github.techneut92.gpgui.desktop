@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=GlobalProtect
+Name=GP Client
 GenericName=VPN Client
 Comment=Connect to GlobalProtect VPN (smart-card / certificate)
 Exec=gpgui

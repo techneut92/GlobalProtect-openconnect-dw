@@ -1,6 +1,6 @@
 {
   "$schema": "https://cdn.jsdelivr.net/gh/tauri-apps/tauri@tauri-v2.1.1/crates/tauri-cli/config.schema.json",
-  "productName": "GlobalProtect",
+  "productName": "GP Client",
   "version": "1.0.0",
   "identifier": "io.github.techneut92.gpgui",
   "build": {
@@ -14,7 +14,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "GlobalProtect",
+        "title": "GP Client",
         "width": 460,
         "height": 812,
         "minWidth": 460,

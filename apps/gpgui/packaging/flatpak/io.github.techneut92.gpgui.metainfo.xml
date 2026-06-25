@@ -3,7 +3,7 @@
   <id>io.github.techneut92.gpgui</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <name>GlobalProtect</name>
+  <name>GP Client</name>
   <summary>Connect to GlobalProtect VPN with smart cards</summary>
 
   <description>
