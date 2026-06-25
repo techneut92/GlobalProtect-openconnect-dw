@@ -6,7 +6,7 @@
 //! tunnel. Mirrors the auth pipeline in `apps/gpclient/src/connect.rs`, minus
 //! the tunnel — that's gpservice's job.
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use gpapi::{
   credential::{Credential, PasswordCredential},
   gateway::{gateway_login, Gateway, GatewayLogin},
@@ -163,7 +163,9 @@ pub async fn build_connect_request(p: &AuthParams) -> Result<ConnectRequest> {
   gp_params.set_is_gateway(true);
 
   // 1. Prelogin — this is the mTLS step that uses the pkcs11 client cert.
-  let prelogin = prelogin(&p.server, &gp_params).await?;
+  let prelogin = prelogin(&p.server, &gp_params)
+    .await
+    .context("portal prelogin failed — check the server address and client certificate")?;
 
   // 2. Obtain the credential.
   //  - username/password supplied → standard credential (no SSO).
@@ -182,7 +184,8 @@ pub async fn build_connect_request(p: &AuthParams) -> Result<ConnectRequest> {
           .ignore_tls_errors(o.ignore_tls_errors)
           .default_browser(p.use_browser)
           .launch()
-          .await?
+          .await
+          .context("single sign-on was cancelled or failed")?
       }
       Prelogin::Standard(_) => {
         bail!("This server needs a username and password — choose the \"Username & password\" method")
@@ -191,7 +194,10 @@ pub async fn build_connect_request(p: &AuthParams) -> Result<ConnectRequest> {
   };
 
   // 3. Gateway login → the auth cookie that gpservice feeds to openconnect.
-  let cookie = match gateway_login(&p.server, &cred, &gp_params).await? {
+  let cookie = match gateway_login(&p.server, &cred, &gp_params)
+    .await
+    .context("gateway login failed")?
+  {
     GatewayLogin::Cookie(cookie) => cookie,
     GatewayLogin::Mfa(..) => {
       bail!("This gateway requires an MFA prompt, which the GUI doesn't support yet")

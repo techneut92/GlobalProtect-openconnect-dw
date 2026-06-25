@@ -37,6 +37,9 @@ ksni = { version = "0.3.5", default-features = false, features = ["blocking", "a
 notify-rust = "4"
 # Decode the bundled app icon into an ARGB tray pixmap (status-tinted logo).
 png = "0.17"
+# Optional master-PIN storage in the desktop secret store (freedesktop Secret
+# Service → GNOME Keyring / KDE KWallet / COSMIC). Sync API; all ops best-effort.
+keyring = { version = "3", default-features = false, features = ["sync-secret-service", "crypto-rust"] }
 pollster = "0.4"
 # Native file picker via xdg-desktop-portal (no GTK).
 rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "async-std"] }

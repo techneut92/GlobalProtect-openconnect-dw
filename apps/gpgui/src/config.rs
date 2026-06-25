@@ -50,6 +50,11 @@ pub struct Config {
   /// Launch the GUI at login (XDG autostart). Defaults on; the entry is created
   /// on first run.
   pub run_at_startup: bool,
+  /// Start with the window hidden to the tray (any launch, not just autostart).
+  pub start_minimized: bool,
+  /// Remember the vault master PIN in the desktop secret store (Secret Service)
+  /// and auto-unlock on launch. Off by default.
+  pub remember_unlock: bool,
 }
 
 impl Default for Config {
@@ -79,6 +84,8 @@ impl Default for Config {
       client_version: String::new(),
       tray_icon: "shield".into(),
       run_at_startup: true,
+      start_minimized: false,
+      remember_unlock: false,
     }
   }
 }

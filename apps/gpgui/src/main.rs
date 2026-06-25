@@ -18,7 +18,9 @@ mod crypto;
 mod dbus_client;
 mod pkcs11;
 mod proto;
+mod secrets;
 mod state;
+mod tiling;
 mod transport;
 mod tray;
 mod vault;
@@ -71,6 +73,8 @@ struct SettingsForm {
   client_version: String,
   tray_icon: String,
   run_at_startup: bool,
+  start_minimized: bool,
+  remember_unlock: bool,
 }
 
 /// A certificate row for the picker.
@@ -181,6 +185,14 @@ fn disconnect(state: State<AppState>) {
   let _ = state.cmd_tx.send(UiCommand::Disconnect);
 }
 
+/// Open an http(s) URL in the user's browser (used by the Ko-fi link).
+#[tauri::command]
+fn open_url(url: String) {
+  if url.starts_with("https://") || url.starts_with("http://") {
+    let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
+  }
+}
+
 /// Open (or focus) the separate Advanced settings window.
 #[tauri::command]
 fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
@@ -194,6 +206,7 @@ fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
     .min_inner_size(560.0, 620.0)
     .resizable(false)
     .decorations(false)
+    .transparent(true)
     .build()
     .map_err(|e| e.to_string())?;
   Ok(())
@@ -220,8 +233,16 @@ fn save_settings(app: tauri::AppHandle, state: State<AppState>, form: SettingsFo
     c.client_version = form.client_version;
     c.tray_icon = form.tray_icon;
     c.run_at_startup = form.run_at_startup;
+    c.start_minimized = form.start_minimized;
+    let remember_was = c.remember_unlock;
+    c.remember_unlock = form.remember_unlock;
     c.save();
     autostart::set(c.run_at_startup);
+    // Turning "remember unlock" off clears any stored PIN. Turning it on stores
+    // the PIN at the next unlock (we don't hold the plaintext PIN here).
+    if remember_was && !c.remember_unlock {
+      secrets::clear_pin();
+    }
   }
   // Repaint the tray immediately so a Shield/Ring change shows without waiting
   // for the next state transition.
@@ -236,8 +257,20 @@ fn save_settings(app: tauri::AppHandle, state: State<AppState>, form: SettingsFo
 /// the identity's portal when non-empty.
 #[tauri::command]
 fn connect(state: State<AppState>, identity: String, portal: String) -> Result<(), String> {
+  start_connect(&state.vault, &state.cfg, &state.cmd_tx, &identity, &portal)
+}
+
+/// Build a connect request from a saved identity and hand it to the VPN manager.
+/// Shared by the `connect` command and the tray's "Connect with" submenu.
+pub(crate) fn start_connect(
+  vault: &Arc<Mutex<Vault>>,
+  cfg: &Arc<Mutex<Config>>,
+  cmd_tx: &std::sync::mpsc::Sender<UiCommand>,
+  identity: &str,
+  portal: &str,
+) -> Result<(), String> {
   let id = {
-    let v = state.vault.lock().unwrap();
+    let v = vault.lock().unwrap();
     if !v.unlocked {
       return Err("vault is locked".into());
     }
@@ -256,7 +289,7 @@ fn connect(state: State<AppState>, identity: String, portal: String) -> Result<(
 
   // os / user-agent / SSO method / CLI options come from the settings window.
   let (os, user_agent, use_browser, opts) = {
-    let c = state.cfg.lock().unwrap();
+    let c = cfg.lock().unwrap();
     let opts = connect::ConnOpts {
       mtu: c.mtu,
       reconnect_timeout: c.reconnect_timeout,
@@ -301,7 +334,7 @@ fn connect(state: State<AppState>, identity: String, portal: String) -> Result<(
     password: id.password,
     opts,
   };
-  state.cmd_tx.send(UiCommand::Connect(params)).map_err(|e| e.to_string())
+  cmd_tx.send(UiCommand::Connect(params)).map_err(|e| e.to_string())
 }
 
 /// Auto-detect probe form.
@@ -354,19 +387,48 @@ fn vault_status(state: State<AppState>) -> serde_json::Value {
   serde_json::json!({ "exists": v.exists, "unlocked": v.unlocked })
 }
 
+/// Rebuild the tray menu (the ksni menu is static until told to update) so the
+/// "Connect with" submenu reflects the current vault/identity state.
+fn refresh_tray(tray: &Arc<Mutex<Option<Arc<tray::TrayHandle>>>>) {
+  if let Some(t) = tray.lock().unwrap().as_ref() {
+    let _ = t.update(|_| {});
+  }
+}
+
 #[tauri::command]
 fn set_master_pin(state: State<AppState>, pin: String) -> Result<(), String> {
-  state.vault.lock().unwrap().set_master_pin(&pin).map_err(|e| e.to_string())
+  state.vault.lock().unwrap().set_master_pin(&pin).map_err(|e| e.to_string())?;
+  if state.cfg.lock().unwrap().remember_unlock {
+    secrets::store_pin(&pin);
+  }
+  refresh_tray(&state.tray);
+  Ok(())
 }
 
 #[tauri::command]
 fn unlock_vault(state: State<AppState>, pin: String) -> Result<(), String> {
-  state.vault.lock().unwrap().unlock(&pin).map_err(|e| e.to_string())
+  state.vault.lock().unwrap().unlock(&pin).map_err(|e| e.to_string())?;
+  // Remember the PIN for next launch if opted in (best-effort).
+  if state.cfg.lock().unwrap().remember_unlock {
+    secrets::store_pin(&pin);
+  }
+  refresh_tray(&state.tray);
+  Ok(())
 }
 
 #[tauri::command]
 fn lock_vault(state: State<AppState>) {
   state.vault.lock().unwrap().lock();
+  refresh_tray(&state.tray);
+}
+
+/// Forgotten-PIN reset: delete the encrypted vault (losing all saved identities)
+/// and any stored keyring PIN, returning to first-run setup.
+#[tauri::command]
+fn reset_vault(state: State<AppState>) {
+  state.vault.lock().unwrap().reset();
+  secrets::clear_pin();
+  refresh_tray(&state.tray);
 }
 
 #[tauri::command]
@@ -382,6 +444,7 @@ fn list_identities(state: State<AppState>) -> Result<Vec<Identity>, String> {
 fn save_identity(app: tauri::AppHandle, state: State<AppState>, identity: Identity) -> Result<(), String> {
   state.vault.lock().unwrap().upsert(identity).map_err(|e| e.to_string())?;
   let _ = app.emit("identities-changed", ());
+  refresh_tray(&state.tray);
   Ok(())
 }
 
@@ -389,6 +452,7 @@ fn save_identity(app: tauri::AppHandle, state: State<AppState>, identity: Identi
 fn delete_identity(app: tauri::AppHandle, state: State<AppState>, name: String) -> Result<(), String> {
   state.vault.lock().unwrap().remove(&name).map_err(|e| e.to_string())?;
   let _ = app.emit("identities-changed", ());
+  refresh_tray(&state.tray);
   Ok(())
 }
 
@@ -405,6 +469,7 @@ fn open_manager(app: tauri::AppHandle) -> Result<(), String> {
     .min_inner_size(720.0, 620.0)
     .resizable(false)
     .decorations(false)
+    .transparent(true)
     .build()
     .map_err(|e| e.to_string())?;
   Ok(())
@@ -423,9 +488,20 @@ fn main() {
   // a fresh install this seeds it on first launch; the in-app toggle is the
   // source of truth and updates it via `save_settings`.
   autostart::set(cfg.lock().unwrap().run_at_startup);
+  // Register a float exception in any tiling shell present (Pop Shell, …) so the
+  // window opens floating instead of tiled.
+  tiling::ensure_float_exceptions();
   let shared = Arc::new(Mutex::new(Shared::default()));
   let vault_path = config::vault_path().unwrap_or_else(|| std::path::PathBuf::from("identities.enc"));
   let vault = Arc::new(Mutex::new(Vault::load(vault_path)));
+  // Auto-unlock from the desktop secret store if the user opted in. Best-effort:
+  // a missing/locked/corrupt keyring or a stale PIN just leaves the vault locked
+  // and the user is prompted as usual.
+  if cfg.lock().unwrap().remember_unlock {
+    if let Some(pin) = secrets::load_pin() {
+      let _ = vault.lock().unwrap().unlock(&pin);
+    }
+  }
   let (cmd_tx, cmd_rx) = std::sync::mpsc::channel::<UiCommand>();
 
   let tray_available = Arc::new(AtomicBool::new(false));
@@ -445,6 +521,7 @@ fn main() {
   // Moved into setup (which owns the receiver and the AppHandle).
   let setup_shared = shared.clone();
   let setup_cfg = cfg.clone();
+  let setup_vault = vault.clone();
   let setup_cmd_tx = cmd_tx.clone();
   let setup_tray_available = tray_available.clone();
   let setup_tray_slot = tray_slot.clone();
@@ -475,6 +552,7 @@ fn main() {
       browse_file,
       connect,
       disconnect,
+      open_url,
       open_settings,
       save_settings,
       probe_auth,
@@ -482,6 +560,7 @@ fn main() {
       set_master_pin,
       unlock_vault,
       lock_vault,
+      reset_vault,
       list_identities,
       save_identity,
       delete_identity,
@@ -490,16 +569,19 @@ fn main() {
     .setup(move |app| {
       let handle = app.handle().clone();
 
-      // Auto-tiling window managers (Pop Shell, i3, bspwm, …) tile every normal
-      // toplevel, including this fixed-size one. Mark it as a dialog so X11
-      // tilers float it instead. No-op on Wayland (xdg-shell has no window-type
-      // concept) — there, COSMIC/sway need an app-id float rule (see the
-      // `StartupWMClass`/app-id in packaging).
+      // Auto-tiling window managers tile every normal toplevel, including this
+      // fixed-size one. On X11 (Pop Shell on Xorg, i3, bspwm) marking it a dialog
+      // makes them float it. We do NOT do this on Wayland: it gives no floating
+      // benefit there (tilers float via an app-id rule — see `tiling.rs`), and
+      // Mutter treats dialogs differently, which drops the window's rounded
+      // corners. Wayland keeps the normal type so the shell still rounds it.
       #[cfg(target_os = "linux")]
-      if let Some(w) = app.get_webview_window("main") {
-        use gtk::prelude::GtkWindowExt;
-        if let Ok(gw) = w.gtk_window() {
-          gw.set_type_hint(gtk::gdk::WindowTypeHint::Dialog);
+      if std::env::var("XDG_SESSION_TYPE").as_deref() == Ok("x11") {
+        if let Some(w) = app.get_webview_window("main") {
+          use gtk::prelude::GtkWindowExt;
+          if let Ok(gw) = w.gtk_window() {
+            gw.set_type_hint(gtk::gdk::WindowTypeHint::Dialog);
+          }
         }
       }
 
@@ -508,6 +590,7 @@ fn main() {
       let tray = GpTray {
         shared: setup_shared.clone(),
         cfg: setup_cfg.clone(),
+        vault: setup_vault.clone(),
         cmd_tx: setup_cmd_tx.clone(),
         app: handle.clone(),
         frame: setup_frame.clone(),
@@ -533,6 +616,7 @@ fn main() {
         let shared = setup_shared.clone();
         let frame = setup_frame.clone();
         std::thread::spawn(move || {
+          let mut was_connecting = false;
           loop {
             std::thread::sleep(Duration::from_millis(80));
             let connecting = matches!(
@@ -542,12 +626,29 @@ fn main() {
             if connecting {
               frame.fetch_add(1, Ordering::Relaxed);
               let _ = t.update(|_| {});
+              was_connecting = true;
+            } else if was_connecting {
+              was_connecting = false;
+              // Just left the connecting state. The SNI host may have throttled
+              // icon fetches during the animation and missed the status-change
+              // repaint (ksni dedups identical icons), leaving a spinner frame on
+              // screen. Force a few spaced re-emits with a changing hash (frame
+              // parity flips the static icon's size order) so the host re-fetches
+              // the final, static icon once things have quieted down.
+              for _ in 0..3 {
+                frame.fetch_add(1, Ordering::Relaxed);
+                let _ = t.update(|_| {});
+                std::thread::sleep(Duration::from_millis(160));
+              }
             }
           }
         });
 
-        // `--hidden` (login autostart) starts straight to the tray.
-        if std::env::args().any(|a| a == "--hidden") {
+        // Start hidden to the tray when launched with `--hidden` (login
+        // autostart) or when the "Start minimized" preference is set.
+        let start_hidden = std::env::args().any(|a| a == "--hidden")
+          || setup_cfg.lock().unwrap().start_minimized;
+        if start_hidden {
           if let Some(w) = app.get_webview_window("main") {
             let _ = w.hide();
           }
