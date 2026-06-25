@@ -678,7 +678,15 @@ fn main() {
         app: handle.clone(),
         frame: setup_frame.clone(),
       };
-      let tray_handle = match ksni::blocking::TrayMethods::spawn(tray) {
+      // In a Flatpak sandbox we can't own the `org.kde.StatusNotifierItem-PID-ID`
+      // well-known name, so register the tray under our unique bus name instead
+      // (ksni's documented sandbox path). Native keeps the well-known name.
+      let spawned = if system::is_flatpak() {
+        ksni::blocking::TrayMethods::disable_dbus_name(tray, true).spawn()
+      } else {
+        ksni::blocking::TrayMethods::spawn(tray)
+      };
+      let tray_handle = match spawned {
         Ok(h) => {
           setup_tray_available.store(true, Ordering::Relaxed);
           Some(Arc::new(h))
