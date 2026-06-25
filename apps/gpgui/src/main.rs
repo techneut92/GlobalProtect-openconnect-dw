@@ -10,6 +10,7 @@
 //! can't pkexec or see `/var/run`, so that pair is the single place a future
 //! D-Bus system-service transport slots in — nothing above it changes.
 
+mod autostart;
 mod client;
 mod config;
 mod connect;
@@ -23,10 +24,12 @@ mod tray;
 mod vault;
 mod vpn;
 
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
-use tauri::{Emitter, Manager, State};
+use tauri::{Emitter, Manager, State, WindowEvent};
 
 use config::Config;
 use state::{Shared, Status};
@@ -40,6 +43,12 @@ struct AppState {
   shared: Arc<Mutex<Shared>>,
   cfg: Arc<Mutex<Config>>,
   vault: Arc<Mutex<Vault>>,
+  /// True once a system tray was registered. The main window only hides on
+  /// close (close-to-tray) when this holds — otherwise there would be no way to
+  /// bring it back, so we let the close quit the app instead.
+  tray_available: Arc<AtomicBool>,
+  /// The live tray handle, so a settings change can repaint it immediately.
+  tray: Arc<Mutex<Option<Arc<tray::TrayHandle>>>>,
 }
 
 /// Advanced options edited in the settings window (persisted; read at connect).
@@ -60,6 +69,8 @@ struct SettingsForm {
   local_hostname: String,
   os_version: String,
   client_version: String,
+  tray_icon: String,
+  run_at_startup: bool,
 }
 
 /// A certificate row for the picker.
@@ -207,7 +218,15 @@ fn save_settings(app: tauri::AppHandle, state: State<AppState>, form: SettingsFo
     c.local_hostname = form.local_hostname;
     c.os_version = form.os_version;
     c.client_version = form.client_version;
+    c.tray_icon = form.tray_icon;
+    c.run_at_startup = form.run_at_startup;
     c.save();
+    autostart::set(c.run_at_startup);
+  }
+  // Repaint the tray immediately so a Shield/Ring change shows without waiting
+  // for the next state transition.
+  if let Some(t) = state.tray.lock().unwrap().as_ref() {
+    let _ = t.update(|_| {});
   }
   // The main window rescans (module/cert) and uses these at connect time.
   let _ = app.emit("config-changed", ());
@@ -400,25 +419,54 @@ fn main() {
     .init();
 
   let cfg = Arc::new(Mutex::new(Config::load()));
+  // Keep the autostart entry in sync with the preference (which defaults on). On
+  // a fresh install this seeds it on first launch; the in-app toggle is the
+  // source of truth and updates it via `save_settings`.
+  autostart::set(cfg.lock().unwrap().run_at_startup);
   let shared = Arc::new(Mutex::new(Shared::default()));
   let vault_path = config::vault_path().unwrap_or_else(|| std::path::PathBuf::from("identities.enc"));
   let vault = Arc::new(Mutex::new(Vault::load(vault_path)));
   let (cmd_tx, cmd_rx) = std::sync::mpsc::channel::<UiCommand>();
+
+  let tray_available = Arc::new(AtomicBool::new(false));
+  let tray_slot: Arc<Mutex<Option<Arc<tray::TrayHandle>>>> = Arc::new(Mutex::new(None));
+  // Connecting-animation frame counter, advanced by the animator thread.
+  let frame = Arc::new(AtomicUsize::new(0));
 
   let app_state = AppState {
     cmd_tx: cmd_tx.clone(),
     shared: shared.clone(),
     cfg: cfg.clone(),
     vault: vault.clone(),
+    tray_available: tray_available.clone(),
+    tray: tray_slot.clone(),
   };
 
   // Moved into setup (which owns the receiver and the AppHandle).
   let setup_shared = shared.clone();
+  let setup_cfg = cfg.clone();
   let setup_cmd_tx = cmd_tx.clone();
+  let setup_tray_available = tray_available.clone();
+  let setup_tray_slot = tray_slot.clone();
+  let setup_frame = frame.clone();
   let cmd_rx = Mutex::new(Some(cmd_rx));
 
   tauri::Builder::default()
     .manage(app_state)
+    .on_window_event(|window, event| {
+      // Close-to-tray: the X button hides the main window so the app keeps
+      // running (tunnel + notifications + tray) in the background. Falls back to
+      // a real close when no tray is available, so the user is never stranded.
+      // Secondary windows (settings/manager) close normally.
+      if window.label() == "main" {
+        if let WindowEvent::CloseRequested { api, .. } = event {
+          if window.state::<AppState>().tray_available.load(Ordering::Relaxed) {
+            let _ = window.hide();
+            api.prevent_close();
+          }
+        }
+      }
+    })
     .invoke_handler(tauri::generate_handler![
       get_config,
       get_state,
@@ -442,18 +490,69 @@ fn main() {
     .setup(move |app| {
       let handle = app.handle().clone();
 
-      // Tray (optional — no StatusNotifierWatcher on bare GNOME).
+      // Auto-tiling window managers (Pop Shell, i3, bspwm, …) tile every normal
+      // toplevel, including this fixed-size one. Mark it as a dialog so X11
+      // tilers float it instead. No-op on Wayland (xdg-shell has no window-type
+      // concept) — there, COSMIC/sway need an app-id float rule (see the
+      // `StartupWMClass`/app-id in packaging).
+      #[cfg(target_os = "linux")]
+      if let Some(w) = app.get_webview_window("main") {
+        use gtk::prelude::GtkWindowExt;
+        if let Ok(gw) = w.gtk_window() {
+          gw.set_type_hint(gtk::gdk::WindowTypeHint::Dialog);
+        }
+      }
+
+      // Tray (optional — needs a StatusNotifierItem host: native on KDE/COSMIC,
+      // the AppIndicator extension on GNOME).
       let tray = GpTray {
         shared: setup_shared.clone(),
+        cfg: setup_cfg.clone(),
         cmd_tx: setup_cmd_tx.clone(),
+        app: handle.clone(),
+        frame: setup_frame.clone(),
       };
       let tray_handle = match ksni::blocking::TrayMethods::spawn(tray) {
-        Ok(h) => Some(Arc::new(h)),
+        Ok(h) => {
+          setup_tray_available.store(true, Ordering::Relaxed);
+          Some(Arc::new(h))
+        }
         Err(e) => {
           tracing::warn!("tray unavailable (install/enable AppIndicator on GNOME): {e}");
           None
         }
       };
+
+      if let Some(t) = &tray_handle {
+        // Expose the handle so a settings change can repaint the tray.
+        *setup_tray_slot.lock().unwrap() = Some(t.clone());
+
+        // Animator: while connecting/disconnecting, advance the frame and
+        // repaint (~12.5fps). SNI hosts don't play GIFs, so we swap frames.
+        let t = t.clone();
+        let shared = setup_shared.clone();
+        let frame = setup_frame.clone();
+        std::thread::spawn(move || {
+          loop {
+            std::thread::sleep(Duration::from_millis(80));
+            let connecting = matches!(
+              shared.lock().unwrap().status,
+              Status::Connecting | Status::Disconnecting
+            );
+            if connecting {
+              frame.fetch_add(1, Ordering::Relaxed);
+              let _ = t.update(|_| {});
+            }
+          }
+        });
+
+        // `--hidden` (login autostart) starts straight to the tray.
+        if std::env::args().any(|a| a == "--hidden") {
+          if let Some(w) = app.get_webview_window("main") {
+            let _ = w.hide();
+          }
+        }
+      }
 
       // UI-agnostic change hook → emit the current state to the webview.
       let on_change: Arc<dyn Fn() + Send + Sync> = {

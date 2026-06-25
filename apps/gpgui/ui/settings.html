@@ -21,7 +21,11 @@
 
   <div class="settings-layout">
     <nav class="settings-rail">
-      <button class="settings-nav active" data-sec="auth">
+      <button class="settings-nav active" data-sec="general">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span>General</span>
+      </button>
+      <button class="settings-nav" data-sec="auth">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
         <span>Authentication</span>
       </button>
@@ -32,8 +36,42 @@
     </nav>
 
     <div class="settings-content">
+      <!-- GENERAL -->
+      <div class="settings-sec" id="sec-general">
+        <h2>General</h2>
+        <p class="desc">Startup and tray behaviour.</p>
+
+        <div class="toggle-list mb18">
+          <div class="toggle-item">
+            <div><div class="t" style="font-size:13px;color:var(--text-soft);font-weight:500;">Run at system startup</div><div class="d" style="font-size:11.5px;color:var(--faint);margin-top:2px;">Launch GlobalProtect at login, hidden to the tray</div></div>
+            <button class="switch" type="button" data-key="runAtStartup"><span class="knob"></span></button>
+          </div>
+        </div>
+
+        <div class="lbl">Tray icon</div>
+        <div class="icon-pick" id="iconPick">
+          <button type="button" class="icon-card" data-val="shield">
+            <span class="previews">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2.5 L20 5.2 V12 C20 17.2 16.5 21 12 22.5 C7.5 21 4 17.2 4 12 V5.2 Z" fill="#6b7286"/><path d="M12 8.6 V12.4 M12 15.7 h0.01" stroke="#0a0c12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2.5 L20 5.2 V12 C20 17.2 16.5 21 12 22.5 C7.5 21 4 17.2 4 12 V5.2 Z" fill="#fbbf24"/><circle cx="8.7" cy="12.7" r="1.15" fill="#0a0c12"/><circle cx="12" cy="12.7" r="1.15" fill="#0a0c12"/><circle cx="15.3" cy="12.7" r="1.15" fill="#0a0c12"/></svg>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2.5 L20 5.2 V12 C20 17.2 16.5 21 12 22.5 C7.5 21 4 17.2 4 12 V5.2 Z" fill="#34d399"/><path d="M8.4 12.2 l2.5 2.5 l4.7-4.9" stroke="#0a0c12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </span>
+            <span class="nm">Shield</span>
+          </button>
+          <button type="button" class="icon-card" data-val="ring">
+            <span class="previews">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M7.4 17.6 A7 7 0 1 1 16.6 17.6" stroke="#6b7286" stroke-width="2.1" stroke-linecap="round" fill="none"/><circle cx="12" cy="12" r="1.6" fill="#6b7286"/></svg>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#fbbf24" stroke-width="2.1" fill="none" opacity="0.28"/><path d="M12 5 A7 7 0 0 1 19 12" stroke="#fbbf24" stroke-width="2.1" stroke-linecap="round" fill="none"/><circle cx="12" cy="12" r="1.6" fill="#fbbf24"/></svg>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="#34d399" stroke-width="2.1" fill="none"/><circle cx="12" cy="12" r="5" fill="#34d399"/><path d="M9.4 12.1 l1.9 1.9 l3.4-3.6" stroke="#0a0c12" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </span>
+            <span class="nm">Signal ring</span>
+          </button>
+        </div>
+        <p class="help">Color shows connection state; the connecting state animates. Needs a system-tray host (KDE/COSMIC native, GNOME AppIndicator extension).</p>
+      </div>
+
       <!-- AUTH -->
-      <div class="settings-sec" id="sec-auth">
+      <div class="settings-sec" id="sec-auth" hidden>
         <h2>Authentication</h2>
         <p class="desc">How single sign-on runs.</p>
         <div class="lbl">SSO method</div>
@@ -110,13 +148,14 @@
     document.querySelectorAll('.settings-nav').forEach((b) => {
       b.onclick = () => {
         document.querySelectorAll('.settings-nav').forEach((x) => x.classList.toggle('active', x === b));
-        $('sec-auth').hidden = b.dataset.sec !== 'auth';
-        $('sec-conn').hidden = b.dataset.sec !== 'conn';
+        document.querySelectorAll('.settings-sec').forEach((s) => { s.hidden = s.id !== 'sec-' + b.dataset.sec; });
       };
     });
 
     // form model — camelCase keys match Rust SettingsForm; cfg holds snake_case config keys
     const F = {
+      trayIcon:         { id: null, cfg: 'tray_icon', t: 's' },
+      runAtStartup:     { id: null, cfg: 'run_at_startup', t: 'b' },
       authView:         { id: null, cfg: 'auth_view', t: 's' },
       os:               { id: null, cfg: 'os', t: 's' },
       osVersion:        { id: 'osVersion', cfg: 'os_version', t: 's' },
@@ -134,10 +173,19 @@
     };
 
     const model = {
+      trayIcon: 'shield', runAtStartup: true,
       authView: 'webview', os: 'Linux', osVersion: '', userAgent: 'PAN GlobalProtect/6.2.1-1290',
       clientVersion: '', mtu: 0, reconnectTimeout: 30, forceDpd: 0, vpncScript: '', localHostname: '',
       disableIpv6: false, noDtls: false, noXmlpost: false, ignoreTlsErrors: false,
     };
+
+    // tray icon card picker
+    function applyIconPick() {
+      document.querySelectorAll('#iconPick .icon-card').forEach((c) => c.classList.toggle('active', c.dataset.val === model.trayIcon));
+    }
+    document.querySelectorAll('#iconPick .icon-card').forEach((c) => {
+      c.onclick = () => { model.trayIcon = c.dataset.val; applyIconPick(); save(); };
+    });
 
     const ssoDD = createDropdown($('ssoDD'), {
       options: [
@@ -176,6 +224,7 @@
       });
       ssoDD.value = model.authView;
       osDD.value = model.os;
+      applyIconPick();
       document.querySelectorAll('.switch[data-key]').forEach((sw) => sw.classList.toggle('on', !!model[sw.dataset.key]));
     }
 

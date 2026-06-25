@@ -9,3 +9,7 @@ Terminal=false
 Categories=Network;Security;
 Keywords=VPN;GlobalProtect;OpenConnect;PKCS11;
 StartupNotify=true
+# Window app-id / WM_CLASS the GUI advertises (the binary name). Lets the shell
+# map the window to this entry (icon/title) and lets tiling compositors target
+# it in a float rule.
+StartupWMClass=gpgui

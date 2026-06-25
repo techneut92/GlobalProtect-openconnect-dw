@@ -44,6 +44,12 @@ pub struct Config {
   pub local_hostname: String,
   pub os_version: String,
   pub client_version: String,
+  // ---- general (startup & tray) ----
+  /// Tray icon concept: "shield" or "ring".
+  pub tray_icon: String,
+  /// Launch the GUI at login (XDG autostart). Defaults on; the entry is created
+  /// on first run.
+  pub run_at_startup: bool,
 }
 
 impl Default for Config {
@@ -71,6 +77,8 @@ impl Default for Config {
       local_hostname: String::new(),
       os_version: String::new(),
       client_version: String::new(),
+      tray_icon: "shield".into(),
+      run_at_startup: true,
     }
   }
 }
