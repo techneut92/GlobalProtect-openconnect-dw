@@ -163,7 +163,29 @@ pub fn backend_version() -> Option<String> {
 }
 
 pub fn backend_installed() -> bool {
+  // In a Flatpak the host binary isn't visible in the sandbox, so probe the
+  // backend's system D-Bus name instead (that's also how we reach it).
+  if is_flatpak() {
+    return backend_dbus_available();
+  }
   Path::new(&crate::config::gpservice_binary()).exists()
+}
+
+/// Whether the backend's system D-Bus service is installed (activatable) or
+/// already running.
+fn backend_dbus_available() -> bool {
+  const SVC: &str = "io.github.techneut92.GPService";
+  let Ok(conn) = zbus::blocking::Connection::system() else { return false };
+  let Ok(proxy) = zbus::blocking::fdo::DBusProxy::new(&conn) else { return false };
+  if let Ok(names) = proxy.list_activatable_names() {
+    if names.iter().any(|n| n.as_str() == SVC) {
+      return true;
+    }
+  }
+  zbus::names::BusName::try_from(SVC)
+    .ok()
+    .and_then(|n| proxy.name_has_owner(n).ok())
+    .unwrap_or(false)
 }
 
 /// Compare dotted version strings numerically. Returns Ordering of `a` vs `b`.
