@@ -244,7 +244,7 @@
         const s = await invoke('system_info');
         $('aboutVer').textContent = 'v' + s.guiVersion;
         $('aboutOs').textContent = s.osName;
-        $('aboutKind').textContent = s.isFlatpak ? 'Flatpak' : s.installKind;
+        $('aboutKind').textContent = s.running + (s.running === 'Native package' ? ' (' + s.installKind + ')' : '');
         $('aboutBackend').innerHTML = !s.backendInstalled
           ? '<span style="color:var(--red)">not installed</span>'
           : (s.backendVersion ? 'v' + s.backendVersion : 'installed');

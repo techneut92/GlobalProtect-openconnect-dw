@@ -198,6 +198,9 @@ fn open_url(url: String) {
 struct SystemInfo {
   gui_version: String,
   os_name: String,
+  /// How the app is running (Source build / Native package / Flatpak).
+  running: String,
+  /// The OS package manager (used for install/update commands).
   install_kind: String,
   is_flatpak: bool,
   backend_installed: bool,
@@ -207,6 +210,8 @@ struct SystemInfo {
   compatible: bool,
   backend_install_cmd: Option<String>,
   backend_install_hint: String,
+  /// All install options, so the UI can offer a manual override.
+  install_options: Vec<system::InstallOption>,
 }
 
 #[tauri::command]
@@ -220,6 +225,7 @@ fn system_info() -> SystemInfo {
   SystemInfo {
     gui_version: system::GUI_VERSION.to_string(),
     os_name: system::os_pretty_name(),
+    running: system::run_mode().to_string(),
     install_kind: system::install_kind_str(kind).to_string(),
     is_flatpak: system::is_flatpak(),
     backend_installed: system::backend_installed(),
@@ -227,6 +233,7 @@ fn system_info() -> SystemInfo {
     compatible,
     backend_install_cmd: system::backend_install_command(kind),
     backend_install_hint: system::backend_install_hint(kind),
+    install_options: system::install_options(),
   }
 }
 
@@ -273,8 +280,8 @@ fn run_update(url: String) -> String {
 /// Best-effort install of the privileged backend via pkexec; the UI falls back
 /// to the OS-specific instructions when this can't run.
 #[tauri::command]
-fn install_backend() -> serde_json::Value {
-  let kind = system::detect();
+fn install_backend(kind: Option<String>) -> serde_json::Value {
+  let kind = kind.map(|s| system::kind_from_str(&s)).unwrap_or_else(system::detect);
   match system::backend_install_command(kind) {
     Some(cmd) => serde_json::json!({
       "launched": system::run_privileged(&cmd),

@@ -49,6 +49,29 @@ pub fn is_flatpak() -> bool {
   Path::new("/.flatpak-info").exists()
 }
 
+/// How *this* binary is running, independent of the OS package manager — so a
+/// source/dev build isn't mislabelled as "rpm-ostree" just because the OS is
+/// image-based. Used for the About display; install/update *commands* still use
+/// `detect()` (the OS package manager).
+pub fn run_mode() -> &'static str {
+  if is_flatpak() {
+    return "Flatpak";
+  }
+  if let Ok(exe) = std::env::current_exe() {
+    let p = exe.to_string_lossy();
+    if p.contains("/target/debug/") || p.contains("/target/release/") {
+      return "Source build";
+    }
+    if p.starts_with("/usr/") {
+      return "Native package";
+    }
+    if p.starts_with("/app/") {
+      return "Flatpak";
+    }
+  }
+  "Unknown"
+}
+
 /// Detect the packaging environment, preferring the most specific match.
 pub fn detect() -> InstallKind {
   if is_flatpak() {
@@ -158,10 +181,14 @@ pub async fn latest_release() -> Result<Release, String> {
     .header("Accept", "application/vnd.github+json")
     .send()
     .await
-    .map_err(|e| format!("network error: {e}"))?
-    .error_for_status()
-    .map_err(|e| format!("GitHub: {e}"))?;
-  let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    .map_err(|_| "couldn't reach the update server".to_string())?;
+  if resp.status() == reqwest::StatusCode::NOT_FOUND {
+    // GitHub returns 404 for private repos to anonymous callers, and also when
+    // there's no published release.
+    return Err("no public release found (is the repository public?)".into());
+  }
+  let resp = resp.error_for_status().map_err(|_| "the update server returned an error".to_string())?;
+  let json: serde_json::Value = resp.json().await.map_err(|_| "unexpected update response".to_string())?;
   Ok(Release {
     version: json["tag_name"].as_str().unwrap_or("").trim_start_matches('v').to_string(),
     url: json["html_url"].as_str().unwrap_or("").to_string(),
@@ -193,6 +220,63 @@ pub fn backend_install_command(kind: InstallKind) -> Option<String> {
     InstallKind::Zypper => Some(format!("zypper install {pkg}")),
     InstallKind::Flatpak | InstallKind::Unknown => None,
   }
+}
+
+pub fn kind_from_str(s: &str) -> InstallKind {
+  match s {
+    "rpm-ostree" => InstallKind::RpmOstree,
+    "dnf" => InstallKind::Dnf,
+    "apt" => InstallKind::Apt,
+    "pacman" => InstallKind::Pacman,
+    "apk" => InstallKind::Apk,
+    "zypper" => InstallKind::Zypper,
+    "flatpak" => InstallKind::Flatpak,
+    _ => InstallKind::Unknown,
+  }
+}
+
+fn kind_label(kind: InstallKind) -> &'static str {
+  match kind {
+    InstallKind::RpmOstree => "Atomic / image-based (rpm-ostree)",
+    InstallKind::Dnf => "Fedora / RHEL (dnf)",
+    InstallKind::Apt => "Debian / Ubuntu (apt)",
+    InstallKind::Pacman => "Arch (pacman)",
+    InstallKind::Apk => "Alpine (apk)",
+    InstallKind::Zypper => "openSUSE (zypper)",
+    InstallKind::Flatpak => "Flatpak",
+    InstallKind::Unknown => "Other",
+  }
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallOption {
+  pub kind: String,
+  pub label: String,
+  pub command: Option<String>,
+  pub hint: String,
+}
+
+/// All backend-install options, so the UI can offer a manual override when the
+/// auto-detection is wrong. Flatpak is excluded — the backend is always a host
+/// package (it needs root + host networking).
+pub fn install_options() -> Vec<InstallOption> {
+  [
+    InstallKind::RpmOstree,
+    InstallKind::Dnf,
+    InstallKind::Apt,
+    InstallKind::Pacman,
+    InstallKind::Apk,
+    InstallKind::Zypper,
+  ]
+  .iter()
+  .map(|&k| InstallOption {
+    kind: k.as_str().to_string(),
+    label: kind_label(k).to_string(),
+    command: backend_install_command(k),
+    hint: backend_install_hint(k),
+  })
+  .collect()
 }
 
 /// Human-friendly note about installing the backend on this OS.
