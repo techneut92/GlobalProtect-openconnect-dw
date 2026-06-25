@@ -31,7 +31,16 @@
   instructions fitting your OS (Flatpak / dnf / rpm-ostree / apt / …) and a
   best-effort install button.
 - GUI: **Flatpak** build-ready — manifest with the right permissions (network,
-  keyring, tray, host commands, autostart) and a build script.
+  keyring, tray, host commands, autostart) and a build script — built and
+  verified end-to-end, including the system-tray icon.
+- GUI: redesigned **backend-install screen** — clear, copyable install commands
+  for your distro plus a one-click **Install** button that actually reports
+  whether it worked.
+- GUI: **"Unlock automatically"** opt-in when creating your vault (stores the PIN
+  in your keyring), and the **About** page now shows your real OS and, under
+  Flatpak, the runtime it's running on.
+- GUI: the create/unlock screens are centered, and Manage-identities / Settings
+  only show once the vault is open.
 
 > Fork (`globalprotect-openconnect-dw`) entries are versioned independently from
 > upstream's releases below.
