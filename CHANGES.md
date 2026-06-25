@@ -93,3 +93,37 @@ Reworked the native packaging so it builds entirely from source in this fork:
 - Set the fork version to **1.0.0** and added a tag-driven CI release that builds
   all native packages and publishes a GitHub release.
 - The Flatpak manifest targets the GNOME 50 runtime.
+
+## 2026-06-25 — GUI tray redesign, status icons, and startup options
+
+User-facing improvements to the `apps/gpgui` tray client:
+
+- **Redesigned, state-aware tray icon.** Replaced the generic themed `network-*`
+  icons with a branded mark rendered to an ARGB pixmap (so it looks identical
+  across KDE, COSMIC and GNOME). Two selectable concepts — **Shield** and
+  **Signal ring** — each with three colour-coded states (grey = disconnected,
+  amber = connecting, green = connected). The **connecting** state is animated by
+  swapping frames on a timer (SNI hosts don't play GIFs); `Error` reuses the
+  disconnected icon. New assets under `apps/gpgui/icons/tray/`; `tray.rs` decodes
+  the PNGs to ARGB via the new `png` dependency.
+- **Close-to-tray.** The window's X button hides to the tray and keeps the app
+  (tunnel, notifications, tray) running, falling back to a real quit when no tray
+  host is present. Left-clicking the tray icon re-opens the window; the
+  right-click menu has Open / Disconnect / Quit, and **Quit** tears down the
+  tunnel before exiting.
+- **Run at system startup** (new; default on). An XDG autostart entry
+  (`~/.config/autostart/gpgui.desktop`, launched `--hidden` straight to the tray)
+  is reconciled to the preference on every launch and toggled from settings. New
+  file: `apps/gpgui/src/autostart.rs`.
+- **New "General" settings tab** holding the startup toggle and the tray-icon
+  picker; `config.json` gains `tray_icon` and `run_at_startup`.
+- **New application icon** — a shield-and-globe brand mark (`icons/icon.svg` plus
+  regenerated PNG/ICO).
+- **Auto-tiling window managers.** The main window is marked as a dialog
+  (`_NET_WM_WINDOW_TYPE_DIALOG`, via a new `gtk` Linux dependency) so X11 tilers
+  (Pop Shell on Xorg, i3) float it; `StartupWMClass=gpgui` was added for the
+  window↔desktop association. Wayland tilers (COSMIC) cannot be floated by the
+  app — there it needs a compositor float rule on app-id `gpgui`.
+- **Dropdown popovers** use square corners: webkitgtk doesn't clip
+  `overflow:auto` content to a `border-radius`, which made the rounded corners
+  render glitchy.

@@ -217,8 +217,10 @@ footer .log { min-height: 15px; font-size: 11.5px; color: var(--faint); text-ali
 .dd-trigger.active .dd-chev { transform: rotate(180deg); }
 
 .dd-menu {
+  /* Square corners: webkitgtk doesn't clip the scrollable (overflow-y:auto)
+     content to a border-radius, so rounded corners render glitchy here. */
   position: fixed; z-index: 99999; background: #151b29; border: 1px solid rgba(255,255,255,.1);
-  border-radius: 12px; padding: 5px; max-height: 260px; overflow-y: auto;
+  border-radius: 0; padding: 5px; max-height: 260px; overflow-y: auto;
   box-shadow: 0 18px 50px -12px rgba(0,0,0,.75), 0 0 0 1px rgba(0,0,0,.4);
 }
 .dd-opt {
@@ -232,6 +234,20 @@ footer .log { min-height: 15px; font-size: 11.5px; color: var(--faint); text-ali
 .dd-opt-l { font-size: 13px; color: #eaedf6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dd-opt-s { font-size: 11px; color: #737a90; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dd-opt .dd-check { flex: 0 0 auto; color: var(--accent); }
+
+/* ───────── tray-icon card picker ───────── */
+.icon-pick { display: flex; gap: 10px; }
+.icon-card {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 14px 10px 11px; background: var(--field); color: var(--muted);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer;
+  font-family: inherit; transition: border-color .12s, background .12s, color .12s;
+}
+.icon-card:hover { background: #222a3d; }
+.icon-card .previews { display: flex; gap: 9px; align-items: center; }
+.icon-card .nm { font-size: 12.5px; color: var(--text-soft); }
+.icon-card.active { border-color: rgba(84,168,255,.6); background: rgba(84,168,255,.08); box-shadow: 0 0 0 3px rgba(84,168,255,.12); }
+.icon-card.active .nm { color: var(--text); }
 
 /* ───────── settings window ───────── */
 body.settings { background: var(--bg-grad); }

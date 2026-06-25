@@ -35,6 +35,8 @@ argon2 = "0.5"
 ksni = { version = "0.3.5", default-features = false, features = ["blocking", "async-io"] }
 # Desktop notifications on connect/disconnect (D-Bus).
 notify-rust = "4"
+# Decode the bundled app icon into an ARGB tray pixmap (status-tinted logo).
+png = "0.17"
 pollster = "0.4"
 # Native file picker via xdg-desktop-portal (no GTK).
 rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "async-std"] }
@@ -43,3 +45,9 @@ tokio-tungstenite = "0.29"
 zbus = "5"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# GTK (the toolkit Tauri uses on Linux) — to set the X11 window-type hint so
+# auto-tiling WMs (Pop Shell, i3, …) float the fixed-size window. Version must
+# match Tauri's gtk; it is already in the tree, so this pulls nothing new.
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"

@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.1.0 - 2026-06-25 (fork)
+
+- GUI: redesigned tray icon with colour-coded connection states (disconnected /
+  connecting / connected) and an animated connecting state; choose a **Shield**
+  or **Signal ring** style in Settings → General.
+- GUI: closing the window now minimises to the tray and keeps the VPN running —
+  left-click the tray icon to reopen, right-click for Open / Disconnect / Quit
+  (Quit also disconnects).
+- GUI: new **Run at system startup** option (on by default), launching hidden to
+  the tray at login.
+- GUI: new application icon (shield-and-globe mark).
+- GUI: mark the window so tiling window managers (Pop Shell / i3) float it
+  instead of tiling; square dropdown corners to fix a webkit rendering glitch.
+
+> Fork (`globalprotect-openconnect-dw`) entries are versioned independently from
+> upstream's releases below.
+
 ## 2.5.4 - 2026-05-08
 
 - Add Alpine/musl gpgui release assets for x86_64 and aarch64.
