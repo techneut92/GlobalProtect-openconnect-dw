@@ -176,6 +176,8 @@ pub async fn build_connect_request(p: &AuthParams) -> Result<ConnectRequest> {
     match &prelogin {
       Prelogin::Saml(saml) => {
         SamlAuthLauncher::new(&p.server)
+          // gpauth is bundled at /app/bin under Flatpak; the default is /usr/bin.
+          .auth_executable(crate::system::is_flatpak().then_some("/app/bin/gpauth"))
           .gateway(true)
           .saml_request(saml.saml_request())
           .user_agent(&p.user_agent)
