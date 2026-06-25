@@ -7,14 +7,21 @@ use std::path::PathBuf;
 const ENTRY_NAME: &str = "gpgui.desktop";
 /// Installed launcher; preferred so the autostart entry survives `cargo` rebuilds.
 const INSTALLED_BIN: &str = "/usr/bin/gpgui";
+const FLATPAK_ID: &str = "io.github.techneut92.gpgui";
 
 fn autostart_path() -> Option<PathBuf> {
-  directories::BaseDirs::new().map(|d| d.config_dir().join("autostart").join(ENTRY_NAME))
+  // The desktop autostart dir is read by the host session, so it must be the host
+  // `~/.config/autostart` even under Flatpak.
+  crate::system::host_config_dir().map(|d| d.join("autostart").join(ENTRY_NAME))
 }
 
-/// The command the autostart entry runs. Uses the installed binary if present,
-/// else the current executable (dev builds).
+/// The command the autostart entry runs: `flatpak run …` under Flatpak (the host
+/// session can't exec the sandbox binary), the installed binary if present, else
+/// the current executable (dev builds).
 fn exec_line() -> String {
+  if crate::system::is_flatpak() {
+    return format!("flatpak run {FLATPAK_ID} --hidden");
+  }
   let bin = if std::path::Path::new(INSTALLED_BIN).exists() {
     INSTALLED_BIN.to_string()
   } else {

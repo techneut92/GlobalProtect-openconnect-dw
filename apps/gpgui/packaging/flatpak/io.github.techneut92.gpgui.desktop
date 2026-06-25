@@ -9,3 +9,4 @@ Terminal=false
 Categories=Network;Security;
 Keywords=VPN;GlobalProtect;OpenConnect;PKCS11;
 StartupNotify=true
+StartupWMClass=io.github.techneut92.gpgui

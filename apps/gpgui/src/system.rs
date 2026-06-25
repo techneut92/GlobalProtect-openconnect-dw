@@ -116,6 +116,18 @@ pub fn os_pretty_name() -> String {
   os_release().get("PRETTY_NAME").cloned().unwrap_or_else(|| "Linux".into())
 }
 
+/// The **host** `~/.config` directory for files consumed by host services
+/// (autostart entries, the Pop Shell float-rule). In Flatpak, `XDG_CONFIG_HOME`
+/// points at the sandbox, so the app's own config goes there — but those two
+/// files must reach the real `~/.config` (exposed via `--filesystem=xdg-config/…`).
+pub fn host_config_dir() -> Option<std::path::PathBuf> {
+  if is_flatpak() {
+    std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".config"))
+  } else {
+    directories::BaseDirs::new().map(|d| d.config_dir().to_path_buf())
+  }
+}
+
 /// Run `<bin> --version` and pull the first `x.y.z`-looking token out of stdout.
 fn binary_version(bin: &str) -> Option<String> {
   let out = Command::new(bin).arg("--version").output().ok()?;
