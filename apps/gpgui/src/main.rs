@@ -20,6 +20,7 @@ mod pkcs11;
 mod proto;
 mod secrets;
 mod state;
+mod system;
 mod tiling;
 mod transport;
 mod tray;
@@ -185,11 +186,102 @@ fn disconnect(state: State<AppState>) {
   let _ = state.cmd_tx.send(UiCommand::Disconnect);
 }
 
-/// Open an http(s) URL in the user's browser (used by the Ko-fi link).
+/// Open an http(s) URL in the user's browser (used by the Ko-fi / About links).
 #[tauri::command]
 fn open_url(url: String) {
-  if url.starts_with("https://") || url.starts_with("http://") {
-    let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
+  system::open_url(&url);
+}
+
+/// App / OS / backend status for the About and "backend missing" screens.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SystemInfo {
+  gui_version: String,
+  os_name: String,
+  install_kind: String,
+  is_flatpak: bool,
+  backend_installed: bool,
+  backend_version: Option<String>,
+  /// True when the backend version matches the GUI (or the backend isn't
+  /// installed yet — that case is reported via `backend_installed`).
+  compatible: bool,
+  backend_install_cmd: Option<String>,
+  backend_install_hint: String,
+}
+
+#[tauri::command]
+fn system_info() -> SystemInfo {
+  let kind = system::detect();
+  let backend_version = system::backend_version();
+  let compatible = match &backend_version {
+    Some(v) => system::version_cmp(v, system::GUI_VERSION) == std::cmp::Ordering::Equal,
+    None => true,
+  };
+  SystemInfo {
+    gui_version: system::GUI_VERSION.to_string(),
+    os_name: system::os_pretty_name(),
+    install_kind: system::install_kind_str(kind).to_string(),
+    is_flatpak: system::is_flatpak(),
+    backend_installed: system::backend_installed(),
+    backend_version,
+    compatible,
+    backend_install_cmd: system::backend_install_command(kind),
+    backend_install_hint: system::backend_install_hint(kind),
+  }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateInfo {
+  current: String,
+  latest: String,
+  available: bool,
+  url: String,
+  error: Option<String>,
+}
+
+/// Check the GitHub Releases API for a newer fork version (covers both the GUI
+/// and the backend — they ship from the same release).
+#[tauri::command]
+async fn check_update() -> UpdateInfo {
+  let current = system::GUI_VERSION.to_string();
+  let repo_url = "https://github.com/techneut92/GlobalProtect-openconnect-dw/releases".to_string();
+  match system::latest_release().await {
+    Ok(r) => UpdateInfo {
+      available: system::version_cmp(&r.version, &current) == std::cmp::Ordering::Greater,
+      current,
+      latest: r.version,
+      url: if r.url.is_empty() { repo_url } else { r.url },
+      error: None,
+    },
+    Err(e) => UpdateInfo { current, latest: String::new(), available: false, url: repo_url, error: Some(e) },
+  }
+}
+
+/// Update action: `flatpak update` on Flatpak, otherwise open the release page
+/// (the native builds have no package repo to upgrade from yet).
+#[tauri::command]
+fn run_update(url: String) -> String {
+  if system::is_flatpak() && system::run_flatpak_update() {
+    "Running flatpak update — reopen the app when it finishes.".into()
+  } else {
+    system::open_url(&url);
+    "Opened the release page in your browser.".into()
+  }
+}
+
+/// Best-effort install of the privileged backend via pkexec; the UI falls back
+/// to the OS-specific instructions when this can't run.
+#[tauri::command]
+fn install_backend() -> serde_json::Value {
+  let kind = system::detect();
+  match system::backend_install_command(kind) {
+    Some(cmd) => serde_json::json!({
+      "launched": system::run_privileged(&cmd),
+      "command": cmd,
+      "hint": system::backend_install_hint(kind),
+    }),
+    None => serde_json::json!({ "launched": false, "command": null, "hint": system::backend_install_hint(kind) }),
   }
 }
 
@@ -553,6 +645,10 @@ fn main() {
       connect,
       disconnect,
       open_url,
+      system_info,
+      check_update,
+      run_update,
+      install_backend,
       open_settings,
       save_settings,
       probe_auth,

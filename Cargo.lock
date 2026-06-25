@@ -2190,6 +2190,7 @@ dependencies = [
  "notify-rust",
  "png 0.17.16",
  "pollster",
+ "reqwest 0.12.28",
  "rfd",
  "serde",
  "serde_json",

@@ -75,8 +75,24 @@
       </div>
     </div>
 
+    <!-- ============ BACKEND MISSING (privileged service not installed) ============ -->
+    <div class="view center" id="backendView">
+      <div class="stack vault">
+        <div class="vault-badge warn">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="9" rx="2"/><path d="M7 20h10M9 16v4M15 16v4"/><circle cx="7.5" cy="8.5" r="1"/></svg>
+        </div>
+        <h2 class="h2">Backend service required</h2>
+        <p class="sub" id="backendDesc">GlobalProtect needs its privileged service installed to bring up the VPN tunnel.</p>
+        <div class="install-hint" id="backendHint"></div>
+        <div class="actions" style="width:100%"><button class="btn-action" id="installBackendBtn">Install backend</button></div>
+        <p class="formlog" id="backendLog"></p>
+        <button class="link" id="backendRecheck" style="margin-top:4px;">Re-check</button>
+      </div>
+    </div>
+
     <!-- ============ UNLOCKED (orb + content; action button lives in the footer) ============ -->
     <div class="view" id="unlockedView">
+      <div class="topbanner" id="topBanner" hidden></div>
       <div class="hero">
         <div class="orb-wrap" id="orb">
           <div class="orb-glow"></div>
@@ -179,9 +195,60 @@
 
     // ───────── view switching ─────────
     function show(view) {
-      ['setupView', 'lockView', 'unlockedView'].forEach((v) => $(v).classList.toggle('show', v === view));
+      ['setupView', 'lockView', 'unlockedView', 'backendView'].forEach((v) => $(v).classList.toggle('show', v === view));
       $('appFooter').hidden = view !== 'unlockedView';
     }
+
+    // ───────── backend presence + version banners ─────────
+    let sysInfo = null;
+    async function checkBackend() {
+      if (!hasTauri) return true;
+      try {
+        sysInfo = await invoke('system_info');
+        if (!sysInfo.backendInstalled) {
+          $('backendDesc').textContent = 'GlobalProtect needs its privileged service installed on ' + sysInfo.osName + ' to bring up the VPN tunnel.';
+          $('backendHint').textContent = sysInfo.backendInstallHint || '';
+          show('backendView');
+          return false;
+        }
+        return true;
+      } catch (e) { return true; }
+    }
+    function setBanner(html, kind, onClick) {
+      const b = $('topBanner');
+      if (!html) { b.hidden = true; b.innerHTML = ''; return; }
+      b.hidden = false; b.className = 'topbanner ' + (kind || '');
+      b.innerHTML = html;
+      const btn = b.querySelector('button');
+      if (btn && onClick) btn.onclick = onClick;
+    }
+    async function refreshBanners() {
+      if (!hasTauri) return;
+      if (sysInfo && sysInfo.backendInstalled && !sysInfo.compatible) {
+        setBanner('<span>App v' + sysInfo.guiVersion + ' and backend v' + (sysInfo.backendVersion || '?') + " don't match — update both.</span>", 'warn');
+        return;
+      }
+      try {
+        const u = await invoke('check_update');
+        if (u.available) {
+          setBanner('<span>Update available — v' + u.latest + '</span><button class="banner-btn">Update</button>', 'info',
+            async () => { try { setBanner('<span>Starting update…</span>', 'info'); $('topBanner').textContent = await invoke('run_update', { url: u.url }); } catch (e) {} });
+          return;
+        }
+      } catch (e) {}
+      setBanner('');
+    }
+    $('installBackendBtn').onclick = async () => {
+      setLog('backendLog', 'Requesting install…');
+      try {
+        const r = await invoke('install_backend');
+        if (r.launched) setLog('backendLog', 'Installer launched — re-check once it finishes.');
+        else setLog('backendLog', r.hint || 'Install the backend package, then re-check.', true);
+      } catch (e) { setLog('backendLog', '' + e, true); }
+    };
+    $('backendRecheck').onclick = async () => {
+      if (await checkBackend()) { setLog('backendLog', ''); await bootVault(); refreshBanners(); }
+    };
 
     // ───────── rich identity picker ─────────
     const CHEV = '<svg class="dd-chev" width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="#8a91a8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1.5l5 5 5-5"/></svg>';
@@ -375,15 +442,20 @@
 
     // ───────── init ─────────
     picker = createIdentityPicker($('identityDD'));
+    async function bootVault() {
+      const vs = await invoke('vault_status');
+      if (!vs.exists) show('setupView');
+      else if (!vs.unlocked) show('lockView');
+      else await unlocked();
+    }
     (async function init() {
       if (hasTauri) {
-        const vs = await invoke('vault_status');
-        if (!vs.exists) show('setupView');
-        else if (!vs.unlocked) show('lockView');
-        else await unlocked();
+        if (!(await checkBackend())) return;  // backend missing → install screen, stop here
+        await bootVault();
         render(await invoke('get_state'));
         await TAURI.event.listen('state', (e) => render(e.payload));
         await TAURI.event.listen('identities-changed', async () => { try { identities = await invoke('list_identities'); } catch (e) {} renderIdentityUI(); });
+        refreshBanners();  // version-mismatch / update-available banner (non-blocking)
       } else {
         // demo: start locked to show the vault unlock, any PIN unlocks
         show('lockView');
