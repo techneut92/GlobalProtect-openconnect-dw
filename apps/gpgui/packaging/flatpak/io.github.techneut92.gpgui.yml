@@ -59,6 +59,9 @@ modules:
       - --disable-libudev
       - --disable-polkit
       - --enable-confdir=/app/etc
+    # Ship the BSD-3-Clause license text with the bundled binary.
+    post-install:
+      - install -Dm644 COPYING /app/share/licenses/pcsc-lite/COPYING
     sources:
       - type: archive
         url: https://pcsclite.apdu.fr/files/pcsc-lite-2.0.3.tar.bz2
@@ -76,6 +79,9 @@ modules:
     # into the app prefix.
     make-install-args:
       - completiondir=/app/share/bash-completion/completions
+    # Ship the LGPL-2.1+ license text with the bundled module.
+    post-install:
+      - install -Dm644 COPYING /app/share/licenses/opensc/COPYING
     sources:
       - type: archive
         url: https://github.com/OpenSC/OpenSC/releases/download/0.26.0/opensc-0.26.0.tar.gz
@@ -99,6 +105,8 @@ modules:
       - install -Dm644 apps/gpgui/packaging/flatpak/io.github.techneut92.gpgui.desktop /app/share/applications/io.github.techneut92.gpgui.desktop
       - install -Dm644 apps/gpgui/packaging/flatpak/io.github.techneut92.gpgui.metainfo.xml /app/share/metainfo/io.github.techneut92.gpgui.metainfo.xml
       - install -Dm644 apps/gpgui/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.techneut92.gpgui.png
+      # GPL-3.0 license text for this app (a fork of yuezk/GlobalProtect-openconnect).
+      - install -Dm644 LICENSE /app/share/licenses/io.github.techneut92.gpgui/COPYING
     sources:
       - type: dir
         # Repo root (four levels up from this manifest). Skip heavy/irrelevant

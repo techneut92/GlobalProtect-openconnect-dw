@@ -206,3 +206,46 @@ Made the GUI Flatpak build-ready (`apps/gpgui/packaging/flatpak/`):
   SDK, vendors the cargo registry to `cargo-sources.json`, runs flatpak-builder),
   and committed the generated `cargo-sources.json`. The backend stays a host
   package — the in-app "backend not installed" screen handles that.
+
+## 2026-06-26 — GUI: backend-install UX, auto-unlock, Flatpak build & polish
+
+Built and verified the Flatpak end-to-end (GNOME 50 SDK) and reworked the
+backend-install flow:
+
+- **Backend-install screen** is now a terminal-style card of numbered,
+  individually-copyable install steps (per the new design) with the real release
+  asset name / arch / version supplied by the backend, a System-type override
+  dropdown, "Copy all commands", and a one-click **Install** button that runs the
+  real download+install via a single `pkexec` prompt and **waits for the result**
+  (honest success/failure — no optimistic "Installing…"). The fork ships via
+  GitHub Releases, so dnf/pacman/zypper install straight from the asset URL while
+  rpm-ostree/apt/apk download first.
+- **Backend presence** is detected over the system **D-Bus** name inside Flatpak
+  (the host `gpservice` binary isn't visible in the sandbox).
+- **Create-vault** gains an opt-in **"Unlock automatically"** toggle (default off,
+  disabled when no keyring) that stores the master PIN in the desktop secret
+  store; new `keyring_available` / `set_remember_unlock` commands.
+- **About** shows the real **host OS** (`/run/host/os-release` under Flatpak), a
+  separate **Flatpak runtime** row, and the baked-in build kind (`GP_BUILD_KIND`).
+- **Tray** registers under the unique D-Bus connection name in Flatpak
+  (`ksni` `disable_dbus_name`) — owning `StatusNotifierItem-PID-ID` isn't allowed
+  in the sandbox.
+- **Layout**: vault setup/unlock screens vertically center; Manage-identities and
+  Settings are hidden until the vault is open.
+- **Flatpak build fixes**: rust-stable extension `//25.08` (GNOME 50's
+  freedesktop base), opensc built with `-Wno-error` (GCC 14) and bash-completions
+  redirected into `/app`, GUI source path corrected to the repo root.
+- All Rust build warnings resolved.
+
+### Third-party components
+
+This program is GPL-3.0-or-later, a fork of
+[yuezk/GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnect)
+(GPL-3.0). The Flatpak additionally bundles, built from upstream source by the
+manifest (both GPL-compatible):
+
+- **pcsc-lite** — BSD-3-Clause — <https://pcsclite.apdu.fr/>
+- **OpenSC** — LGPL-2.1-or-later — <https://github.com/OpenSC/OpenSC>
+
+Rust dependencies are MIT/Apache-2.0 (e.g. `reqwest`, `keyring`, `ksni`, `zbus`,
+`png`, `gtk`), all compatible with GPL-3.0.
