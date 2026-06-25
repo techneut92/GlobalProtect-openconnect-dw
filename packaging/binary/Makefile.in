@@ -8,7 +8,7 @@ install:
 	# Optional: OUR GUI, only present for an INCLUDE_GUI=1 build.
 	if [ -f artifacts/usr/bin/gpgui ]; then \
 		install -Dm755 artifacts/usr/bin/gpgui $(DESTDIR)/usr/bin/gpgui; \
-		install -Dm644 artifacts/usr/share/applications/gpgui.desktop $(DESTDIR)/usr/share/applications/gpgui.desktop; \
+		install -Dm644 artifacts/usr/share/applications/io.github.techneut92.gpgui.desktop $(DESTDIR)/usr/share/applications/io.github.techneut92.gpgui.desktop; \
 		install -Dm644 artifacts/usr/share/icons/hicolor/128x128/apps/gpgui.png $(DESTDIR)/usr/share/icons/hicolor/128x128/apps/gpgui.png; \
 	fi
 
@@ -44,5 +44,5 @@ uninstall:
 	rm -f $(DESTDIR)/usr/share/polkit-1/rules.d/49-gpservice.rules
 	rm -f $(DESTDIR)/usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy
 
-	rm -f $(DESTDIR)/usr/share/applications/gpgui.desktop
+	rm -f $(DESTDIR)/usr/share/applications/io.github.techneut92.gpgui.desktop
 	rm -f $(DESTDIR)/usr/share/icons/hicolor/128x128/apps/gpgui.png

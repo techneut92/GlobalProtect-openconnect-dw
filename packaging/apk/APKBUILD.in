@@ -72,7 +72,7 @@ gui() {
 
 	cd "$builddir"
 	install -Dm755 target/release/gpgui "$subpkgdir/usr/bin/gpgui"
-	install -Dm644 apps/gpgui/packaging/gpgui.desktop "$subpkgdir/usr/share/applications/gpgui.desktop"
+	install -Dm644 apps/gpgui/packaging/io.github.techneut92.gpgui.desktop "$subpkgdir/usr/share/applications/io.github.techneut92.gpgui.desktop"
 	install -Dm644 apps/gpgui/icons/128x128.png "$subpkgdir/usr/share/icons/hicolor/128x128/apps/gpgui.png"
 }
 
