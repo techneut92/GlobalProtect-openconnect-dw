@@ -340,11 +340,16 @@
       const btn = $('bkInstall');
       btn.disabled = true; $('bkInstallLabel').textContent = 'Installing…';
       setBkStatus('A password prompt should appear — approve it to continue.', '');
+      // pkexec approval isn't observable mid-command, so once the prompt has had
+      // time to be approved, reflect that the install is running (rpm-ostree
+      // layering can take a few minutes) instead of leaving the prompt message.
+      const progressing = setTimeout(() => setBkStatus('Installing the backend… this can take a few minutes — please wait.', ''), 4000);
       try {
         const r = await invoke('install_backend', { kind: bkKind });
+        clearTimeout(progressing);
         if (r.ok) setBkStatus(r.needsReboot ? 'Installed — reboot to finish, then Re-check.' : 'Installed — click Re-check to continue.', 'ok');
         else setBkStatus(r.message || 'Install failed — try the manual steps below.', 'err');
-      } catch (e) { setBkStatus('' + e, 'err'); }
+      } catch (e) { clearTimeout(progressing); setBkStatus('' + e, 'err'); }
       btn.disabled = false; $('bkInstallLabel').textContent = 'Install backend';
     };
     $('copyAll').onclick = () => {
