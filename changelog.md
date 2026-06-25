@@ -1,6 +1,10 @@
 # Changelog
 
-## 1.1.0 - 2026-06-25 (fork)
+## 1.0.0 - 2026-06-26 (fork)
+
+First release of the fork as **GP Client** — a GlobalProtect-compatible VPN
+client with smart-card / PKCS#11 (YubiKey PIV) authentication.
+
 
 - GUI: redesigned tray icon with colour-coded connection states (disconnected /
   connecting / connected) and an animated connecting state; choose a **Shield**
