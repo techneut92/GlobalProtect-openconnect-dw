@@ -44,6 +44,6 @@ package_globalprotect-openconnect-dw-gui() {
 
   cd "$_pkgname-$pkgver"
   install -Dm755 target/release/gpgui "$pkgdir/usr/bin/gpgui"
-  install -Dm644 apps/gpgui/packaging/gpgui.desktop "$pkgdir/usr/share/applications/gpgui.desktop"
+  install -Dm644 apps/gpgui/packaging/io.github.techneut92.gpgui.desktop "$pkgdir/usr/share/applications/io.github.techneut92.gpgui.desktop"
   install -Dm644 apps/gpgui/icons/128x128.png "$pkgdir/usr/share/icons/hicolor/128x128/apps/gpgui.png"
 }

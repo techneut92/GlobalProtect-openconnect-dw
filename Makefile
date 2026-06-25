@@ -120,7 +120,7 @@ install:
 	# Optional: install OUR Tauri GUI (built from source) for a native+GUI package.
 	if [ $(INCLUDE_GUI) -eq 1 ]; then \
 		install -Dm755 target/release/gpgui $(DESTDIR)/usr/bin/gpgui; \
-		install -Dm644 apps/gpgui/packaging/gpgui.desktop $(DESTDIR)/usr/share/applications/gpgui.desktop; \
+		install -Dm644 apps/gpgui/packaging/io.github.techneut92.gpgui.desktop $(DESTDIR)/usr/share/applications/io.github.techneut92.gpgui.desktop; \
 		install -Dm644 apps/gpgui/icons/128x128.png $(DESTDIR)/usr/share/icons/hicolor/128x128/apps/gpgui.png; \
 	fi
 
@@ -145,7 +145,7 @@ uninstall:
 
 	# Optional GUI (native+GUI package)
 	rm -f $(DESTDIR)/usr/bin/gpgui
-	rm -f $(DESTDIR)/usr/share/applications/gpgui.desktop
+	rm -f $(DESTDIR)/usr/share/applications/io.github.techneut92.gpgui.desktop
 	rm -f $(DESTDIR)/usr/share/icons/hicolor/128x128/apps/gpgui.png
 
 clean-debian:

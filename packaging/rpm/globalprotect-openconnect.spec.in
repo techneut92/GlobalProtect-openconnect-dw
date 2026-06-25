@@ -113,7 +113,7 @@ make build INCLUDE_GUI=1
 %files gui
 %defattr(-,root,root)
 %{_bindir}/gpgui
-%{_datadir}/applications/gpgui.desktop
+%{_datadir}/applications/io.github.techneut92.gpgui.desktop
 %{_datadir}/icons/hicolor/128x128/apps/gpgui.png
 
 %changelog
