@@ -127,3 +127,40 @@ User-facing improvements to the `apps/gpgui` tray client:
 - **Dropdown popovers** use square corners: webkitgtk doesn't clip
   `overflow:auto` content to a `border-radius`, which made the rounded corners
   render glitchy.
+
+## 2026-06-25 — GUI: connect-from-tray, keyring unlock, window redesign
+
+A second pass over the `apps/gpgui` client:
+
+- **"Connect with ▸" tray submenu** lists the unlocked vault identities; choosing
+  one starts a connection via the same path as the window's connect button
+  (`tray.rs` gains a `Vault` handle; the connect logic was factored into
+  `start_connect`). The tray menu is rebuilt whenever the vault locks/unlocks or
+  identities change (`refresh_tray`). When the connecting animation ends, the
+  animator forces a few spaced, hash-changing repaints so the SNI host reliably
+  drops the spinner frame and shows the final static icon.
+- **Keyring unlock (opt-in).** A "Remember unlock" toggle stores the master PIN
+  in the desktop secret store via the freedesktop **Secret Service** API
+  (GNOME Keyring / KDE KWallet / COSMIC) and auto-unlocks on launch; any
+  miss/lock/corruption falls back to the PIN prompt. New file
+  `apps/gpgui/src/secrets.rs`; new `keyring` dependency; `config.json` gains
+  `remember_unlock`.
+- **Forgotten-PIN reset.** The unlock screen offers a guarded reset that deletes
+  the encrypted vault (and any stored keyring PIN) and returns to first-run
+  setup — saved identities are unrecoverable, so it warns first. New
+  `reset_vault` command + `Vault::reset`.
+- **Start minimized** option (`config.json` `start_minimized`): open hidden to
+  the tray on any launch, not just login autostart.
+- **Reverse-DNS app-id.** Enabled Tauri `enableGTKAppId`, so the window's
+  Wayland app-id / X11 WM_CLASS is the identifier `io.github.techneut92.gpgui`;
+  the GUI desktop entry was renamed to match and all packaging references
+  updated. Auto-tiling shells that read a per-app float list (Pop Shell) are now
+  registered on startup via `apps/gpgui/src/tiling.rs`; the X11 dialog hint is
+  gated to X11 sessions so Wayland keeps the normal window type.
+- **Redesigned main window** (460×812): the connect/disconnect control moved to a
+  fixed footer action button (Connect → Cancel → Disconnect → Try again) with the
+  status line beneath the title; added a **Ko-fi** button (titlebar) and a
+  **Support** tab + Ko-fi card in settings, opening the link via a new `open_url`
+  command. Errors now surface the real reason (full anyhow context, e.g. "single
+  sign-on was cancelled or failed") in red and never leave a stale
+  "Authenticating…" line. `.github/FUNDING.yml` adds Ko-fi.

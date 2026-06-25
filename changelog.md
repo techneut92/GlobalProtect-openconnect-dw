@@ -13,6 +13,17 @@
 - GUI: new application icon (shield-and-globe mark).
 - GUI: mark the window so tiling window managers (Pop Shell / i3) float it
   instead of tiling; square dropdown corners to fix a webkit rendering glitch.
+- GUI: **Connect with…** submenu in the tray to start a connection with any saved
+  identity directly; the tray icon reliably resets after connecting/errors.
+- GUI: optional **Remember unlock** — store the master PIN in your keyring
+  (GNOME Keyring / KWallet / COSMIC) and auto-unlock on launch.
+- GUI: **Start minimized** option, and a **Forgot your PIN?** reset on the unlock
+  screen (deletes saved identities, with a warning).
+- GUI: redesigned main window (taller, footer Connect/Disconnect button), a
+  **Support / Ko-fi** option, and clearer connection errors (the real reason is
+  shown instead of a generic message).
+- GUI: float reliably in tiling shells by registering an app float rule, and use
+  a reverse-DNS app-id (`io.github.techneut92.gpgui`).
 
 > Fork (`globalprotect-openconnect-dw`) entries are versioned independently from
 > upstream's releases below.
