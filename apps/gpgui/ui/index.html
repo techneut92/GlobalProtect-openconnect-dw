@@ -83,6 +83,8 @@
         </div>
         <h2 class="h2">Backend service required</h2>
         <p class="sub" id="backendDesc">GlobalProtect needs its privileged service installed to bring up the VPN tunnel.</p>
+        <div class="lbl" style="align-self:flex-start;">System type <span style="color:var(--hint);font-weight:500;text-transform:none;letter-spacing:0;">— change if wrong</span></div>
+        <div id="backendKindDD" style="width:100%;" class="mb14"></div>
         <div class="install-hint" id="backendHint"></div>
         <div class="actions" style="width:100%"><button class="btn-action" id="installBackendBtn">Install backend</button></div>
         <p class="formlog" id="backendLog"></p>
@@ -200,14 +202,27 @@
     }
 
     // ───────── backend presence + version banners ─────────
-    let sysInfo = null;
+    let sysInfo = null, backendKind = null, backendPicker = null;
+    function applyBackendHint() {
+      const o = (sysInfo.installOptions || []).find((x) => x.kind === backendKind);
+      $('backendHint').textContent = o ? o.hint : (sysInfo.backendInstallHint || '');
+    }
     async function checkBackend() {
       if (!hasTauri) return true;
       try {
         sysInfo = await invoke('system_info');
         if (!sysInfo.backendInstalled) {
           $('backendDesc').textContent = 'GlobalProtect needs its privileged service installed on ' + sysInfo.osName + ' to bring up the VPN tunnel.';
-          $('backendHint').textContent = sysInfo.backendInstallHint || '';
+          const opts = (sysInfo.installOptions || []).map((o) => ({ value: o.kind, label: o.label }));
+          // Default to the detected kind when it's a valid backend option, else the first.
+          backendKind = opts.some((o) => o.value === sysInfo.installKind) ? sysInfo.installKind : (opts[0] && opts[0].value);
+          if (!backendPicker) {
+            backendPicker = createDropdown($('backendKindDD'), {
+              options: opts, value: backendKind,
+              onChange: (v) => { backendKind = v; applyBackendHint(); },
+            });
+          } else { backendPicker.setOptions(opts); backendPicker.value = backendKind; }
+          applyBackendHint();
           show('backendView');
           return false;
         }
@@ -241,7 +256,7 @@
     $('installBackendBtn').onclick = async () => {
       setLog('backendLog', 'Requesting install…');
       try {
-        const r = await invoke('install_backend');
+        const r = await invoke('install_backend', { kind: backendKind });
         if (r.launched) setLog('backendLog', 'Installer launched — re-check once it finishes.');
         else setLog('backendLog', r.hint || 'Install the backend package, then re-check.', true);
       } catch (e) { setLog('backendLog', '' + e, true); }
