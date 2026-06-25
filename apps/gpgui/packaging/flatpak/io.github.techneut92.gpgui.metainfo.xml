@@ -48,6 +48,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.0.1" date="2026-06-26">
+      <description>
+        <p>Flatpak: run the bundled gpauth for SSO; clearer backend-install progress.</p>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-06-24">
       <description>
         <p>Initial fork release: smart-card prelogin, Tauri GUI, tray client.</p>
