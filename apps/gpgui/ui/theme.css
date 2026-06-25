@@ -25,14 +25,19 @@
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; }
+/* Rounded window corners: the window is borderless + transparent, so the radius
+   is drawn here. Renders rounded once the webview composites alpha on Wayland;
+   today's DMABUF-renderer workaround on some hosts paints it opaque (square). */
+html { margin: 0; height: 100%; background: transparent; }
 body {
+  margin: 0; height: 100%;
   background: var(--bg-grad);
   color: var(--text);
   font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   display: flex; flex-direction: column;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  border-radius: 14px;
 }
 .hidden, [hidden] { display: none !important; }
 
@@ -74,6 +79,8 @@ header {
 }
 .wbtn:hover { background: rgba(255,255,255,.08); color: var(--text-soft); }
 .wbtn.close:hover { background: var(--close); color: #fff; }
+.wbtn.kofi { text-decoration: none; }
+.wbtn.kofi:hover { background: rgba(255,94,91,.16); color: #ff5e5b; }
 
 /* ───────── main / hero ───────── */
 main { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; padding: 6px 18px 14px; }
@@ -217,10 +224,8 @@ footer .log { min-height: 15px; font-size: 11.5px; color: var(--faint); text-ali
 .dd-trigger.active .dd-chev { transform: rotate(180deg); }
 
 .dd-menu {
-  /* Square corners: webkitgtk doesn't clip the scrollable (overflow-y:auto)
-     content to a border-radius, so rounded corners render glitchy here. */
   position: fixed; z-index: 99999; background: #151b29; border: 1px solid rgba(255,255,255,.1);
-  border-radius: 0; padding: 5px; max-height: 260px; overflow-y: auto;
+  border-radius: 12px; padding: 5px; max-height: 260px; overflow-y: auto;
   box-shadow: 0 18px 50px -12px rgba(0,0,0,.75), 0 0 0 1px rgba(0,0,0,.4);
 }
 .dd-opt {
@@ -234,20 +239,6 @@ footer .log { min-height: 15px; font-size: 11.5px; color: var(--faint); text-ali
 .dd-opt-l { font-size: 13px; color: #eaedf6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dd-opt-s { font-size: 11px; color: #737a90; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dd-opt .dd-check { flex: 0 0 auto; color: var(--accent); }
-
-/* ───────── tray-icon card picker ───────── */
-.icon-pick { display: flex; gap: 10px; }
-.icon-card {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 14px 10px 11px; background: var(--field); color: var(--muted);
-  border: 1px solid var(--line); border-radius: var(--radius-sm); cursor: pointer;
-  font-family: inherit; transition: border-color .12s, background .12s, color .12s;
-}
-.icon-card:hover { background: #222a3d; }
-.icon-card .previews { display: flex; gap: 9px; align-items: center; }
-.icon-card .nm { font-size: 12.5px; color: var(--text-soft); }
-.icon-card.active { border-color: rgba(84,168,255,.6); background: rgba(84,168,255,.08); box-shadow: 0 0 0 3px rgba(84,168,255,.12); }
-.icon-card.active .nm { color: var(--text); }
 
 /* ───────── settings window ───────── */
 body.settings { background: var(--bg-grad); }
@@ -271,6 +262,43 @@ body.settings { background: var(--bg-grad); }
 .grid3 > div { flex: 1; min-width: 0; }
 .toggle-list { border-top: 1px solid var(--line2); padding-top: 6px; margin-top: 18px; }
 .toggle-item { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+.toggle-item .t { font-size: 13px; color: var(--text-soft); font-weight: 500; }
+.toggle-item .d { font-size: 11.5px; color: var(--faint); margin-top: 2px; }
+
+/* tray icon picker */
+.tray-grid { display: flex; gap: 12px; }
+.tray-card {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 13px; text-align: left;
+  background: var(--field); border: 1px solid var(--line); border-radius: 14px; padding: 14px;
+  cursor: pointer; font-family: inherit; transition: border-color .12s, box-shadow .12s;
+}
+.tray-card:hover { border-color: rgba(255,255,255,.18); }
+.tray-card.sel { border-color: rgba(84,168,255,.6); box-shadow: inset 0 0 0 1px rgba(84,168,255,.4); }
+.tray-icons { display: flex; gap: 11px; align-items: center; }
+.tray-foot { display: flex; align-items: center; justify-content: space-between; }
+.tray-foot > span:first-child { font-size: 13px; font-weight: 600; color: var(--text); }
+.tray-card .check { display: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent-grad); align-items: center; justify-content: center; }
+.tray-card.sel .check { display: flex; }
+
+/* ko-fi support */
+.kofi-card {
+  background: linear-gradient(135deg, rgba(255,94,91,.12), rgba(41,171,224,.1));
+  border: 1px solid rgba(255,94,91,.28); border-radius: var(--radius); padding: 20px;
+}
+.kofi-head { display: flex; align-items: center; gap: 13px; }
+.kofi-logo {
+  flex: 0 0 auto; width: 46px; height: 46px; border-radius: 13px; background: #fff;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px -6px rgba(255,94,91,.6);
+}
+.kofi-title { font-size: 14.5px; font-weight: 680; color: #f2f4fa; }
+.kofi-sub { font-size: 12px; color: #9aa1b6; margin-top: 2px; }
+.kofi-btn {
+  margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 9px;
+  text-decoration: none; background: #FF5E5B; color: #fff; border-radius: 12px; padding: 12px;
+  font-size: 13.5px; font-weight: 700; font-family: inherit; cursor: pointer;
+  box-shadow: 0 12px 26px -10px rgba(255,94,91,.8); transition: filter .12s;
+}
+.kofi-btn:hover { filter: brightness(1.07); }
 .saved {
   position: absolute; right: 18px; bottom: 16px; display: inline-flex; align-items: center; gap: 7px;
   padding: 7px 13px; border-radius: 999px; background: linear-gradient(135deg, #34d399, #10b981);
@@ -300,8 +328,13 @@ body.settings { background: var(--bg-grad); }
   cursor: pointer; padding: 8px; border-radius: 8px; transition: color .12s, background .12s;
 }
 .link:hover { color: var(--text-soft); background: rgba(255,255,255,.04); }
+/* full-width "Manage identities…" row (icon · label · chevron). Symmetric
+   padding so the hover highlight is balanced around the text. */
+.manage-link { display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box; padding: 11px 10px; margin-top: 6px; }
 .formlog { min-height: 15px; font-size: 11.5px; color: var(--faint); text-align: center; margin: 4px 0 0; }
 .formlog.err { color: var(--red); }
+/* footer status line: red when it's an error */
+footer .log.err { color: var(--red); }
 
 /* ───────── view scaffolding ───────── */
 .view { display: none; flex-direction: column; }
@@ -323,6 +356,13 @@ body.settings { background: var(--bg-grad); }
   text-align: center; letter-spacing: 6px; font-size: 18px; font-variant-numeric: tabular-nums;
 }
 .pin-input::placeholder { letter-spacing: normal; font-size: 13.5px; }
+
+/* forgotten-PIN reset warning on the unlock screen */
+.reset-warn { width: 100%; box-sizing: border-box; margin-top: 10px; text-align: left;
+  background: rgba(251,113,133,.07); border: 1px solid rgba(251,113,133,.25); border-radius: var(--radius-sm); padding: 13px 14px; }
+.reset-warn .warn-text { font-size: 12px; color: #f1b8bf; line-height: 1.55; }
+.reset-warn .warn-text strong { color: #fb7185; }
+.reset-actions { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
 
 /* ───────── auth-type glyph chip ───────── */
 .atype { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--accent-soft); }

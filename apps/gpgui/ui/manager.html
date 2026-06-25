@@ -110,11 +110,11 @@
           <button class="switch on" id="asGateway" type="button" aria-pressed="true"><span class="knob"></span></button>
         </div>
 
-        <p class="formlog" id="log" style="text-align:left;"></p>
         <div class="id-actions">
           <button class="btn-action" id="saveBtn">Save identity</button>
           <button class="btn danger" id="delBtn">Delete</button>
         </div>
+        <p class="formlog" id="log" style="text-align:left; margin-top:10px;"></p>
       </div>
     </div>
   </div>
@@ -176,6 +176,7 @@
     function method() { return parseInt(authDD.value, 10); }
     function setMethod(n) { authDD.value = String(n); syncBlocks(); }
     function hint(m) { $('authHint').textContent = m || ''; }
+    function setLog(m, err) { const e = $('log'); e.textContent = m || ''; e.classList.toggle('err', !!err); }
     function syncBlocks() {
       const m = method();
       $('scBlock').hidden = m !== 0;
@@ -255,7 +256,7 @@
       ['name', 'portal', 'username', 'password', 'pin', 'certFile', 'keyFile', 'keyPassword'].forEach((k) => $(k).value = '');
       asGateway = true; $('asGateway').classList.add('on'); $('asGateway').setAttribute('aria-pressed', 'true');
       setMethod(-1); hint('Click Detect to probe the portal for its auth method.');
-      $('log').textContent = ''; $('delBtn').textContent = 'Clear';
+      setLog('', false); $('delBtn').textContent = 'Clear';
       renderList(); rescanCerts();
     }
     async function loadForm(id) {
@@ -268,14 +269,14 @@
       if (id.module_path) moduleDD.value = id.module_path;
       setMethod(typeof id.auth_method === 'number' ? id.auth_method : -1);
       hint('');
-      $('log').textContent = ''; $('delBtn').textContent = 'Delete';
+      setLog('', false); $('delBtn').textContent = 'Delete';
       await rescanCerts(id.cert_id, id.cert_manufacturer);
     }
     $('newBtn').onclick = blankForm;
 
     $('saveBtn').onclick = async () => {
       const name = $('name').value.trim() || $('portal').value.trim();
-      if (!name) { $('log').textContent = 'Give it a name or portal.'; return; }
+      if (!name) { setLog('Give it a name or portal.', true); return; }
       const cert = certs.find((c) => c.uri === certDD.value);
       const id = {
         name, portal: $('portal').value.trim(), auth_method: method(), as_gateway: asGateway,
@@ -283,9 +284,9 @@
         pin: $('pin').value, cert_id: cert ? cert.id : '', cert_manufacturer: cert ? cert.manufacturer : '',
         cert_file: $('certFile').value, key_file: $('keyFile').value, key_password: $('keyPassword').value,
       };
-      if (hasTauri) { try { await invoke('save_identity', { identity: id }); } catch (e) { $('log').textContent = 'Error: ' + e; return; } }
+      if (hasTauri) { try { await invoke('save_identity', { identity: id }); } catch (e) { setLog('Error: ' + e, true); return; } }
       else { const i = identities.findIndex((x) => x.name === name); if (i >= 0) identities[i] = id; else identities.push(id); }
-      editing = name; await load(); renderList(); $('log').textContent = 'Saved ✓';
+      editing = name; await load(); renderList(); setLog('Saved ✓', false);
     };
     $('delBtn').onclick = async () => {
       if (!editing) { blankForm(); return; }

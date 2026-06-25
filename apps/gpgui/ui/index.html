@@ -17,6 +17,9 @@
     <div class="hbar-right">
       <div class="pill"><span class="dot" id="dot"></span><span id="statusText">Disconnected</span></div>
       <div class="winctl">
+        <a class="wbtn kofi" id="winKofi" href="https://ko-fi.com/techneut92?amount=2.50#checkoutModal" target="_blank" rel="noreferrer" title="Support on Ko-fi">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h11v5a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z"/><path d="M16 9h1.5a2.5 2.5 0 0 1 0 5H16"/><path d="M8 3v2M11 3v2"/></svg>
+        </a>
         <button class="wbtn" id="winManage" title="Manage identities">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 4.5a3 3 0 0 1 0 6M18 20a5.5 5.5 0 0 0-3-4.9"/></svg>
         </button>
@@ -59,10 +62,20 @@
         <input class="field pin-input" id="masterPin" type="password" placeholder="Master PIN" />
         <p class="formlog" id="lockLog"></p>
         <div class="actions" style="width:100%"><button class="btn-action" id="unlockBtn">Unlock</button></div>
+        <button class="link" id="forgotPinBtn" style="margin-top:8px;">Forgot your PIN?</button>
+        <div class="reset-warn" id="resetWarn" hidden>
+          <div class="warn-text">
+            <strong>Reset GlobalProtect?</strong> This permanently deletes every saved identity — they're encrypted with your PIN and can't be recovered without it. You'll set a new PIN and re-add your identities.
+          </div>
+          <div class="reset-actions">
+            <button class="btn-action danger" id="resetConfirmBtn">Reset &amp; delete identities</button>
+            <button class="link" id="resetCancelBtn">Cancel</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- ============ UNLOCKED (connect + connected share the orb) ============ -->
+    <!-- ============ UNLOCKED (orb + content; action button lives in the footer) ============ -->
     <div class="view" id="unlockedView">
       <div class="hero">
         <div class="orb-wrap" id="orb">
@@ -79,7 +92,7 @@
         <div class="status-sub" id="statusSub">Your traffic is not encrypted</div>
       </div>
 
-      <!-- disconnected: pick identity + connect -->
+      <!-- disconnected / connecting: pick identity -->
       <div id="formContent">
         <div class="card" id="idCard">
           <div class="lbl">Identity</div>
@@ -90,14 +103,14 @@
           <div class="sub" style="margin:2px 0 12px;">No identities yet. Add one to connect.</div>
           <button class="btn-action auto" id="emptyAddBtn" style="padding:11px 18px;">+ Add identity</button>
         </div>
-        <div class="actions">
-          <button class="btn-action" id="connectBtn">Connect</button>
-          <button class="link" id="manageBtn">Manage identities…</button>
-        </div>
-        <p class="formlog" id="formLog"></p>
+        <button class="link manage-link" id="manageBtn">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 4.5a3 3 0 0 1 0 6M18 20a5.5 5.5 0 0 0-3-4.9"/></svg>
+          <span>Manage identities…</span>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
       </div>
 
-      <!-- connected: details -->
+      <!-- connected: session details -->
       <div id="connContent" hidden>
         <div class="tiles">
           <div class="tile ip"><div class="k">Your IP</div><div class="v" id="cIp">—</div></div>
@@ -108,11 +121,15 @@
           <div class="drow"><div class="k">Gateway</div><div class="v" id="cGateway">—</div></div>
           <div class="drow"><div class="k">Session expires</div><div class="v" id="cExpires">—</div></div>
         </div>
-        <div class="actions"><button class="btn-action danger" id="disconnectBtn">Disconnect</button></div>
-        <p class="formlog" id="connLog"></p>
       </div>
     </div>
   </main>
+
+  <!-- action footer (shown only when unlocked) -->
+  <footer id="appFooter" hidden>
+    <div class="log" id="footLog"></div>
+    <button class="btn-action" id="actionBtn">Connect</button>
+  </footer>
 
   <script src="dropdown.js"></script>
   <script>
@@ -148,11 +165,13 @@
     ];
     let selected = identities[0] ? identities[0].name : null;
     let active = false;
+    let lastKind = 0;
 
     // ───────── window controls ─────────
     $('winMin').onclick = () => { if (appWindow) appWindow.minimize(); };
     $('winClose').onclick = () => { if (appWindow) appWindow.close(); };
-    $('winSettings').onclick = () => { if (hasTauri) invoke('open_settings'); else window.open('settings.html', 'gp-settings', 'width=560,height=600'); };
+    $('winSettings').onclick = () => { if (hasTauri) invoke('open_settings'); else window.open('settings.html', 'gp-settings', 'width=560,height=620'); };
+    $('winKofi').onclick = (e) => { if (hasTauri) { e.preventDefault(); invoke('open_url', { url: 'https://ko-fi.com/techneut92?amount=2.50#checkoutModal' }); } };
     function openManager() { if (hasTauri) invoke('open_manager'); else window.open('manager.html', 'gp-manager', 'width=720,height=620'); }
     $('winManage').onclick = openManager;
     $('manageBtn').onclick = openManager;
@@ -161,6 +180,7 @@
     // ───────── view switching ─────────
     function show(view) {
       ['setupView', 'lockView', 'unlockedView'].forEach((v) => $(v).classList.toggle('show', v === view));
+      $('appFooter').hidden = view !== 'unlockedView';
     }
 
     // ───────── rich identity picker ─────────
@@ -239,15 +259,17 @@
       const has = identities.length > 0;
       $('idCard').classList.toggle('hidden', !has);
       $('emptyCard').classList.toggle('hidden', has);
-      $('connectBtn').style.display = has ? '' : 'none';
       if (has) { if (!identities.find((i) => i.name === selected)) selected = identities[0].name; picker.refresh(); renderChips(); }
+      // The footer Connect button is hidden when there's nothing to connect to.
+      if (!active) $('actionBtn').style.display = has ? '' : 'none';
     }
 
-    // ───────── state / orb ─────────
+    // ───────── state / orb / footer action ─────────
     function setLog(el, msg, err) { const e = $(el); e.textContent = msg || ''; e.classList.toggle('err', !!err); }
     function render(s) {
       const kind = s.kind || 0;
-      $('statusText').textContent = s.status;
+      lastKind = kind;
+      $('statusText').textContent = kind === 3 ? 'Error' : s.status;
       const dot = $('dot'); dot.style.background = RAW[kind] || '#6b7286'; dot.style.color = RAW[kind] || '#6b7286';
       dot.classList.toggle('live', kind === 1 || kind === 2);
       const orb = $('orb');
@@ -266,12 +288,23 @@
       active = !!s.active;
       // only flip content when vault is unlocked
       if (!$('unlockedView').classList.contains('show')) return;
-      $('formContent').hidden = active;
-      $('connContent').hidden = !active;
-      setLog('formLog', active ? '' : s.log);
-      setLog('connLog', active ? s.log : '');
-      const cb = $('connectBtn'); cb.textContent = s.busy ? 'Working…' : 'Connect';
-      if (active) {
+      const connected = kind === 2;
+      $('formContent').hidden = connected;
+      $('connContent').hidden = !connected;
+
+      // Footer status line + state-driven action button.
+      let logMsg = s.log || '', isErr = false;
+      if (kind === 3) { logMsg = (s.status || '').replace(/^Error:\s*/i, '') || 'Connection failed'; isErr = true; }
+      setLog('footLog', logMsg, isErr);
+
+      const ab = $('actionBtn');
+      const has = identities.length > 0;
+      if (kind === 2) { ab.textContent = 'Disconnect'; ab.className = 'btn-action danger'; ab.onclick = disconnect; ab.style.display = ''; }
+      else if (kind === 1) { ab.textContent = 'Cancel'; ab.className = 'btn-action ghost'; ab.onclick = disconnect; ab.style.display = ''; }
+      else if (kind === 3) { ab.textContent = 'Try again'; ab.className = 'btn-action'; ab.onclick = connect; ab.style.display = ''; }
+      else { ab.textContent = 'Connect'; ab.className = 'btn-action'; ab.onclick = connect; ab.style.display = has ? '' : 'none'; }
+
+      if (connected) {
         $('cIp').textContent = s.ip || '—';
         $('cIface').textContent = s.iface || '—';
         $('cPortal').textContent = s.portal || '—';
@@ -284,7 +317,7 @@
     let timer = null, demoTimers = [];
     async function connect() {
       const id = identities.find((i) => i.name === selected);
-      if (!id) { setLog('formLog', 'Add an identity first.', true); return; }
+      if (!id) { setLog('footLog', 'Add an identity first.', true); return; }
       if (hasTauri) {
         try { await invoke('connect', { identity: id.name, portal: '' }); }
         catch (e) { render({ kind: 3, status: 'Error', log: 'Error: ' + e }); }
@@ -308,8 +341,6 @@
       if (hasTauri) { invoke('disconnect'); return; }
       render({ kind: 0, status: 'Disconnected', active: false, log: '' });
     }
-    $('connectBtn').onclick = connect;
-    $('disconnectBtn').onclick = disconnect;
 
     // ───────── vault ─────────
     async function unlocked() {
@@ -329,6 +360,18 @@
     };
     $('masterPin').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('unlockBtn').click(); });
     $('newMasterPin').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('setupBtn').click(); });
+
+    // forgotten-PIN reset (deletes identities)
+    function toggleReset(show) { $('resetWarn').hidden = !show; $('forgotPinBtn').hidden = show; }
+    $('forgotPinBtn').onclick = () => toggleReset(true);
+    $('resetCancelBtn').onclick = () => toggleReset(false);
+    $('resetConfirmBtn').onclick = async () => {
+      if (hasTauri) { try { await invoke('reset_vault'); } catch (e) {} }
+      identities = []; selected = null;
+      $('masterPin').value = ''; setLog('lockLog', '');
+      toggleReset(false);
+      show('setupView');  // start fresh: set a new master PIN
+    };
 
     // ───────── init ─────────
     picker = createIdentityPicker($('identityDD'));
