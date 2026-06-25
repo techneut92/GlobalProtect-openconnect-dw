@@ -143,9 +143,11 @@ pub fn flatpak_runtime() -> Option<String> {
   if !is_flatpak() {
     return None;
   }
-  // /.flatpak-info → [Application] runtime=org.gnome.Platform/x86_64/50
+  // /.flatpak-info → [Application] runtime=runtime/org.gnome.Platform/x86_64/50
+  // (an ostree ref: an optional `runtime/` prefix, then id/arch/branch).
   let info = std::fs::read_to_string("/.flatpak-info").ok()?;
   let val = info.lines().find_map(|l| l.trim().strip_prefix("runtime="))?;
+  let val = val.strip_prefix("runtime/").unwrap_or(val);
   let mut parts = val.split('/');
   let id = parts.next().unwrap_or(val);
   let ver = parts.nth(1).unwrap_or(""); // skip arch, take version
