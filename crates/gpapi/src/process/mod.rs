@@ -1,5 +1,4 @@
 pub(crate) mod command_traits;
-pub(crate) mod gui_helper_launcher;
 
 pub mod auth_launcher;
 pub mod gui_launcher;

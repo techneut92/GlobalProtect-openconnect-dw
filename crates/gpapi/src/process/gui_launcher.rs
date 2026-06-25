@@ -9,7 +9,7 @@ use common::constants::GP_GUI_BINARY;
 use log::info;
 use tokio::{io::AsyncWriteExt, process::Command};
 
-use crate::{process::gui_helper_launcher::GuiHelperLauncher, utils::base64};
+use crate::utils::base64;
 
 use super::command_traits::CommandExt;
 
@@ -43,11 +43,10 @@ impl<'a> GuiLauncher<'a> {
   }
 
   pub async fn launch(&self) -> anyhow::Result<ExitStatus> {
-    // Check if the program's version
+    // The GUI ships as a host package now, so a version mismatch is only logged
+    // (there's nothing to auto-download); a missing binary fails at spawn below.
     if let Err(err) = self.check_version().await {
-      info!("Check version failed: {}", err);
-      // Download the program and replace the current one
-      self.download_program().await?;
+      info!("GUI version check skipped: {}", err);
     }
 
     self.launch_program().await
@@ -104,21 +103,6 @@ impl<'a> GuiLauncher<'a> {
     }
 
     info!("Version check passed: {}", version);
-
-    Ok(())
-  }
-
-  async fn download_program(&self) -> anyhow::Result<()> {
-    let gui_helper = GuiHelperLauncher::new(self.api_key);
-
-    gui_helper
-      .envs(self.envs.as_ref())
-      .gui_version(Some(self.version))
-      .launch()
-      .await?;
-
-    // Check the version again
-    self.check_version().await?;
 
     Ok(())
   }
