@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1 - 2026-06-26 (fork)
+
+- Flatpak: fix SSO — run the bundled `gpauth` (`/app/bin/gpauth`) instead of the
+  missing `/usr/bin/gpauth`.
+- GUI: show an "Installing…" progress message while the backend installs (after
+  the password prompt), instead of leaving the "approve the prompt" message.
+
 ## 1.0.0 - 2026-06-26 (fork)
 
 First release of the fork as **GP Client** — a GlobalProtect-compatible VPN
