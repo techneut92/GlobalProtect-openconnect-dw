@@ -106,7 +106,7 @@ modules:
       - install -Dm644 apps/gpgui/packaging/flatpak/io.github.techneut92.gpgui.metainfo.xml /app/share/metainfo/io.github.techneut92.gpgui.metainfo.xml
       - install -Dm644 apps/gpgui/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.techneut92.gpgui.png
       # GPL-3.0 license text for this app (a fork of yuezk/GlobalProtect-openconnect).
-      - install -Dm644 LICENSE /app/share/licenses/io.github.techneut92.gpgui/COPYING
+      - install -Dm644 apps/gpgui/LICENSE /app/share/licenses/io.github.techneut92.gpgui/COPYING
     sources:
       - type: dir
         # Repo root (four levels up from this manifest). Skip heavy/irrelevant
