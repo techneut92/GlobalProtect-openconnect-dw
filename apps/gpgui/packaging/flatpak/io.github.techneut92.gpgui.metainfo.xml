@@ -8,19 +8,17 @@
 
   <description>
     <p>
-      An unprivileged graphical client for GlobalProtect VPN, built on
-      OpenConnect. It adds smart-card / PKCS#11 (YubiKey PIV) certificate
-      authentication for the portal and gateway, alongside SAML single sign-on
-      and username/password.
+      A graphical client for GlobalProtect VPN. Sign in with a smart card /
+      PKCS#11 certificate (such as a YubiKey PIV), SAML single sign-on, or a
+      username and password.
     </p>
     <p>
-      The GUI runs sandboxed and drives a privileged host service over D-Bus to
-      bring up the tunnel. Saved connection identities are kept in an encrypted
-      vault, optionally unlocked from your keyring.
+      Save multiple connections in an encrypted vault, unlock it from your
+      keyring, and manage the VPN from a system-tray icon with desktop
+      notifications.
     </p>
     <p>
-      This is a community fork of yuezk/GlobalProtect-openconnect, distributed
-      under the GPL-3.0.
+      A community fork of yuezk/GlobalProtect-openconnect, under the GPL-3.0.
     </p>
   </description>
 

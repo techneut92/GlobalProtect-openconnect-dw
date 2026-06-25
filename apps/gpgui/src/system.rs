@@ -325,22 +325,35 @@ pub fn install_options() -> Vec<InstallOption> {
   .collect()
 }
 
-/// Human-friendly note about installing the backend on this OS.
+/// Copy-paste shell commands to fetch and install the backend package for this
+/// OS — concrete asset name + arch + version, since the fork ships via GitHub
+/// releases (no repo to resolve a package name from).
 pub fn backend_install_hint(kind: InstallKind) -> String {
-  let rel = format!("https://github.com/{REPO}/releases/latest");
+  let v = GUI_VERSION;
+  let arch = std::env::consts::ARCH; // x86_64 / aarch64
+  let url = |file: &str| format!("https://github.com/{REPO}/releases/download/v{v}/{file}");
+  let rpm = format!("globalprotect-openconnect-dw-{v}-1.{arch}.rpm");
   match kind {
-    InstallKind::RpmOstree => format!(
-      "On an atomic/image-based system the backend is layered with rpm-ostree and \
-       needs a reboot. Download the .rpm from {rel} and run \
-       `rpm-ostree install ./<file>.rpm`, then reboot."
-    ),
-    InstallKind::Dnf => format!("Download the .rpm from {rel} and run `sudo dnf install ./<file>.rpm`."),
-    InstallKind::Apt => format!("Download the .deb from {rel} and run `sudo apt install ./<file>.deb`."),
-    InstallKind::Pacman => format!("Download the package from {rel} and run `sudo pacman -U ./<file>.pkg.tar.zst`."),
-    InstallKind::Apk => format!("Download the .apk from {rel} and run `sudo apk add --allow-untrusted ./<file>.apk`."),
-    InstallKind::Zypper => format!("Download the .rpm from {rel} and run `sudo zypper install ./<file>.rpm`."),
+    InstallKind::RpmOstree => {
+      format!("curl -LO {}\nsudo rpm-ostree install ./{rpm}\n# then reboot", url(&rpm))
+    }
+    InstallKind::Dnf => format!("curl -LO {}\nsudo dnf install ./{rpm}", url(&rpm)),
+    InstallKind::Apt => {
+      let da = if arch == "aarch64" { "arm64" } else { "amd64" };
+      let deb = format!("globalprotect-openconnect-dw_{v}-1_{da}.deb");
+      format!("curl -LO {}\nsudo apt install ./{deb}", url(&deb))
+    }
+    InstallKind::Pacman => {
+      let pkg = format!("globalprotect-openconnect-dw-{v}-1-{arch}.pkg.tar.zst");
+      format!("curl -LO {}\nsudo pacman -U ./{pkg}", url(&pkg))
+    }
+    InstallKind::Apk => {
+      let apk = format!("globalprotect-openconnect-dw-{v}-r1-{arch}.apk");
+      format!("curl -LO {}\nsudo apk add --allow-untrusted ./{apk}", url(&apk))
+    }
+    InstallKind::Zypper => format!("curl -LO {}\nsudo zypper install ./{rpm}", url(&rpm)),
     InstallKind::Flatpak | InstallKind::Unknown => {
-      format!("Install the globalprotect-openconnect-dw backend package from {rel}.")
+      format!("Download the backend package for your distro from\nhttps://github.com/{REPO}/releases/latest")
     }
   }
 }
