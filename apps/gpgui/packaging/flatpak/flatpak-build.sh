@@ -16,10 +16,11 @@ cd "$root"
 builder=${FLATPAK_BUILDER:-flatpak-builder}
 command -v "$builder" >/dev/null || builder="flatpak run org.flatpak.Builder"
 
-# 1. Runtime, SDK and the matching rust-stable SDK extension.
+# 1. Runtime, SDK and the matching rust-stable SDK extension. GNOME 50 is built
+#    on the freedesktop 25.08 base, so the rust-stable extension is //25.08.
 flatpak install -y --user flathub \
   org.gnome.Platform//50 org.gnome.Sdk//50 \
-  org.freedesktop.Sdk.Extension.rust-stable//24.08 || true
+  org.freedesktop.Sdk.Extension.rust-stable//25.08 || true
 
 # 2. Vendor the cargo registry for the sandboxed (offline) build. The generator
 #    is a small upstream tool; fetch it if it isn't already here.
