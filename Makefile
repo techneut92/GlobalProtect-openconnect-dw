@@ -93,7 +93,6 @@ clean:
 	$(CARGO) clean
 	rm -rf .build
 	rm -rf .vendor
-	rm -rf apps/gpgui-helper/node_modules
 
 install:
 	@echo "Installing $(PKG_NAME) (backend)..."

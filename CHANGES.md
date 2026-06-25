@@ -236,6 +236,11 @@ backend-install flow:
   freedesktop base), opensc built with `-Wno-error` (GCC 14) and bash-completions
   redirected into `/app`, GUI source path corrected to the repo root.
 - All Rust build warnings resolved.
+- **Removed the vestigial `gpgui-helper`** — upstream used it to download the
+  (formerly closed) `gpgui` binary at runtime; this fork ships `gpgui` as a host
+  package, so `GuiLauncher::download_program` and the helper app / launcher /
+  `GP_GUI_HELPER_BINARY` constants are dropped. A GUI↔service version mismatch is
+  now logged rather than triggering a download.
 
 ### Third-party components
 

@@ -7,7 +7,6 @@ members = [
   "apps/gpservice",
   "apps/gpauth",
   "apps/gpgui",
-  "apps/gpgui-helper/src-tauri",
 ]
 
 [workspace.package]
