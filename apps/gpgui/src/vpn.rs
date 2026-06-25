@@ -376,7 +376,7 @@ fn spawn_session_timer(n: Notifier, generation: u64, expires_at: u64) {
 }
 
 /// Fire a desktop notification (off-thread; D-Bus call shouldn't block callers).
-fn notify_desktop(summary: String, body: String) {
+pub(crate) fn notify_desktop(summary: String, body: String) {
   std::thread::spawn(move || {
     let _ = notify_rust::Notification::new()
       .summary(&summary)

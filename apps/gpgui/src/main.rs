@@ -764,6 +764,19 @@ fn main() {
       let rx = cmd_rx.lock().unwrap().take().expect("setup runs once");
       std::thread::spawn(move || vpn::run(rx, notifier));
 
+      // Background: notify once on launch if a newer release is out. This covers
+      // the start-hidden case, where the in-window update banner isn't visible.
+      tauri::async_runtime::spawn(async {
+        if let Ok(rel) = system::latest_release().await {
+          if system::version_cmp(&rel.version, system::GUI_VERSION) == std::cmp::Ordering::Greater {
+            vpn::notify_desktop(
+              "GlobalProtect update available".into(),
+              format!("Version {} is available — open Settings → About to update.", rel.version),
+            );
+          }
+        }
+      });
+
       Ok(())
     })
     .run(tauri::generate_context!())
