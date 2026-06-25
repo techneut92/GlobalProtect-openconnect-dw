@@ -358,6 +358,52 @@ pub fn backend_install_hint(kind: InstallKind) -> String {
   }
 }
 
+/// Full root shell script (download the release asset, then install it) for the
+/// "Install" button. Works once the release is publicly downloadable; the same
+/// commands are shown for copy-paste. `None` for kinds we can't script.
+pub fn backend_install_script(kind: InstallKind) -> Option<String> {
+  let v = GUI_VERSION;
+  let arch = std::env::consts::ARCH;
+  let url = |file: &str| format!("https://github.com/{REPO}/releases/download/v{v}/{file}");
+  // Download into a temp dir (we run as root via pkexec), then install the file.
+  let dl = |file: &str| format!("cd \"$(mktemp -d)\" && curl -fL -o '{file}' '{}'", url(file));
+  let rpm = format!("globalprotect-openconnect-dw-{v}-1.{arch}.rpm");
+  match kind {
+    InstallKind::RpmOstree => Some(format!("{} && rpm-ostree install -y './{rpm}'", dl(&rpm))),
+    InstallKind::Dnf => Some(format!("{} && dnf install -y './{rpm}'", dl(&rpm))),
+    InstallKind::Apt => {
+      let da = if arch == "aarch64" { "arm64" } else { "amd64" };
+      let deb = format!("globalprotect-openconnect-dw_{v}-1_{da}.deb");
+      Some(format!("{} && apt-get install -y './{deb}'", dl(&deb)))
+    }
+    InstallKind::Pacman => {
+      let p = format!("globalprotect-openconnect-dw-{v}-1-{arch}.pkg.tar.zst");
+      Some(format!("{} && pacman -U --noconfirm './{p}'", dl(&p)))
+    }
+    InstallKind::Apk => {
+      let a = format!("globalprotect-openconnect-dw-{v}-r1-{arch}.apk");
+      Some(format!("{} && apk add --allow-untrusted './{a}'", dl(&a)))
+    }
+    InstallKind::Zypper => Some(format!("{} && zypper install -y './{rpm}'", dl(&rpm))),
+    InstallKind::Flatpak | InstallKind::Unknown => None,
+  }
+}
+
+/// Run a root shell script via pkexec (through flatpak-spawn --host when
+/// sandboxed). The script reaches the host shell as a single argument.
+pub fn run_root_script(script: &str) -> bool {
+  let mut cmd = if is_flatpak() {
+    let mut c = Command::new("flatpak-spawn");
+    c.args(["--host", "pkexec", "sh", "-c"]).arg(script);
+    c
+  } else {
+    let mut c = Command::new("pkexec");
+    c.args(["sh", "-c"]).arg(script);
+    c
+  };
+  cmd.spawn().is_ok()
+}
+
 /// Run a privileged command on the host (via pkexec; through flatpak-spawn when
 /// sandboxed). Best-effort, fire-and-forget.
 pub fn run_privileged(shell_cmd: &str) -> bool {

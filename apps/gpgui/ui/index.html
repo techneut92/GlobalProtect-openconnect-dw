@@ -86,7 +86,8 @@
         <div class="lbl" style="align-self:flex-start;">System type <span style="color:var(--hint);font-weight:500;text-transform:none;letter-spacing:0;">— change if wrong</span></div>
         <div id="backendKindDD" style="width:100%;" class="mb14"></div>
         <pre class="install-hint" id="backendHint"></pre>
-        <div class="actions" style="width:100%"><button class="btn-action" id="installBackendBtn">Copy commands</button></div>
+        <div class="actions" style="width:100%"><button class="btn-action" id="installBackendBtn">Install backend</button></div>
+        <button class="link" id="copyCmdsBtn" style="margin-top:8px;">Copy commands instead</button>
         <p class="formlog" id="backendLog"></p>
         <button class="link" id="backendRecheck" style="margin-top:4px;">Re-check</button>
       </div>
@@ -254,12 +255,21 @@
       setBanner('');
     }
     $('installBackendBtn').onclick = async () => {
-      const cmds = $('backendHint').textContent;
+      setLog('backendLog', 'Requesting install — approve the password prompt…');
       try {
-        await navigator.clipboard.writeText(cmds);
+        const r = await invoke('install_backend', { kind: backendKind });
+        if (r.launched) setLog('backendLog', r.needsReboot
+          ? 'Installing… reboot when it finishes, then Re-check.'
+          : 'Installing… Re-check when it finishes.');
+        else setLog('backendLog', 'Couldn’t start the installer — use “Copy commands instead”.', true);
+      } catch (e) { setLog('backendLog', '' + e, true); }
+    };
+    $('copyCmdsBtn').onclick = async () => {
+      try {
+        await navigator.clipboard.writeText($('backendHint').textContent);
         setLog('backendLog', 'Commands copied — run them in a terminal, then Re-check.');
       } catch (e) {
-        setLog('backendLog', 'Select the commands above to copy them, then run in a terminal.', true);
+        setLog('backendLog', 'Select the commands above to copy them.', true);
       }
     };
     $('backendRecheck').onclick = async () => {

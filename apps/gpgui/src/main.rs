@@ -277,18 +277,17 @@ fn run_update(url: String) -> String {
   }
 }
 
-/// Best-effort install of the privileged backend via pkexec; the UI falls back
-/// to the OS-specific instructions when this can't run.
+/// Download + install the privileged backend via pkexec (one auth prompt); the
+/// UI falls back to the copy-paste commands when this can't run.
 #[tauri::command]
 fn install_backend(kind: Option<String>) -> serde_json::Value {
   let kind = kind.map(|s| system::kind_from_str(&s)).unwrap_or_else(system::detect);
-  match system::backend_install_command(kind) {
-    Some(cmd) => serde_json::json!({
-      "launched": system::run_privileged(&cmd),
-      "command": cmd,
-      "hint": system::backend_install_hint(kind),
+  match system::backend_install_script(kind) {
+    Some(script) => serde_json::json!({
+      "launched": system::run_root_script(&script),
+      "needsReboot": kind == system::InstallKind::RpmOstree,
     }),
-    None => serde_json::json!({ "launched": false, "command": null, "hint": system::backend_install_hint(kind) }),
+    None => serde_json::json!({ "launched": false, "needsReboot": false }),
   }
 }
 
