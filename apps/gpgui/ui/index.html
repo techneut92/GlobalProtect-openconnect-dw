@@ -76,20 +76,47 @@
     </div>
 
     <!-- ============ BACKEND MISSING (privileged service not installed) ============ -->
-    <div class="view center" id="backendView">
-      <div class="stack vault">
-        <div class="vault-badge warn">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="9" rx="2"/><path d="M7 20h10M9 16v4M15 16v4"/><circle cx="7.5" cy="8.5" r="1"/></svg>
+    <div class="view" id="backendView">
+      <div class="svc-wrap">
+        <div class="svc-hero">
+          <div class="svc-badge">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.6"/><rect x="3" y="14" width="18" height="6" rx="1.6"/><path d="M7 7h.01M7 17h.01"/><path d="M11 7h6M11 17h6"/></svg>
+            <span class="alert"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0a0c12" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5M12 16.5h.01"/></svg></span>
+          </div>
+          <div class="svc-title">Backend service required</div>
+          <div class="svc-sub">GlobalProtect needs its privileged helper installed before it can bring up the VPN tunnel.</div>
         </div>
-        <h2 class="h2">Backend service required</h2>
-        <p class="sub" id="backendDesc">GlobalProtect needs its privileged service installed to bring up the VPN tunnel.</p>
-        <div class="lbl" style="align-self:flex-start;">System type <span style="color:var(--hint);font-weight:500;text-transform:none;letter-spacing:0;">— change if wrong</span></div>
-        <div id="backendKindDD" style="width:100%;" class="mb14"></div>
-        <pre class="install-hint" id="backendHint"></pre>
-        <div class="actions" style="width:100%"><button class="btn-action" id="installBackendBtn">Install backend</button></div>
-        <button class="link" id="copyCmdsBtn" style="margin-top:8px;">Copy commands instead</button>
-        <p class="formlog" id="backendLog"></p>
-        <button class="link" id="backendRecheck" style="margin-top:4px;">Re-check</button>
+
+        <div class="svc-section">
+          <div class="svc-syslabel"><span class="lbl" style="margin:0;">System type</span><span class="hint-inline">— change if detected wrong</span></div>
+          <div id="sysDD"></div>
+        </div>
+
+        <div class="term-card">
+          <div class="term-head">
+            <span class="term-dots"><i style="background:#fb6f6c"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i></span>
+            <span class="term-label">install · bash</span>
+          </div>
+          <div class="term-body">
+            <div id="steps"></div>
+            <div class="term-note">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg>
+              <span id="note"></span>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-action svc-copyall" id="copyAll">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path id="copyAllIcon" d="M9 9h11v11H9z M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+          <span id="copyAllLabel">Copy all commands</span>
+        </button>
+
+        <div class="svc-recheck-wrap">
+          <button class="svc-recheck" id="recheck">
+            <svg id="recheckIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 4v4h-4"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 20v-4h4"/></svg>
+            <span id="recheckLabel">Re-check</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -203,27 +230,53 @@
     }
 
     // ───────── backend presence + version banners ─────────
-    let sysInfo = null, backendKind = null, backendPicker = null;
-    function applyBackendHint() {
-      const o = (sysInfo.installOptions || []).find((x) => x.kind === backendKind);
-      $('backendHint').textContent = o ? o.hint : (sysInfo.backendInstallHint || '');
+    let sysInfo = null, bkKind = null, bkPicker = null;
+    const COPY_ICON = 'M9 9h11v11H9z M5 15V5a2 2 0 0 1 2-2h10';
+    const CHECK_ICON = 'M5 12l5 5L20 6';
+    const bkOption = () => (sysInfo.installOptions || []).find((o) => o.kind === bkKind);
+    function bkCopy(text, btn) {
+      try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text); } catch (e) {}
+      if (btn) {
+        btn.classList.add('done');
+        btn.querySelector('path').setAttribute('d', CHECK_ICON);
+        clearTimeout(btn._t);
+        btn._t = setTimeout(() => { btn.classList.remove('done'); btn.querySelector('path').setAttribute('d', COPY_ICON); }, 1500);
+      }
+    }
+    function bkRenderSteps() {
+      const o = bkOption();
+      if (!o) return;
+      const host = $('steps');
+      host.innerHTML = '';
+      o.steps.forEach((s, i) => {
+        const row = document.createElement('div');
+        row.className = 'step' + (i < o.steps.length - 1 ? '' : ' last');
+        row.innerHTML =
+          '<span class="step-num">' + (i + 1) + '</span>' +
+          '<div class="step-body">' +
+            '<div class="step-label">' + esc(s.label) + '</div>' +
+            '<div class="step-cmd-row">' +
+              '<div class="cmd"><code>' + esc(s.cmd) + '</code></div>' +
+              '<button class="copy-btn" title="Copy"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="' + COPY_ICON + '"/></svg></button>' +
+            '</div>' +
+          '</div>';
+        row.querySelector('.copy-btn').onclick = (e) => bkCopy(s.cmd, e.currentTarget);
+        host.appendChild(row);
+      });
+      $('note').textContent = o.note || '';
     }
     async function checkBackend() {
       if (!hasTauri) return true;
       try {
         sysInfo = await invoke('system_info');
         if (!sysInfo.backendInstalled) {
-          $('backendDesc').textContent = 'GlobalProtect needs its privileged service installed on ' + sysInfo.osName + ' to bring up the VPN tunnel.';
           const opts = (sysInfo.installOptions || []).map((o) => ({ value: o.kind, label: o.label }));
           // Default to the detected kind when it's a valid backend option, else the first.
-          backendKind = opts.some((o) => o.value === sysInfo.installKind) ? sysInfo.installKind : (opts[0] && opts[0].value);
-          if (!backendPicker) {
-            backendPicker = createDropdown($('backendKindDD'), {
-              options: opts, value: backendKind,
-              onChange: (v) => { backendKind = v; applyBackendHint(); },
-            });
-          } else { backendPicker.setOptions(opts); backendPicker.value = backendKind; }
-          applyBackendHint();
+          bkKind = opts.some((o) => o.value === sysInfo.installKind) ? sysInfo.installKind : (opts[0] && opts[0].value);
+          if (!bkPicker) {
+            bkPicker = createDropdown($('sysDD'), { options: opts, value: bkKind, onChange: (v) => { bkKind = v; bkRenderSteps(); } });
+          } else { bkPicker.setOptions(opts); bkPicker.value = bkKind; }
+          bkRenderSteps();
           show('backendView');
           return false;
         }
@@ -254,26 +307,28 @@
       } catch (e) {}
       setBanner('');
     }
-    $('installBackendBtn').onclick = async () => {
-      setLog('backendLog', 'Requesting install — approve the password prompt…');
-      try {
-        const r = await invoke('install_backend', { kind: backendKind });
-        if (r.launched) setLog('backendLog', r.needsReboot
-          ? 'Installing… reboot when it finishes, then Re-check.'
-          : 'Installing… Re-check when it finishes.');
-        else setLog('backendLog', 'Couldn’t start the installer — use “Copy commands instead”.', true);
-      } catch (e) { setLog('backendLog', '' + e, true); }
+    $('copyAll').onclick = () => {
+      const o = bkOption();
+      if (!o) return;
+      bkCopy(o.steps.map((s) => s.cmd).join('\n'), null);
+      const btn = $('copyAll');
+      btn.classList.add('done');
+      $('copyAllIcon').setAttribute('d', CHECK_ICON);
+      $('copyAllLabel').textContent = 'Copied to clipboard';
+      clearTimeout(btn._t);
+      btn._t = setTimeout(() => {
+        btn.classList.remove('done');
+        $('copyAllIcon').setAttribute('d', COPY_ICON);
+        $('copyAllLabel').textContent = 'Copy all commands';
+      }, 1500);
     };
-    $('copyCmdsBtn').onclick = async () => {
-      try {
-        await navigator.clipboard.writeText($('backendHint').textContent);
-        setLog('backendLog', 'Commands copied — run them in a terminal, then Re-check.');
-      } catch (e) {
-        setLog('backendLog', 'Select the commands above to copy them.', true);
-      }
-    };
-    $('backendRecheck').onclick = async () => {
-      if (await checkBackend()) { setLog('backendLog', ''); await bootVault(); refreshBanners(); }
+    $('recheck').onclick = async () => {
+      const ic = $('recheckIcon');
+      ic.style.transition = 'transform .6s'; ic.style.transform = 'rotate(360deg)';
+      $('recheckLabel').textContent = 'Checking…';
+      const ok = await checkBackend();
+      if (ok) { await bootVault(); refreshBanners(); }
+      setTimeout(() => { ic.style.transform = 'none'; $('recheckLabel').textContent = 'Re-check'; }, 800);
     };
 
     // ───────── rich identity picker ─────────

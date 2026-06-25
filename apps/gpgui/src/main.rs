@@ -208,9 +208,7 @@ struct SystemInfo {
   /// True when the backend version matches the GUI (or the backend isn't
   /// installed yet — that case is reported via `backend_installed`).
   compatible: bool,
-  backend_install_cmd: Option<String>,
-  backend_install_hint: String,
-  /// All install options, so the UI can offer a manual override.
+  /// Per-OS install steps, so the UI can render and offer a manual override.
   install_options: Vec<system::InstallOption>,
 }
 
@@ -231,8 +229,6 @@ fn system_info() -> SystemInfo {
     backend_installed: system::backend_installed(),
     backend_version,
     compatible,
-    backend_install_cmd: system::backend_install_command(kind),
-    backend_install_hint: system::backend_install_hint(kind),
     install_options: system::install_options(),
   }
 }
@@ -274,20 +270,6 @@ fn run_update(url: String) -> String {
   } else {
     system::open_url(&url);
     "Opened the release page in your browser.".into()
-  }
-}
-
-/// Download + install the privileged backend via pkexec (one auth prompt); the
-/// UI falls back to the copy-paste commands when this can't run.
-#[tauri::command]
-fn install_backend(kind: Option<String>) -> serde_json::Value {
-  let kind = kind.map(|s| system::kind_from_str(&s)).unwrap_or_else(system::detect);
-  match system::backend_install_script(kind) {
-    Some(script) => serde_json::json!({
-      "launched": system::run_root_script(&script),
-      "needsReboot": kind == system::InstallKind::RpmOstree,
-    }),
-    None => serde_json::json!({ "launched": false, "needsReboot": false }),
   }
 }
 
@@ -654,7 +636,6 @@ fn main() {
       system_info,
       check_update,
       run_update,
-      install_backend,
       open_settings,
       save_settings,
       probe_auth,
