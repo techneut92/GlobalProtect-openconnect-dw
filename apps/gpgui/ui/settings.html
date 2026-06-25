@@ -37,6 +37,10 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.5 3-3.3 3-5.5A3.5 3.5 0 0 0 18.5 5c-1.3 0-2.6.7-3.5 2-.9-1.3-2.2-2-3.5-2A3.5 3.5 0 0 0 8 8.5c0 2.2 1.5 4 3 5.5l4 4z"/></svg>
         <span>Support</span>
       </button>
+      <button class="settings-nav" data-sec="about">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>About</span>
+      </button>
     </nav>
 
     <div class="settings-content">
@@ -161,6 +165,44 @@
         <p class="help">Opens ko-fi.com in your browser.</p>
       </div>
 
+      <!-- ABOUT -->
+      <div class="settings-sec" id="sec-about" hidden>
+        <h2>About</h2>
+        <p class="desc">Version, updates and system status.</p>
+
+        <div class="about-app">
+          <div class="about-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.4-3 7.4-7 9-4-1.6-7-4.6-7-9V6l7-3z"/></svg>
+          </div>
+          <div>
+            <div class="about-name">Global<span style="color:var(--accent-soft)">Protect</span> <span class="about-tag">dw</span></div>
+            <div class="about-ver" id="aboutVer">—</div>
+          </div>
+        </div>
+
+        <div class="update-box">
+          <div class="update-status" id="updateStatus">Check for the latest release.</div>
+          <div class="update-actions">
+            <button class="btn-soft" id="checkUpdateBtn">Check for updates</button>
+            <button class="btn-action auto" id="updateNowBtn" hidden style="padding:0 16px;">Update now</button>
+          </div>
+        </div>
+
+        <div class="lbl" style="margin-top:18px;">System</div>
+        <div class="detail-card">
+          <div class="drow"><div class="k">Operating system</div><div class="v" id="aboutOs">—</div></div>
+          <div class="drow"><div class="k">Install type</div><div class="v" id="aboutKind">—</div></div>
+          <div class="drow"><div class="k">Backend service</div><div class="v" id="aboutBackend">—</div></div>
+        </div>
+        <div class="compat-warn" id="compatWarn" hidden></div>
+
+        <p class="help">
+          Free &amp; open source under GPL-3.0 — a fork of
+          <a href="#" id="upstreamLink">yuezk/GlobalProtect-openconnect</a>.
+          <a href="#" id="repoLink">Project page ↗</a>
+        </p>
+      </div>
+
       <span class="saved" id="saved">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#06281c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg>
         <span>Saved</span>
@@ -179,7 +221,7 @@
     $('winClose').onclick = () => { if (appWindow) appWindow.close(); else window.close(); };
 
     // rail nav
-    const SECTIONS = ['general', 'auth', 'conn', 'support'];
+    const SECTIONS = ['general', 'auth', 'conn', 'support', 'about'];
     document.querySelectorAll('.settings-nav').forEach((b) => {
       b.onclick = () => {
         document.querySelectorAll('.settings-nav').forEach((x) => x.classList.toggle('active', x === b));
@@ -188,6 +230,47 @@
     });
 
     $('kofiBtn').onclick = (e) => { if (hasTauri) { e.preventDefault(); invoke('open_url', { url: 'https://ko-fi.com/techneut92?amount=2.50#checkoutModal' }); } };
+
+    // ───────── About / updates ─────────
+    const REPO_URL = 'https://github.com/techneut92/GlobalProtect-openconnect-dw';
+    const UPSTREAM_URL = 'https://github.com/yuezk/GlobalProtect-openconnect';
+    let updateUrl = REPO_URL + '/releases';
+    function openExt(url) { if (hasTauri) invoke('open_url', { url }); else window.open(url, '_blank'); }
+    $('repoLink').onclick = (e) => { e.preventDefault(); openExt(REPO_URL + '/releases'); };
+    $('upstreamLink').onclick = (e) => { e.preventDefault(); openExt(UPSTREAM_URL); };
+    async function loadAbout() {
+      if (!hasTauri) { $('aboutVer').textContent = 'dev build'; return; }
+      try {
+        const s = await invoke('system_info');
+        $('aboutVer').textContent = 'v' + s.guiVersion;
+        $('aboutOs').textContent = s.osName;
+        $('aboutKind').textContent = s.isFlatpak ? 'Flatpak' : s.installKind;
+        $('aboutBackend').innerHTML = !s.backendInstalled
+          ? '<span style="color:var(--red)">not installed</span>'
+          : (s.backendVersion ? 'v' + s.backendVersion : 'installed');
+        const mismatch = s.backendInstalled && !s.compatible;
+        $('compatWarn').hidden = !mismatch;
+        if (mismatch) $('compatWarn').textContent =
+          'Version mismatch — the GUI (v' + s.guiVersion + ') and backend service (v' + (s.backendVersion || '?') + ') differ. Update both to the same version to avoid issues.';
+      } catch (e) {}
+    }
+    $('checkUpdateBtn').onclick = async () => {
+      if (!hasTauri) { openExt(updateUrl); return; }
+      $('updateStatus').textContent = 'Checking…'; $('updateNowBtn').hidden = true;
+      try {
+        const u = await invoke('check_update');
+        updateUrl = u.url || updateUrl;
+        if (u.error) $('updateStatus').textContent = "Couldn't check: " + u.error;
+        else if (u.available) {
+          $('updateStatus').innerHTML = '<span style="color:var(--green)">Update available — v' + u.latest + '</span> (you have v' + u.current + ').';
+          $('updateNowBtn').hidden = false;
+        } else $('updateStatus').textContent = "You're on the latest version (v" + u.current + ').';
+      } catch (e) { $('updateStatus').textContent = "Couldn't check for updates."; }
+    };
+    $('updateNowBtn').onclick = async () => {
+      if (!hasTauri) { openExt(updateUrl); return; }
+      try { $('updateStatus').textContent = await invoke('run_update', { url: updateUrl }); } catch (e) {}
+    };
 
     // form model — camelCase keys match Rust SettingsForm; cfg holds snake_case config keys
     const F = {
@@ -286,6 +369,7 @@
         });
       }
       applyToInputs();
+      loadAbout();
     })();
   </script>
 </body>

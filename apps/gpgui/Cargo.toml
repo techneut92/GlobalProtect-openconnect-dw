@@ -40,6 +40,8 @@ png = "0.17"
 # Optional master-PIN storage in the desktop secret store (freedesktop Secret
 # Service → GNOME Keyring / KDE KWallet / COSMIC). Sync API; all ops best-effort.
 keyring = { version = "3", default-features = false, features = ["sync-secret-service", "crypto-rust"] }
+# Update check against the GitHub Releases API (already in the tree via gpapi).
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 pollster = "0.4"
 # Native file picker via xdg-desktop-portal (no GTK).
 rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "async-std"] }
