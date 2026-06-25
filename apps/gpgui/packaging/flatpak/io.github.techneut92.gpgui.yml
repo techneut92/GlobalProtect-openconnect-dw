@@ -68,6 +68,14 @@ modules:
   - name: opensc
     config-opts:
       - --disable-static
+    # GCC 14 (fdo 25.08 SDK) promotes several legacy-C warnings to errors; opensc
+    # 0.26.0 still trips them, so don't treat warnings as errors.
+    build-options:
+      cflags: -Wno-error
+    # bash-completion's pkg-config dir resolves to the read-only /usr; redirect it
+    # into the app prefix.
+    make-install-args:
+      - completiondir=/app/share/bash-completion/completions
     sources:
       - type: archive
         url: https://github.com/OpenSC/OpenSC/releases/download/0.26.0/opensc-0.26.0.tar.gz
@@ -93,6 +101,13 @@ modules:
       - install -Dm644 apps/gpgui/icons/128x128.png /app/share/icons/hicolor/128x128/apps/io.github.techneut92.gpgui.png
     sources:
       - type: dir
-        path: ../../../
+        # Repo root (four levels up from this manifest). Skip heavy/irrelevant
+        # trees so the sandbox copy stays small.
+        path: ../../../../
+        skip:
+          - target
+          - .git
+          - .flatpak-builder
+          - build-flatpak
       # Vendored crate registry for the offline build (generated; see header).
       - cargo-sources.json
