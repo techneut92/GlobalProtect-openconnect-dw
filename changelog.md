@@ -30,6 +30,8 @@
 - GUI: if the backend service isn't installed, an **install screen** with
   instructions fitting your OS (Flatpak / dnf / rpm-ostree / apt / …) and a
   best-effort install button.
+- GUI: **Flatpak** build-ready — manifest with the right permissions (network,
+  keyring, tray, host commands, autostart) and a build script.
 
 > Fork (`globalprotect-openconnect-dw`) entries are versioned independently from
 > upstream's releases below.

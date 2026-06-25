@@ -187,3 +187,22 @@ A `system.rs` module backs an **About** settings tab and two new screens:
 - New Tauri commands `system_info` / `check_update` / `run_update` /
   `install_backend`; the `open_url` command is now Flatpak-aware. New `reqwest`
   dependency (already in the tree via `gpapi`).
+
+## 2026-06-25 — Flatpak packaging for the GUI
+
+Made the GUI Flatpak build-ready (`apps/gpgui/packaging/flatpak/`):
+
+- The manifest gains the permissions the new features need: `--share=network`
+  (update check), `--talk-name=org.freedesktop.secrets` (keyring),
+  `--talk-name=org.freedesktop.Flatpak` (host `flatpak update` / `pkexec` /
+  `xdg-open` via `flatpak-spawn --host`), and
+  `--filesystem=xdg-config/{autostart,pop-shell}:create` for the host autostart
+  entry and Pop Shell float-rule. Real source hashes for the bundled pcsc-lite /
+  opensc; `WEBKIT_DISABLE_DMABUF_RENDERER=1` set in the sandbox.
+- Code is Flatpak-aware: `autostart.rs` and `tiling.rs` write to the **host**
+  `~/.config` (via `system::host_config_dir`), and the autostart entry runs
+  `flatpak run …` under Flatpak.
+- Added an AppStream `metainfo.xml`, a `flatpak-build.sh` (installs the runtime/
+  SDK, vendors the cargo registry to `cargo-sources.json`, runs flatpak-builder),
+  and committed the generated `cargo-sources.json`. The backend stays a host
+  package — the in-app "backend not installed" screen handles that.
