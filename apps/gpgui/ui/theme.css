@@ -320,7 +320,62 @@ body.settings { background: var(--bg-grad); }
 .banner-btn { flex: 0 0 auto; background: var(--accent-grad); color: #06121f; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 650; font-family: inherit; cursor: pointer; }
 /* backend-missing screen */
 .vault-badge.warn { color: var(--yellow); }
-.install-hint { width: 100%; box-sizing: border-box; text-align: left; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; color: var(--text-soft); line-height: 1.7; background: var(--field); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 13px; margin: 0 0 14px; white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; cursor: text; }
+/* ───────── backend-required view (install steps) ───────── */
+.svc-wrap { padding: 16px 4px 6px; }
+.svc-hero { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.svc-badge {
+  position: relative; width: 78px; height: 78px; border-radius: 22px; display: flex;
+  align-items: center; justify-content: center;
+  background: radial-gradient(120% 120% at 50% 22%, #2a2410, #14110a);
+  border: 1px solid rgba(251,191,36,.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 16px 38px -20px rgba(251,191,36,.55);
+}
+.svc-badge .alert {
+  position: absolute; right: -5px; bottom: -5px; width: 24px; height: 24px; border-radius: 50%;
+  background: #fbbf24; border: 3px solid var(--bg); display: flex; align-items: center; justify-content: center;
+}
+.svc-title { margin-top: 18px; font-size: 21px; font-weight: 680; letter-spacing: -.3px; color: #f2f4fa; }
+.svc-sub { margin-top: 7px; font-size: 13px; line-height: 1.55; color: var(--muted); max-width: 330px; }
+.svc-section { margin-top: 26px; }
+.svc-syslabel { display: flex; align-items: baseline; gap: 8px; margin-bottom: 9px; }
+.hint-inline { font-size: 11px; color: var(--hint); }
+.term-card { margin-top: 18px; background: var(--field); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.term-head { display: flex; align-items: center; gap: 9px; padding: 11px 14px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.015); }
+.term-dots { display: flex; gap: 6px; }
+.term-dots i { width: 9px; height: 9px; border-radius: 50%; display: block; }
+.term-label { font-size: 11.5px; color: #737a90; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+.term-body { padding: 6px 14px 12px; }
+.step { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line2); }
+.step.last { border-bottom: none; }
+.step-num {
+  flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 11.5px; font-weight: 700; color: #9fc6ff;
+  background: rgba(84,168,255,.13); border: 1px solid rgba(84,168,255,.28);
+}
+.step-body { flex: 1; min-width: 0; }
+.step-label { font-size: 12.5px; color: #c2c8d8; font-weight: 550; margin-bottom: 7px; }
+.step-cmd-row { display: flex; gap: 8px; align-items: stretch; }
+.cmd { flex: 1; min-width: 0; background: #070a10; border: 1px solid var(--line2); border-radius: 9px; padding: 9px 11px; }
+.cmd code { display: block; white-space: pre-wrap; word-break: break-all; font-size: 12px; line-height: 1.5; color: #dbe7f5; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+.copy-btn {
+  flex: 0 0 auto; width: 38px; border-radius: 9px; border: 1px solid var(--line); background: var(--field);
+  cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--muted);
+  transition: background .12s, color .12s;
+}
+.copy-btn:hover { background: rgba(255,255,255,.06); color: var(--text-soft); }
+.copy-btn.done { color: var(--green); }
+.term-note { display: flex; gap: 9px; align-items: flex-start; padding: 11px 2px 4px; }
+.term-note svg { flex: 0 0 auto; margin-top: 1px; color: #737a90; }
+.term-note span { font-size: 11.5px; line-height: 1.5; color: #737a90; }
+.svc-copyall { margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 9px; }
+.svc-copyall.done { background: linear-gradient(135deg, #34d399, #10b981); color: #06281c; box-shadow: 0 10px 26px -10px rgba(16,185,129,.7); }
+.svc-recheck-wrap { display: flex; justify-content: center; margin-top: 6px; }
+.svc-recheck {
+  display: inline-flex; align-items: center; gap: 7px; background: none; border: none; color: var(--muted);
+  font-size: 12.5px; font-family: inherit; cursor: pointer; padding: 10px 12px; border-radius: 8px;
+  transition: color .12s, background .12s;
+}
+.svc-recheck:hover { color: #aeb4c6; background: rgba(255,255,255,.04); }
 .saved {
   position: absolute; right: 18px; bottom: 16px; display: inline-flex; align-items: center; gap: 7px;
   padding: 7px 13px; border-radius: 999px; background: linear-gradient(135deg, #34d399, #10b981);

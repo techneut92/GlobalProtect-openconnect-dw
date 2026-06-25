@@ -242,45 +242,6 @@ pub async fn latest_release() -> Result<Release, String> {
   })
 }
 
-/// The shell command (for display) that updates this install.
-pub fn update_command(kind: InstallKind) -> Option<String> {
-  match kind {
-    InstallKind::Flatpak => Some(format!("flatpak update {FLATPAK_ID}")),
-    // No package repo yet for the native builds — there's no upgrade command, so
-    // the UI opens the release page instead.
-    _ => None,
-  }
-}
-
-/// Install command for the privileged backend package, per OS. Best-effort: with
-/// no configured repo these fail unless the user added one / downloaded the
-/// release, which is why the UI also shows instructions.
-pub fn backend_install_command(kind: InstallKind) -> Option<String> {
-  let pkg = "globalprotect-openconnect-dw";
-  match kind {
-    InstallKind::RpmOstree => Some(format!("rpm-ostree install {pkg}")),
-    InstallKind::Dnf => Some(format!("dnf install {pkg}")),
-    InstallKind::Apt => Some(format!("apt-get install {pkg}")),
-    InstallKind::Pacman => Some(format!("pacman -S {pkg}")),
-    InstallKind::Apk => Some(format!("apk add {pkg}")),
-    InstallKind::Zypper => Some(format!("zypper install {pkg}")),
-    InstallKind::Flatpak | InstallKind::Unknown => None,
-  }
-}
-
-pub fn kind_from_str(s: &str) -> InstallKind {
-  match s {
-    "rpm-ostree" => InstallKind::RpmOstree,
-    "dnf" => InstallKind::Dnf,
-    "apt" => InstallKind::Apt,
-    "pacman" => InstallKind::Pacman,
-    "apk" => InstallKind::Apk,
-    "zypper" => InstallKind::Zypper,
-    "flatpak" => InstallKind::Flatpak,
-    _ => InstallKind::Unknown,
-  }
-}
-
 fn kind_label(kind: InstallKind) -> &'static str {
   match kind {
     InstallKind::RpmOstree => "Atomic / image-based (rpm-ostree)",
@@ -294,133 +255,68 @@ fn kind_label(kind: InstallKind) -> &'static str {
   }
 }
 
+fn install_note(kind: InstallKind) -> &'static str {
+  match kind {
+    InstallKind::RpmOstree => "Layered packages take effect after the next reboot.",
+    _ => "The helper service is enabled and started automatically once installed.",
+  }
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Step {
+  pub label: String,
+  pub cmd: String,
+}
+
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstallOption {
   pub kind: String,
   pub label: String,
-  pub command: Option<String>,
-  pub hint: String,
+  pub note: String,
+  pub steps: Vec<Step>,
 }
 
-/// All backend-install options, so the UI can offer a manual override when the
-/// auto-detection is wrong. Flatpak is excluded — the backend is always a host
-/// package (it needs root + host networking).
+/// Concrete, copyable install steps per OS — real release asset name, arch and
+/// version. The fork ships via GitHub releases (no repo), so dnf/pacman/zypper
+/// install straight from the asset URL while rpm-ostree/apt/apk download first.
+/// Flatpak is excluded — the backend is always a host package.
 pub fn install_options() -> Vec<InstallOption> {
-  [
-    InstallKind::RpmOstree,
-    InstallKind::Dnf,
-    InstallKind::Apt,
-    InstallKind::Pacman,
-    InstallKind::Apk,
-    InstallKind::Zypper,
-  ]
-  .iter()
-  .map(|&k| InstallOption {
-    kind: k.as_str().to_string(),
-    label: kind_label(k).to_string(),
-    command: backend_install_command(k),
-    hint: backend_install_hint(k),
-  })
-  .collect()
-}
-
-/// Copy-paste shell commands to fetch and install the backend package for this
-/// OS — concrete asset name + arch + version, since the fork ships via GitHub
-/// releases (no repo to resolve a package name from).
-pub fn backend_install_hint(kind: InstallKind) -> String {
   let v = GUI_VERSION;
   let arch = std::env::consts::ARCH; // x86_64 / aarch64
-  let url = |file: &str| format!("https://github.com/{REPO}/releases/download/v{v}/{file}");
+  let deb_arch = if arch == "aarch64" { "arm64" } else { "amd64" };
+  let base = format!("https://github.com/{REPO}/releases/download/v{v}");
   let rpm = format!("globalprotect-openconnect-dw-{v}-1.{arch}.rpm");
-  match kind {
-    InstallKind::RpmOstree => {
-      format!("curl -LO {}\nsudo rpm-ostree install ./{rpm}\n# then reboot", url(&rpm))
-    }
-    InstallKind::Dnf => format!("curl -LO {}\nsudo dnf install ./{rpm}", url(&rpm)),
-    InstallKind::Apt => {
-      let da = if arch == "aarch64" { "arm64" } else { "amd64" };
-      let deb = format!("globalprotect-openconnect-dw_{v}-1_{da}.deb");
-      format!("curl -LO {}\nsudo apt install ./{deb}", url(&deb))
-    }
-    InstallKind::Pacman => {
-      let pkg = format!("globalprotect-openconnect-dw-{v}-1-{arch}.pkg.tar.zst");
-      format!("curl -LO {}\nsudo pacman -U ./{pkg}", url(&pkg))
-    }
-    InstallKind::Apk => {
-      let apk = format!("globalprotect-openconnect-dw-{v}-r1-{arch}.apk");
-      format!("curl -LO {}\nsudo apk add --allow-untrusted ./{apk}", url(&apk))
-    }
-    InstallKind::Zypper => format!("curl -LO {}\nsudo zypper install ./{rpm}", url(&rpm)),
-    InstallKind::Flatpak | InstallKind::Unknown => {
-      format!("Download the backend package for your distro from\nhttps://github.com/{REPO}/releases/latest")
-    }
-  }
-}
+  let deb = format!("globalprotect-openconnect-dw_{v}-1_{deb_arch}.deb");
+  let pac = format!("globalprotect-openconnect-dw-{v}-1-{arch}.pkg.tar.zst");
+  let apk = format!("globalprotect-openconnect-dw-{v}-r1-{arch}.apk");
 
-/// Full root shell script (download the release asset, then install it) for the
-/// "Install" button. Works once the release is publicly downloadable; the same
-/// commands are shown for copy-paste. `None` for kinds we can't script.
-pub fn backend_install_script(kind: InstallKind) -> Option<String> {
-  let v = GUI_VERSION;
-  let arch = std::env::consts::ARCH;
-  let url = |file: &str| format!("https://github.com/{REPO}/releases/download/v{v}/{file}");
-  // Download into a temp dir (we run as root via pkexec), then install the file.
-  let dl = |file: &str| format!("cd \"$(mktemp -d)\" && curl -fL -o '{file}' '{}'", url(file));
-  let rpm = format!("globalprotect-openconnect-dw-{v}-1.{arch}.rpm");
-  match kind {
-    InstallKind::RpmOstree => Some(format!("{} && rpm-ostree install -y './{rpm}'", dl(&rpm))),
-    InstallKind::Dnf => Some(format!("{} && dnf install -y './{rpm}'", dl(&rpm))),
-    InstallKind::Apt => {
-      let da = if arch == "aarch64" { "arm64" } else { "amd64" };
-      let deb = format!("globalprotect-openconnect-dw_{v}-1_{da}.deb");
-      Some(format!("{} && apt-get install -y './{deb}'", dl(&deb)))
-    }
-    InstallKind::Pacman => {
-      let p = format!("globalprotect-openconnect-dw-{v}-1-{arch}.pkg.tar.zst");
-      Some(format!("{} && pacman -U --noconfirm './{p}'", dl(&p)))
-    }
-    InstallKind::Apk => {
-      let a = format!("globalprotect-openconnect-dw-{v}-r1-{arch}.apk");
-      Some(format!("{} && apk add --allow-untrusted './{a}'", dl(&a)))
-    }
-    InstallKind::Zypper => Some(format!("{} && zypper install -y './{rpm}'", dl(&rpm))),
-    InstallKind::Flatpak | InstallKind::Unknown => None,
-  }
-}
-
-/// Run a root shell script via pkexec (through flatpak-spawn --host when
-/// sandboxed). The script reaches the host shell as a single argument.
-pub fn run_root_script(script: &str) -> bool {
-  let mut cmd = if is_flatpak() {
-    let mut c = Command::new("flatpak-spawn");
-    c.args(["--host", "pkexec", "sh", "-c"]).arg(script);
-    c
-  } else {
-    let mut c = Command::new("pkexec");
-    c.args(["sh", "-c"]).arg(script);
-    c
+  let opt = |kind: InstallKind, steps: Vec<(&str, String)>| InstallOption {
+    kind: kind.as_str().to_string(),
+    label: kind_label(kind).to_string(),
+    note: install_note(kind).to_string(),
+    steps: steps.into_iter().map(|(l, c)| Step { label: l.to_string(), cmd: c }).collect(),
   };
-  cmd.spawn().is_ok()
-}
 
-/// Run a privileged command on the host (via pkexec; through flatpak-spawn when
-/// sandboxed). Best-effort, fire-and-forget.
-pub fn run_privileged(shell_cmd: &str) -> bool {
-  let parts: Vec<&str> = shell_cmd.split_whitespace().collect();
-  if parts.is_empty() {
-    return false;
-  }
-  let mut cmd = if is_flatpak() {
-    let mut c = Command::new("flatpak-spawn");
-    c.arg("--host").arg("pkexec").args(&parts);
-    c
-  } else {
-    let mut c = Command::new("pkexec");
-    c.args(&parts);
-    c
-  };
-  cmd.spawn().is_ok()
+  vec![
+    opt(InstallKind::RpmOstree, vec![
+      ("Download the package", format!("curl -LO {base}/{rpm}")),
+      ("Layer it onto the system", format!("sudo rpm-ostree install ./{rpm}")),
+      ("Reboot to finish", "systemctl reboot".to_string()),
+    ]),
+    opt(InstallKind::Dnf, vec![("Install from the release", format!("sudo dnf install {base}/{rpm}"))]),
+    opt(InstallKind::Apt, vec![
+      ("Download the package", format!("curl -LO {base}/{deb}")),
+      ("Install it", format!("sudo apt install ./{deb}")),
+    ]),
+    opt(InstallKind::Pacman, vec![("Install the package", format!("sudo pacman -U {base}/{pac}"))]),
+    opt(InstallKind::Zypper, vec![("Install from the release", format!("sudo zypper install {base}/{rpm}"))]),
+    opt(InstallKind::Apk, vec![
+      ("Download the package", format!("curl -LO {base}/{apk}")),
+      ("Install it", format!("sudo apk add --allow-untrusted ./{apk}")),
+    ]),
+  ]
 }
 
 /// Run `flatpak update` for the GUI (only meaningful on Flatpak installs).
