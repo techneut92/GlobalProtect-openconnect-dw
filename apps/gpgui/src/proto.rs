@@ -5,6 +5,10 @@
 //! (ConnectInfo / Gateway / SessionInfo) are kept as `serde_json::Value` so
 //! this GUI stays decoupled from the heavy `gpapi`/`openconnect` crates — we
 //! only need to *route* on the variant, not model every field yet.
+//!
+//! Some variants/payloads are deliberately carried but not yet read, so the
+//! whole wire protocol stays described here.
+#![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

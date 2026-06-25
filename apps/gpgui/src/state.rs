@@ -1,7 +1,5 @@
 //! Shared UI state, updated by the VPN manager and read by the egui window + tray.
 
-use crate::pkcs11::CertInfo;
-
 #[derive(Debug, Clone, PartialEq, Default)]
 pub enum Status {
   #[default]
@@ -50,9 +48,6 @@ pub struct Shared {
   pub status: Status,
   /// Last log line from gpclient (for the status area).
   pub log: String,
-  /// Certificates discovered on the token.
-  pub certs: Vec<CertInfo>,
-  pub enumerating: bool,
   /// Generation counter so a stale connection's reader can't clobber newer state.
   pub current_gen: u64,
   /// Live connection details (valid while `status` is Connected).

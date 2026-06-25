@@ -36,6 +36,10 @@ pub async fn read_port() -> Result<u16> {
 ///   the GUI it launches.
 /// - otherwise: dev fallback of all-zeros, matching `gpservice --no-gui`
 ///   (debug build), so the GUI can be run standalone during development.
+///
+/// Used on the `gpservice`-launched handshake path; kept even when unused in
+/// standalone dev runs.
+#[allow(dead_code)]
 pub async fn load_api_key(from_stdin: bool) -> Result<Vec<u8>> {
   if from_stdin {
     let mut buf = String::new();
