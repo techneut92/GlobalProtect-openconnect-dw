@@ -83,7 +83,9 @@ header {
 .wbtn.kofi:hover { background: rgba(255,94,91,.16); color: #ff5e5b; }
 
 /* ───────── main / hero ───────── */
-main { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; padding: 6px 18px 14px; }
+/* flex column so .center views (vault setup/unlock) vertically center within the
+   fixed-height window; taller views (backend/connect) flow from the top + scroll. */
+main { flex: 1 1 auto; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; padding: 6px 18px 14px; }
 
 .hero { display: flex; flex-direction: column; align-items: center; padding: 26px 0 18px; }
 .orb-wrap { position: relative; width: 148px; height: 148px; display: flex; align-items: center; justify-content: center; --c: var(--grey); }
