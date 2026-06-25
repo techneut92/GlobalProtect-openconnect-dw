@@ -241,6 +241,32 @@ jobs:
         if-no-files-found: error
         retention-days: 1
 
+  # Build a single-file Flatpak bundle of the GUI. The artifact is named
+  # `artifact-gp-flatpak` so the release script's `artifact-gp-*` glob ships it.
+  flatpak:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
+      options: --privileged
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Build Flatpak bundle
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: io.github.techneut92.gpgui.flatpak
+          manifest-path: apps/gpgui/packaging/flatpak/io.github.techneut92.gpgui.yml
+          # GNOME 50 runtime/SDK + rust-stable//25.08 are pulled from Flathub by
+          # the action (the image ships an older runtime only).
+          cache-key: flatpak-builder-${{ github.sha }}
+      - name: Upload bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifact-gp-flatpak
+          path: io.github.techneut92.gpgui.flatpak
+          if-no-files-found: error
+
   gh-release:
     if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
@@ -248,6 +274,7 @@ jobs:
       - tarball
       - tarball-offline
       - build-gp
+      - flatpak
 
     steps:
     - name: Prepare workspace
