@@ -54,6 +54,18 @@ pub fn is_flatpak() -> bool {
 /// image-based. Used for the About display; install/update *commands* still use
 /// `detect()` (the OS package manager).
 pub fn run_mode() -> &'static str {
+  // A build can bake in its kind (GP_BUILD_KIND=flatpak / native / source) so the
+  // version line is unambiguous regardless of where the binary sits; otherwise
+  // fall back to runtime detection.
+  if let Some(k) = option_env!("GP_BUILD_KIND") {
+    match k {
+      "flatpak" => return "Flatpak",
+      "native" => return "Native package",
+      "source" => return "Source build",
+      "" => {}
+      other => return other,
+    }
+  }
   if is_flatpak() {
     return "Flatpak";
   }
