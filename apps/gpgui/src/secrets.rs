@@ -31,6 +31,13 @@ pub fn load_pin() -> Option<String> {
   }
 }
 
+/// Whether the desktop secret store is reachable (best-effort). A missing entry
+/// still counts as available — the service is up, nothing is stored yet.
+pub fn available() -> bool {
+  let Some(e) = entry() else { return false };
+  matches!(e.get_password(), Ok(_) | Err(keyring::Error::NoEntry))
+}
+
 /// Store the master PIN (best-effort).
 pub fn store_pin(pin: &str) {
   if let Some(e) = entry() {

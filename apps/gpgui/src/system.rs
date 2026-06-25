@@ -112,9 +112,9 @@ pub fn detect() -> InstallKind {
   }
 }
 
-fn os_release() -> std::collections::HashMap<String, String> {
+fn os_release_at(path: &str) -> std::collections::HashMap<String, String> {
   let mut map = std::collections::HashMap::new();
-  if let Ok(text) = std::fs::read_to_string("/etc/os-release") {
+  if let Ok(text) = std::fs::read_to_string(path) {
     for line in text.lines() {
       if let Some((k, v)) = line.split_once('=') {
         map.insert(k.trim().to_string(), v.trim().trim_matches('"').to_string());
@@ -124,8 +124,38 @@ fn os_release() -> std::collections::HashMap<String, String> {
   map
 }
 
+fn os_release() -> std::collections::HashMap<String, String> {
+  os_release_at("/etc/os-release")
+}
+
 pub fn os_pretty_name() -> String {
-  os_release().get("PRETTY_NAME").cloned().unwrap_or_else(|| "Linux".into())
+  // Inside Flatpak, /etc/os-release is the runtime's — the host's is at /run/host.
+  let path = if is_flatpak() && Path::new("/run/host/os-release").exists() {
+    "/run/host/os-release"
+  } else {
+    "/etc/os-release"
+  };
+  os_release_at(path).get("PRETTY_NAME").cloned().unwrap_or_else(|| "Linux".into())
+}
+
+/// The Flatpak runtime (id + version), e.g. "GNOME Platform 50". `None` natively.
+pub fn flatpak_runtime() -> Option<String> {
+  if !is_flatpak() {
+    return None;
+  }
+  // /.flatpak-info → [Application] runtime=org.gnome.Platform/x86_64/50
+  let info = std::fs::read_to_string("/.flatpak-info").ok()?;
+  let val = info.lines().find_map(|l| l.trim().strip_prefix("runtime="))?;
+  let mut parts = val.split('/');
+  let id = parts.next().unwrap_or(val);
+  let ver = parts.nth(1).unwrap_or(""); // skip arch, take version
+  let name = match id {
+    "org.gnome.Platform" => "GNOME Platform",
+    "org.kde.Platform" => "KDE Platform",
+    "org.freedesktop.Platform" => "Freedesktop",
+    other => other,
+  };
+  Some(if ver.is_empty() { name.to_string() } else { format!("{name} {ver}") })
 }
 
 /// The **host** `~/.config` directory for files consumed by host services
@@ -317,6 +347,69 @@ pub fn install_options() -> Vec<InstallOption> {
       ("Install it", format!("sudo apk add --allow-untrusted ./{apk}")),
     ]),
   ]
+}
+
+pub fn kind_from_str(s: &str) -> InstallKind {
+  match s {
+    "rpm-ostree" => InstallKind::RpmOstree,
+    "dnf" => InstallKind::Dnf,
+    "apt" => InstallKind::Apt,
+    "pacman" => InstallKind::Pacman,
+    "apk" => InstallKind::Apk,
+    "zypper" => InstallKind::Zypper,
+    "flatpak" => InstallKind::Flatpak,
+    _ => InstallKind::Unknown,
+  }
+}
+
+/// Root shell script for the one-click Install button — mirrors `install_options`
+/// but runs as root via pkexec (no `sudo`, reboot left to the user). dnf/pacman/
+/// zypper install straight from the asset URL; the rest download first.
+pub fn backend_install_script(kind: InstallKind) -> Option<String> {
+  let v = GUI_VERSION;
+  let arch = std::env::consts::ARCH;
+  let deb_arch = if arch == "aarch64" { "arm64" } else { "amd64" };
+  let base = format!("https://github.com/{REPO}/releases/download/v{v}");
+  let rpm = format!("globalprotect-openconnect-dw-{v}-1.{arch}.rpm");
+  let deb = format!("globalprotect-openconnect-dw_{v}-1_{deb_arch}.deb");
+  let pac = format!("globalprotect-openconnect-dw-{v}-1-{arch}.pkg.tar.zst");
+  let apk = format!("globalprotect-openconnect-dw-{v}-r1-{arch}.apk");
+  let dl_install = |file: &str, install: &str| {
+    format!("cd \"$(mktemp -d)\" && curl -fLO '{base}/{file}' && {install} './{file}'")
+  };
+  match kind {
+    InstallKind::RpmOstree => Some(dl_install(&rpm, "rpm-ostree install -y")),
+    InstallKind::Apt => Some(dl_install(&deb, "apt-get install -y")),
+    InstallKind::Apk => Some(dl_install(&apk, "apk add --allow-untrusted")),
+    InstallKind::Dnf => Some(format!("dnf install -y '{base}/{rpm}'")),
+    InstallKind::Pacman => Some(format!("pacman -U --noconfirm '{base}/{pac}'")),
+    InstallKind::Zypper => Some(format!("zypper install -y '{base}/{rpm}'")),
+    InstallKind::Flatpak | InstallKind::Unknown => None,
+  }
+}
+
+/// Run a root shell script via pkexec (through flatpak-spawn --host when
+/// sandboxed) and wait for it. `Ok(())` on success, else a short reason — so the
+/// UI shows real progress instead of an optimistic guess.
+pub fn run_root_script_wait(script: &str) -> Result<(), String> {
+  let output = if is_flatpak() {
+    Command::new("flatpak-spawn").args(["--host", "pkexec", "sh", "-c"]).arg(script).output()
+  } else {
+    Command::new("pkexec").args(["sh", "-c"]).arg(script).output()
+  };
+  match output {
+    Ok(o) if o.status.success() => Ok(()),
+    Ok(o) => {
+      // pkexec: 126 = dismissed, 127 = auth failed.
+      if matches!(o.status.code(), Some(126) | Some(127)) {
+        return Err("Authentication was cancelled.".into());
+      }
+      let stderr = String::from_utf8_lossy(&o.stderr);
+      let last = stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("Install failed.");
+      Err(last.trim().chars().take(160).collect())
+    }
+    Err(e) => Err(format!("Couldn't start the installer: {e}")),
+  }
 }
 
 /// Run `flatpak update` for the GUI (only meaningful on Flatpak installs).
