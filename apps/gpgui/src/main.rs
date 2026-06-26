@@ -218,8 +218,9 @@ struct SystemInfo {
   flatpak_runtime: Option<String>,
   backend_installed: bool,
   backend_version: Option<String>,
-  /// True when the backend version matches the GUI (or the backend isn't
-  /// installed yet — that case is reported via `backend_installed`).
+  /// True when the backend agrees with the GUI on `major.minor` (or the backend
+  /// isn't installed yet — that case is reported via `backend_installed`).
+  /// Patch-level differences are compatible and never warned about.
   compatible: bool,
   /// Per-OS install steps, so the UI can render and offer a manual override.
   install_options: Vec<system::InstallOption>,
@@ -230,7 +231,7 @@ fn system_info() -> SystemInfo {
   let kind = system::detect();
   let backend_version = system::backend_version();
   let compatible = match &backend_version {
-    Some(v) => system::version_cmp(v, system::GUI_VERSION) == std::cmp::Ordering::Equal,
+    Some(v) => system::same_feature_version(v, system::GUI_VERSION),
     None => true,
   };
   SystemInfo {
