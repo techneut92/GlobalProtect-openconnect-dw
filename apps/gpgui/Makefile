@@ -1,4 +1,4 @@
-# Build + package the GlobalProtect GUI (gpgui) from the monorepo.
+# Build + package the GP Client GUI (gpgui) from the monorepo.
 #
 #   make build    -> build the Tauri GUI binary (target/release/gpgui)
 #   make flatpak  -> build + install the GUI as a Flatpak (the GUI's shipping

@@ -99,16 +99,16 @@ impl Notifier {
 
       if !was_connected && matches!(status, Status::Connected) {
         let portal = if s.conn.portal.is_empty() {
-          "GlobalProtect".to_string()
+          "GP Client".to_string()
         } else {
           s.conn.portal.clone()
         };
-        notify = Some(("GlobalProtect connected".into(), format!("Connected to {portal}")));
+        notify = Some(("GP Client connected".into(), format!("Connected to {portal}")));
       } else if was_active && matches!(status, Status::Disconnected) {
-        notify = Some(("GlobalProtect disconnected".into(), "The VPN connection has ended".into()));
+        notify = Some(("GP Client disconnected".into(), "The VPN connection has ended".into()));
       } else if let Status::Error(e) = &status {
         if was_active {
-          notify = Some(("GlobalProtect error".into(), e.clone()));
+          notify = Some(("GP Client error".into(), e.clone()));
         }
       }
 
@@ -382,7 +382,7 @@ pub(crate) fn notify_desktop(summary: String, body: String) {
       .summary(&summary)
       .body(&body)
       .icon("network-vpn")
-      .appname("GlobalProtect")
+      .appname("GP Client")
       .show();
   });
 }

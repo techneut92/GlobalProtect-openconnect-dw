@@ -45,7 +45,7 @@ pub fn set(enabled: bool) {
     let entry = format!(
       "[Desktop Entry]\n\
        Type=Application\n\
-       Name=GlobalProtect\n\
+       Name=GP Client\n\
        Comment=Connect to GlobalProtect VPN\n\
        Exec={}\n\
        Icon=gpgui\n\

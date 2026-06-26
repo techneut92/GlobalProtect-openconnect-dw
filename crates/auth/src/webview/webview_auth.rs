@@ -100,7 +100,7 @@ impl<'a> WebviewAuthenticator<'a> {
 
     let auth_window = WebviewWindow::builder(app_handle, "auth_window", WebviewUrl::default())
       .on_page_load(on_page_load)
-      .title("GlobalProtect Login")
+      .title("GP Client")
       .inner_size(900.0, 650.0 + title_bar_height)
       .focused(true)
       // when clean is true, the window is expected to be shown because the cookies are cleared

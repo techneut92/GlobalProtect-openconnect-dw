@@ -56,4 +56,4 @@ sudo apt install --fix-broken -y /tmp/globalprotect-openconnect.deb
 rm /tmp/libjavascriptcoregtk.deb /tmp/libwebkit2gtk.deb /tmp/globalprotect-openconnect.deb
 
 echo ""
-echo "GlobalProtect OpenConnect VPN client has been installed successfully."
+echo "GP Client has been installed successfully."
