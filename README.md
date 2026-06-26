@@ -182,6 +182,12 @@ Each requires its own packaging metadata, signing keys/secrets, and (for
 Flathub/AUR) an external submission — tracked here so future releases just tick
 the boxes.
 
+## Support
+
+If this project saves you some time, you can support its development on Ko-fi:
+
+[![ko-fi](https://img.shields.io/badge/Support%20me%20on-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/techneut92)
+
 ## License
 
 **GPL-3.0-or-later.** © 2026 Dylan Westra (techneut92). A fork of
