@@ -196,6 +196,8 @@
           <div class="drow"><div class="k">Backend service</div><div class="v" id="aboutBackend">—</div></div>
         </div>
         <div class="compat-warn" id="compatWarn" hidden></div>
+        <button class="btn-soft" id="updateBackendBtn" hidden style="margin-top:10px;">Update backend</button>
+        <div class="bk-status" id="updateBackendLog" hidden></div>
 
         <p class="help">
           © 2026 Dylan Westra (techneut92). Free &amp; open source under GPL-3.0 — a fork of
@@ -252,10 +254,36 @@
           : (s.backendVersion ? 'v' + s.backendVersion : 'installed');
         const mismatch = s.backendInstalled && !s.compatible;
         $('compatWarn').hidden = !mismatch;
-        if (mismatch) $('compatWarn').textContent =
-          'Version mismatch — the GUI (v' + s.guiVersion + ') and backend service (v' + (s.backendVersion || '?') + ') differ. Update both to the same version to avoid issues.';
+        $('updateBackendBtn').hidden = !mismatch;
+        if (mismatch) {
+          $('compatWarn').textContent =
+            'Version mismatch — the GUI is v' + s.guiVersion + ' but the backend service is v' + (s.backendVersion || '?') + '. Update the backend to match.';
+          $('updateBackendBtn').textContent = 'Update backend to v' + s.guiVersion;
+        }
       } catch (e) {}
     }
+    function setUbLog(msg, kind) {
+      const el = $('updateBackendLog');
+      if (!msg) { el.hidden = true; el.textContent = ''; el.className = 'bk-status'; return; }
+      el.hidden = false; el.textContent = msg; el.className = 'bk-status' + (kind ? ' ' + kind : '');
+    }
+    $('updateBackendBtn').onclick = async () => {
+      const btn = $('updateBackendBtn');
+      btn.disabled = true; btn.textContent = 'Updating…';
+      setUbLog('Approve the password prompt — downloading and installing the backend (this can take a few minutes).', '');
+      try {
+        // No kind → the backend is downloaded for this OS, at the GUI's version.
+        const r = await invoke('install_backend');
+        if (r.ok) {
+          btn.hidden = true;
+          setUbLog(r.needsReboot ? 'Backend updated — reboot to finish.' : 'Backend updated.', 'ok');
+          if (!r.needsReboot) loadAbout();
+        } else {
+          btn.disabled = false; btn.textContent = 'Update backend';
+          setUbLog(r.message || 'Update failed — install the backend package manually.', 'err');
+        }
+      } catch (e) { btn.disabled = false; btn.textContent = 'Update backend'; setUbLog('' + e, 'err'); }
+    };
     $('checkUpdateBtn').onclick = async () => {
       if (!hasTauri) { openExt(updateUrl); return; }
       $('updateStatus').textContent = 'Checking…'; $('updateNowBtn').hidden = true;
