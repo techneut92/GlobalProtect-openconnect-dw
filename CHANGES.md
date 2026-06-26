@@ -247,6 +247,29 @@ backend-install flow:
   `productName`, the window title, the `.desktop` `Name`, the AppStream `<name>`,
   and the in-app titlebar / About name.
 
+## 2026-06-27 — Nix flake rebuilt from source; compatibility & packaging polish
+
+- **Nix flake** (`flake.nix`): now builds the entire workspace — including the
+  `gpgui` GUI — from the in-tree source. Upstream's flake fetched a release
+  source tarball plus a prebuilt (formerly closed) `gpgui` binary; this fork
+  ships neither under those names, so `nix build` was broken. Removed the
+  obsolete `scripts/update-flake-hashes.sh` and
+  `.github/workflows/update-flake-hashes.yaml` (no release-asset hashes left to
+  track, and the workflow never fired — `GITHUB_TOKEN` release events don't
+  trigger workflows); added `.github/workflows/nix.yaml` to verify `nix build` in
+  CI. Build with the git fetcher so the submodules come along:
+  `nix build 'git+https://github.com/techneut92/GlobalProtect-openconnect-dw?submodules=1#default'`.
+- Dropped the last stale `gpgui-helper` references — a `--replace-fail` line in
+  `flake.nix` (which would have failed any Nix build) and a dead path in
+  `.dockerignore`.
+- **GUI** (`apps/gpgui/src/system.rs`, `apps/gpgui/src/main.rs`): the
+  GUI↔backend version-compatibility check now compares only `major.minor` (the
+  `z.y` in `vz.y.x`); patch-level differences are compatible and no longer
+  warned about.
+- **Flatpak**: added `<screenshots>` to the AppStream metainfo for software-store
+  listings.
+- **Docs**: README Ko-fi support badge.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of
