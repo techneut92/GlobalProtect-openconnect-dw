@@ -12,12 +12,28 @@ GUI is a clean, open Tauri rewrite).
 > **GlobalProtect** is a trademark of Palo Alto Networks. This is an independent,
 > compatible client and is not affiliated with or endorsed by Palo Alto Networks.
 
-<!-- TODO(screenshots): add app screenshots here once available.
 <p align="center">
-  <img width="420" src="docs/screenshot-connect.png" alt="GP Client — connect">
-  <img width="420" src="docs/screenshot-settings.png" alt="GP Client — settings">
+  <img width="440" src="docs/screenshots/main.png" alt="GP Client — connect with a smart-card identity">
 </p>
--->
+<p align="center"><em>Connect with a smart-card (PKCS#11 / YubiKey PIV) identity.</em></p>
+
+<details>
+<summary><b>More screenshots</b></summary>
+
+<p align="center">
+  <img width="320" src="docs/screenshots/identity_manager.png" alt="Identity manager — PKCS#11 module + YubiKey certificate">
+  <img width="320" src="docs/screenshots/settings_about.png" alt="About — host OS, Flatpak runtime, and backend status">
+</p>
+<p align="center"><em>Identity manager (PKCS#11 / YubiKey) · About (host OS, Flatpak runtime, backend status).</em></p>
+
+<p align="center">
+  <img width="240" src="docs/screenshots/set_master_pin.png" alt="Encrypted vault — set a master PIN">
+  <img width="240" src="docs/screenshots/backend_required.png" alt="Guided backend install">
+  <img width="320" src="docs/screenshots/settings_general.png" alt="Settings — startup & tray">
+</p>
+<p align="center"><em>Encrypted vault · guided backend install · settings.</em></p>
+
+</details>
 
 ## Contents
 
