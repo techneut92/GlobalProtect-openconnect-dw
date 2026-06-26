@@ -1,0 +1,39 @@
+name: Nix flake
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - ".github/workflows/nix.yaml"
+  push:
+    branches:
+      - main
+      - "fix-nix-flake**"
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - ".github/workflows/nix.yaml"
+
+concurrency:
+  group: nix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nix-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Build the flake from source
+        run: nix build "git+file://$PWD?submodules=1#default" -L
