@@ -1,7 +1,6 @@
 # Changelog
 
-## Unreleased (fork)
-
+## Unreleased
 - GUI: the GUI↔backend compatibility warning now only appears on a **feature
   (minor) or breaking (major)** version divergence — patch-level differences (the
   `x` in `vz.y.x`) are treated as compatible and no longer show the mismatch
@@ -13,16 +12,14 @@
   (`nix build 'git+https://github.com/techneut92/GlobalProtect-openconnect-dw?submodules=1#default'`).
 - Docs: added a Ko-fi support link to the README.
 
-## 1.0.2 - 2026-06-26 (fork)
-
+## 1.0.2 - 2026-06-26
 - GUI: **in-app update** under Flatpak now downloads the new `.flatpak` from the
   release and reinstalls it (keeps your vault/config) instead of a no-op
   `flatpak update`.
 - GUI: tidier About update box — larger text, buttons below the status, and
   "Check for updates" hides once an update is found.
 
-## 1.0.1 - 2026-06-26 (fork)
-
+## 1.0.1 - 2026-06-26
 - Flatpak: fix SSO — run the bundled `gpauth` (`/app/bin/gpauth`) instead of the
   missing `/usr/bin/gpauth`.
 - GUI: show an "Installing…" progress message while the backend installs (after
@@ -31,8 +28,7 @@
   is older than the GUI, update it to the matching version in one click (native;
   under Flatpak the host backend version isn't readable yet).
 
-## 1.0.0 - 2026-06-26 (fork)
-
+## 1.0.0 - 2026-06-26
 First release of the fork as **GP Client** — a GlobalProtect-compatible VPN
 client with smart-card / PKCS#11 (YubiKey PIV) authentication.
 
