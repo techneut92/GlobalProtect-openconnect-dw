@@ -24,6 +24,33 @@
 
   <launchable type="desktop-id">io.github.techneut92.gpgui.desktop</launchable>
 
+  <screenshots>
+    <screenshot type="default">
+      <caption>Connect to a GlobalProtect gateway from the main window</caption>
+      <image>https://raw.githubusercontent.com/techneut92/GlobalProtect-openconnect-dw/main/docs/screenshots/main.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Save and manage multiple connections</caption>
+      <image>https://raw.githubusercontent.com/techneut92/GlobalProtect-openconnect-dw/main/docs/screenshots/identity_manager.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Protect your connections with an encrypted vault</caption>
+      <image>https://raw.githubusercontent.com/techneut92/GlobalProtect-openconnect-dw/main/docs/screenshots/set_master_pin.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Configure the connection and smart-card options</caption>
+      <image>https://raw.githubusercontent.com/techneut92/GlobalProtect-openconnect-dw/main/docs/screenshots/settings_connection.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>General settings, autostart and tray behaviour</caption>
+      <image>https://raw.githubusercontent.com/techneut92/GlobalProtect-openconnect-dw/main/docs/screenshots/settings_general.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Check for updates from the About page</caption>
+      <image>https://raw.githubusercontent.com/techneut92/GlobalProtect-openconnect-dw/main/docs/screenshots/settings_about.png</image>
+    </screenshot>
+  </screenshots>
+
   <categories>
     <category>Network</category>
     <category>Security</category>
