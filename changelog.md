@@ -6,6 +6,9 @@
   missing `/usr/bin/gpauth`.
 - GUI: show an "Installing…" progress message while the backend installs (after
   the password prompt), instead of leaving the "approve the prompt" message.
+- GUI: **Update backend** button in Settings → About — when the backend service
+  is older than the GUI, update it to the matching version in one click (native;
+  under Flatpak the host backend version isn't readable yet).
 
 ## 1.0.0 - 2026-06-26 (fork)
 
