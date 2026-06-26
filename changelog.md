@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased (fork)
+
+- GUI: the GUI↔backend compatibility warning now only appears on a **feature
+  (minor) or breaking (major)** version divergence — patch-level differences (the
+  `x` in `vz.y.x`) are treated as compatible and no longer show the mismatch
+  banner or the "Update backend" prompt.
+- Flatpak: the AppStream listing now includes **screenshots**, so they show on
+  the app's page in GNOME Software / KDE Discover.
+- Packaging: the **Nix flake builds again** — it now builds the whole workspace,
+  including the GUI, from source and is verified in CI
+  (`nix build 'git+https://github.com/techneut92/GlobalProtect-openconnect-dw?submodules=1#default'`).
+- Docs: added a Ko-fi support link to the README.
+
 ## 1.0.2 - 2026-06-26 (fork)
 
 - GUI: **in-app update** under Flatpak now downloads the new `.flatpak` from the
