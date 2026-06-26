@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.2 - 2026-06-26 (fork)
+
+- GUI: **in-app update** under Flatpak now downloads the new `.flatpak` from the
+  release and reinstalls it (keeps your vault/config) instead of a no-op
+  `flatpak update`.
+- GUI: tidier About update box — larger text, buttons below the status, and
+  "Check for updates" hides once an update is found.
+
 ## 1.0.1 - 2026-06-26 (fork)
 
 - Flatpak: fix SSO — run the bundled `gpauth` (`/app/bin/gpauth`) instead of the
