@@ -291,15 +291,23 @@ async fn check_update() -> UpdateInfo {
   }
 }
 
-/// Update action: `flatpak update` on Flatpak, otherwise open the release page
-/// (the native builds have no package repo to upgrade from yet).
+/// Update action. On Flatpak: download the new `.flatpak` from the release and
+/// reinstall it (no hosted/Flathub remote yet, so `flatpak update` can't pull
+/// it). On native: open the release to grab the new packages.
 #[tauri::command]
-fn run_update(url: String) -> String {
-  if system::is_flatpak() && system::run_flatpak_update() {
-    "Running flatpak update — reopen the app when it finishes.".into()
+async fn run_update(url: String, version: String) -> String {
+  if system::is_flatpak() {
+    match tauri::async_runtime::spawn_blocking(move || system::flatpak_self_update(&version)).await {
+      Ok(Ok(())) => "Updated — fully quit GP Client (tray → Quit) and reopen it to use the new version.".into(),
+      Ok(Err(e)) => {
+        system::open_url(&url);
+        format!("Couldn't auto-update ({e}). Opened the release so you can download it manually.")
+      }
+      Err(_) => "The update task failed to run.".into(),
+    }
   } else {
     system::open_url(&url);
-    "Opened the release page in your browser.".into()
+    "Opened the latest release — download and install the new version.".into()
   }
 }
 
