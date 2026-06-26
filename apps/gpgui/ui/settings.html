@@ -237,7 +237,7 @@
     // ───────── About / updates ─────────
     const REPO_URL = 'https://github.com/techneut92/GlobalProtect-openconnect-dw';
     const UPSTREAM_URL = 'https://github.com/yuezk/GlobalProtect-openconnect';
-    let updateUrl = REPO_URL + '/releases';
+    let updateUrl = REPO_URL + '/releases', updateLatest = '';
     function openExt(url) { if (hasTauri) invoke('open_url', { url }); else window.open(url, '_blank'); }
     $('repoLink').onclick = (e) => { e.preventDefault(); openExt(REPO_URL + '/releases'); };
     $('upstreamLink').onclick = (e) => { e.preventDefault(); openExt(UPSTREAM_URL); };
@@ -286,20 +286,25 @@
     };
     $('checkUpdateBtn').onclick = async () => {
       if (!hasTauri) { openExt(updateUrl); return; }
-      $('updateStatus').textContent = 'Checking…'; $('updateNowBtn').hidden = true;
+      $('updateStatus').textContent = 'Checking…'; $('updateNowBtn').hidden = true; $('checkUpdateBtn').hidden = false;
       try {
         const u = await invoke('check_update');
-        updateUrl = u.url || updateUrl;
+        updateUrl = u.url || updateUrl; updateLatest = u.latest || '';
         if (u.error) $('updateStatus').textContent = "Couldn't check: " + u.error;
         else if (u.available) {
           $('updateStatus').innerHTML = '<span style="color:var(--green)">Update available — v' + u.latest + '</span> (you have v' + u.current + ').';
-          $('updateNowBtn').hidden = false;
+          // Found one → swap the check button for the update button.
+          $('updateNowBtn').hidden = false; $('checkUpdateBtn').hidden = true;
         } else $('updateStatus').textContent = "You're on the latest version (v" + u.current + ').';
       } catch (e) { $('updateStatus').textContent = "Couldn't check for updates."; }
     };
     $('updateNowBtn').onclick = async () => {
       if (!hasTauri) { openExt(updateUrl); return; }
-      try { $('updateStatus').textContent = await invoke('run_update', { url: updateUrl }); } catch (e) {}
+      const btn = $('updateNowBtn'); btn.disabled = true; btn.textContent = 'Updating…';
+      $('updateStatus').textContent = 'Downloading and installing the update… this can take a minute.';
+      try { $('updateStatus').textContent = await invoke('run_update', { url: updateUrl, version: updateLatest }); }
+      catch (e) { $('updateStatus').textContent = '' + e; }
+      btn.disabled = false; btn.textContent = 'Update now';
     };
 
     // form model — camelCase keys match Rust SettingsForm; cfg holds snake_case config keys

@@ -414,19 +414,27 @@ pub fn run_root_script_wait(script: &str) -> Result<(), String> {
   }
 }
 
-/// Run `flatpak update` for the GUI (only meaningful on Flatpak installs).
-pub fn run_flatpak_update() -> bool {
-  if !is_flatpak() {
-    return false;
+/// Download the GUI `.flatpak` for `version` from the release and (re)install it
+/// on the host. `--reinstall` replaces any existing install (any origin) and
+/// keeps user data; `--user` needs no root, so there's no password prompt.
+pub fn flatpak_self_update(version: &str) -> Result<(), String> {
+  let url = format!("https://github.com/{REPO}/releases/download/v{version}/{FLATPAK_ID}.flatpak");
+  let script = format!(
+    "f=$(mktemp --suffix=.flatpak) && curl -fL -o \"$f\" '{url}' && \
+     flatpak install --user --reinstall --assumeyes \"$f\"; r=$?; rm -f \"$f\"; exit $r"
+  );
+  let out = Command::new("flatpak-spawn")
+    .args(["--host", "sh", "-c"])
+    .arg(&script)
+    .output()
+    .map_err(|e| format!("couldn't start the updater: {e}"))?;
+  if out.status.success() {
+    Ok(())
+  } else {
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    let last = stderr.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("update failed");
+    Err(last.trim().chars().take(160).collect())
   }
-  Command::new("flatpak-spawn")
-    .arg("--host")
-    .arg("flatpak")
-    .arg("update")
-    .arg("-y")
-    .arg(FLATPAK_ID)
-    .spawn()
-    .is_ok()
 }
 
 /// Open an http(s) URL in the host browser.
