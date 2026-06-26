@@ -221,14 +221,16 @@ fn backend_dbus_available() -> bool {
 }
 
 /// Compare dotted version strings numerically. Returns Ordering of `a` vs `b`.
+/// Split a version like `v1.2.3-foo` into numeric components `[1, 2, 3]`.
+fn version_parts(s: &str) -> Vec<u64> {
+  s.trim_start_matches('v')
+    .split(|c: char| c == '.' || c == '-')
+    .map(|p| p.chars().take_while(|c| c.is_ascii_digit()).collect::<String>().parse().unwrap_or(0))
+    .collect()
+}
+
 pub fn version_cmp(a: &str, b: &str) -> std::cmp::Ordering {
-  let parse = |s: &str| -> Vec<u64> {
-    s.trim_start_matches('v')
-      .split(|c: char| c == '.' || c == '-')
-      .map(|p| p.chars().take_while(|c| c.is_ascii_digit()).collect::<String>().parse().unwrap_or(0))
-      .collect()
-  };
-  let (va, vb) = (parse(a), parse(b));
+  let (va, vb) = (version_parts(a), version_parts(b));
   for i in 0..va.len().max(vb.len()) {
     let x = va.get(i).copied().unwrap_or(0);
     let y = vb.get(i).copied().unwrap_or(0);
@@ -237,6 +239,18 @@ pub fn version_cmp(a: &str, b: &str) -> std::cmp::Ordering {
     }
   }
   std::cmp::Ordering::Equal
+}
+
+/// True when two versions agree on `major.minor` (the `z.y` in `vz.y.x`).
+/// Patch (`x`) differences are treated as compatible, so the GUI only warns
+/// about a GUI↔backend divergence on a feature (minor) or breaking (major)
+/// release — not on every patch bump.
+pub fn same_feature_version(a: &str, b: &str) -> bool {
+  let key = |s: &str| {
+    let p = version_parts(s);
+    (p.first().copied().unwrap_or(0), p.get(1).copied().unwrap_or(0))
+  };
+  key(a) == key(b)
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
