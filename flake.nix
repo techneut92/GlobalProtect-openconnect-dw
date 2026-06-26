@@ -23,7 +23,7 @@
         };
 
         cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-        pname = "globalprotect-openconnect";
+        pname = "globalprotect-openconnect-dw";
         version = cargoToml.workspace.package.version;
 
         toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
@@ -32,26 +32,19 @@
           cargo = toolchain;
           rustc = toolchain;
         };
-
-        src = pkgs.fetchzip {
-          url = "https://github.com/techneut92/GlobalProtect-openconnect-dw/releases/download/v${version}/globalprotect-openconnect-${version}.tar.gz";
-          hash = "sha256-NS3tIZxkT9A4eqmfkcl29bHHJrrgVs/XSQBOz99cP30=";
-        };
-
-        cpu = pkgs.stdenv.hostPlatform.parsed.cpu.name;
-
-        gpgui = pkgs.fetchzip {
-          url = "https://github.com/techneut92/GlobalProtect-openconnect-dw/releases/download/v${version}/gpgui_${cpu}.bin.tar.xz";
-          hash = {
-            x86_64 = "sha256-1XBdrKJOhSViZOgfqohZjdzV6qzx/qpy0yhkbZ8DumA=";
-            aarch64 = "sha256-humujgf/M31SkBABc14g/ujjacGHxqElzNuCClhTAfA=";
-          }.${cpu};
-        };
       in
       {
-        # For `nix build`
+        # For `nix build`. Builds the whole workspace — including the in-tree
+        # Tauri GUI (gpgui) — straight from source.
+        #
+        # The openconnect/libxml2 git submodules are compiled by
+        # crates/openconnect/build.rs, so the flake source must include them.
+        # Invoke with submodules enabled, e.g.:
+        #   nix build 'github:techneut92/GlobalProtect-openconnect-dw?submodules=1#default'
+        #   nix build 'git+file://'"$PWD"'?submodules=1#default'
         packages.default = naersk'.buildPackage {
-          inherit pname version src;
+          inherit pname version;
+          src = self;
 
           # Must be set to true to avoid issues with the Tauri build process
           singleStep = true;
@@ -108,7 +101,6 @@
                 substituteInPlace crates/common/src/constants.rs \
                   --replace-fail /usr/bin/gpclient $out/bin/gpclient \
                   --replace-fail /usr/bin/gpservice $out/bin/gpservice \
-                  --replace-fail /usr/bin/gpgui-helper $out/bin/gpgui-helper \
                   --replace-fail /usr/bin/gpgui $out/bin/gpgui \
                   --replace-fail /usr/bin/gpauth $out/bin/gpauth \
                   --replace-fail /opt/homebrew/ $out/
@@ -116,10 +108,6 @@
             };
 
           postInstall = ''
-            # Copy the prebuilt gpgui binary to the output bin directory
-            cp ${gpgui}/gpgui $out/bin/gpgui
-            chmod +x $out/bin/gpgui
-
             cp -r packaging/files/usr/share $out/share
             cp -r packaging/files/usr/lib $out/lib
             cp -r packaging/files/usr/libexec $out/libexec
@@ -137,7 +125,6 @@
             # Change the `/usr/bin/gpservice` path in the polkit policy file
             substituteInPlace $out/share/polkit-1/actions/io.github.techneut92.gpgui.policy \
               --replace-fail /usr/bin/gpservice $out/bin/gpservice
-
           '';
         };
 

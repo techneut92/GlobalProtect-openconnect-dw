@@ -172,7 +172,9 @@ distribution channels to set up as the project matures:
 - [ ] **Arch AUR** — backend + GUI
 - [ ] **Debian/Ubuntu PPA**
 - [ ] **openSUSE OBS**
-- [ ] **NixOS flake** — verify/publish the in-repo flake
+- [ ] **NixOS flake** — `flake.nix` builds the whole workspace (incl. GUI) from
+      source and is checked in CI (`.github/workflows/nix.yaml`); needs
+      submodules: `nix build 'github:techneut92/GlobalProtect-openconnect-dw?submodules=1#default'`
 - [ ] **Docker image** — CLI-only (`gpclient`/`gpauth`); CI job present, publish disabled
 
 Each requires its own packaging metadata, signing keys/secrets, and (for
