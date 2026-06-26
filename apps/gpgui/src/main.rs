@@ -1,4 +1,4 @@
-// gpgui — GlobalProtect GUI
+// gpgui — GP Client GUI
 // Copyright (C) 2026 Dylan Westra (techneut92)
 //
 // This program is free software: you can redistribute it and/or modify it under
@@ -818,7 +818,7 @@ fn main() {
         if let Ok(rel) = system::latest_release().await {
           if system::version_cmp(&rel.version, system::GUI_VERSION) == std::cmp::Ordering::Greater {
             vpn::notify_desktop(
-              "GlobalProtect update available".into(),
+              "GP Client update available".into(),
               format!("Version {} is available — open Settings → About to update.", rel.version),
             );
           }

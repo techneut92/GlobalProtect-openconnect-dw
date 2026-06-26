@@ -156,7 +156,7 @@ impl Tray for GpTray {
   }
 
   fn title(&self) -> String {
-    "GlobalProtect".into()
+    "GP Client".into()
   }
 
   // Left-click reveals the window (after close-to-tray).
@@ -175,7 +175,7 @@ impl Tray for GpTray {
 
   fn tool_tip(&self) -> ToolTip {
     ToolTip {
-      title: "GlobalProtect".into(),
+      title: "GP Client".into(),
       description: self.status().label(),
       icon_name: String::new(),
       icon_pixmap: self.icons(false),
@@ -186,7 +186,7 @@ impl Tray for GpTray {
     let status = self.status();
     vec![
       StandardItem {
-        label: "Open GlobalProtect".into(),
+        label: "Open GP Client".into(),
         activate: Box::new(|this: &mut Self| this.show_window()),
         ..Default::default()
       }

@@ -1,4 +1,4 @@
-// Let active local users start the GlobalProtect backend (gpservice) as root
+// Let active local users start the GP Client backend (gpservice) as root
 // without a password prompt, for the native (loopback) transport where the GUI
 // launches gpservice via `pkexec gpservice --api-key-on-stdin`.
 //
