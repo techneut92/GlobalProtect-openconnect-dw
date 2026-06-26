@@ -39,9 +39,10 @@
         #
         # The openconnect/libxml2 git submodules are compiled by
         # crates/openconnect/build.rs, so the flake source must include them.
-        # Invoke with submodules enabled, e.g.:
-        #   nix build 'github:techneut92/GlobalProtect-openconnect-dw?submodules=1#default'
-        #   nix build 'git+file://'"$PWD"'?submodules=1#default'
+        # The `github:` shorthand fetches a submodule-less tarball and fails the
+        # patch step, so use the git fetcher with submodules enabled:
+        #   nix build 'git+https://github.com/techneut92/GlobalProtect-openconnect-dw?submodules=1#default'
+        #   nix build 'git+file://'"$PWD"'?submodules=1#default'   # local checkout
         packages.default = naersk'.buildPackage {
           inherit pname version;
           src = self;
