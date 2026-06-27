@@ -7,6 +7,12 @@ use crate::state::VpnState;
 /// to the client so that it can configure itself accordingly.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct VpnEnv {
+  /// Wire-protocol version the backend speaks (see [`crate::PROTOCOL_VERSION`]).
+  /// Defaults to 0 from a backend that predates the handshake — the GUI treats a
+  /// mismatch as "update needed".
+  #[serde(default)]
+  pub protocol_version: u32,
+
   /// The VPN connection state
   pub vpn_state: VpnState,
 

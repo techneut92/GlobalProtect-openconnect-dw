@@ -2227,6 +2227,7 @@ dependencies = [
  "compile-time",
  "env_logger",
  "futures",
+ "gp-protocol",
  "gpapi",
  "log",
  "openconnect",
