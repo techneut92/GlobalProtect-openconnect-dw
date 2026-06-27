@@ -34,7 +34,9 @@ pub const PROTOCOL_VERSION: u32 = 1;
 pub mod gateway;
 pub mod os;
 pub mod session;
+pub mod state;
 
 pub use gateway::{Gateway, PriorityRule};
 pub use os::ClientOs;
 pub use session::{format_duration_secs, SessionInfo, SessionWarning};
+pub use state::{ConnectInfo, ConnectedInfo, VpnState};
