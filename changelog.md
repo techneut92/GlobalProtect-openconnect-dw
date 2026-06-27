@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 1.0.4 - 2026-06-27
 
+- Packaging: the **Fedora COPR repo now also covers Enterprise Linux 10** — RHEL 10,
+  AlmaLinux 10, Rocky 10, CentOS Stream 10 (via EPEL 10), for x86_64 and aarch64.
+  (EL 9 isn't built — its Rust 1.84 is older than the dependency tree needs.)
 - Packaging: the Fedora COPR publish now runs from the release pipeline **only
   after the RPM install test passes** — a package that fails the smoke test is
   never published to COPR.
