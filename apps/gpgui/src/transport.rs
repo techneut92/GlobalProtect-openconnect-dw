@@ -62,14 +62,22 @@ pub async fn open(key: &[u8]) -> Result<(Transport, mpsc::Receiver<VpnState>)> {
   // with an actionable message instead of silently dropping on the first send.
   match tokio::time::timeout(Duration::from_secs(5), events.recv()).await {
     Ok(Some(ev)) => {
-      // Protocol handshake: the first event is VpnEnv, which carries the
-      // backend's wire-protocol version. Refuse to speak an incompatible one.
+      // Protocol handshake: the first event is VpnEnv, which advertises the
+      // backend's MIN..=MAX protocol range. Refuse only if it doesn't overlap
+      // ours; otherwise the highest common version is used (both speak v1 today).
+      // The direction tells the user which side is too old.
       if let WsEvent::VpnEnv(env) = &ev {
-        let (ours, theirs) = (gp_protocol::PROTOCOL_VERSION, env.protocol_version);
-        if theirs != ours {
+        let (g_min, g_max) = (gp_protocol::PROTOCOL_MIN, gp_protocol::PROTOCOL_MAX);
+        let (b_min, b_max) = (env.protocol_min, env.protocol_max);
+        if g_min.max(b_min) > g_max.min(b_max) {
+          let who = if b_max < g_min {
+            "the backend is too old — update it (Settings → About)"
+          } else {
+            "GP Client is too old — update it (Settings → About)"
+          };
           bail!(
-            "GP Client speaks wire protocol v{ours} but the backend speaks v{theirs} — \
-             update whichever is older (see Settings → About)."
+            "incompatible wire protocol: GP Client speaks v{g_min}..={g_max}, \
+             the backend speaks v{b_min}..={b_max} — {who}"
           );
         }
       }

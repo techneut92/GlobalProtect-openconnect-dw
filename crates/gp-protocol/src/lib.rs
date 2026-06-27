@@ -27,9 +27,26 @@
 //! prompt instead of failing cryptically. It is **independent** of the package /
 //! release version (GUI 1.5 and backend 1.9 can both speak protocol 1).
 
-/// The wire-protocol version. Bump on any incompatible change to the message
-/// types in this crate. Not tied to the app/backend release version.
-pub const PROTOCOL_VERSION: u32 = 1;
+/// Oldest wire-protocol version this build can still speak. Raise this **only**
+/// when intentionally dropping support for an old protocol.
+pub const PROTOCOL_MIN: u32 = 1;
+
+/// Newest (current) wire-protocol version this build speaks. Bump this when the
+/// message types change. Each side advertises its `MIN..=MAX` range and they
+/// negotiate the highest version both support — so a newer peer speaks down to
+/// an older one within range, and a hard "update needed" only happens when the
+/// ranges don't overlap at all.
+pub const PROTOCOL_MAX: u32 = 1;
+
+/// The current protocol version — alias for [`PROTOCOL_MAX`].
+pub const PROTOCOL_VERSION: u32 = PROTOCOL_MAX;
+
+/// Default a missing `protocol_min`/`protocol_max` (an older peer that predates
+/// the handshake) to the baseline `1` — those peers speak the original wire
+/// format, which is protocol 1.
+pub(crate) fn protocol_baseline() -> u32 {
+  1
+}
 
 pub mod env;
 pub mod event;
