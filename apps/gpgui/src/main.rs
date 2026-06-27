@@ -268,7 +268,11 @@ async fn install_backend(kind: Option<String>) -> serde_json::Value {
 struct UpdateInfo {
   current: String,
   latest: String,
+  /// The GUI itself is behind the latest release.
   available: bool,
+  /// The installed backend is behind the latest release (separate from the GUI —
+  /// they can be on different versions). Drives the "update backend" affordance.
+  backend_update: bool,
   url: String,
   error: Option<String>,
 }
@@ -278,16 +282,30 @@ struct UpdateInfo {
 #[tauri::command]
 async fn check_update() -> UpdateInfo {
   let current = system::GUI_VERSION.to_string();
+  let backend = system::backend_version();
   let repo_url = "https://github.com/techneut92/GlobalProtect-openconnect-dw/releases".to_string();
   match system::latest_release().await {
-    Ok(r) => UpdateInfo {
-      available: system::version_cmp(&r.version, &current) == std::cmp::Ordering::Greater,
+    Ok(r) => {
+      let newer = |v: &str| system::version_cmp(&r.version, v) == std::cmp::Ordering::Greater;
+      UpdateInfo {
+        available: newer(&current),
+        // The backend is a separately-installed package, so an old backend is an
+        // available update even when the GUI is already current.
+        backend_update: backend.as_deref().map(newer).unwrap_or(false),
+        current,
+        latest: r.version,
+        url: if r.url.is_empty() { repo_url } else { r.url },
+        error: None,
+      }
+    }
+    Err(e) => UpdateInfo {
       current,
-      latest: r.version,
-      url: if r.url.is_empty() { repo_url } else { r.url },
-      error: None,
+      latest: String::new(),
+      available: false,
+      backend_update: false,
+      url: repo_url,
+      error: Some(e),
     },
-    Err(e) => UpdateInfo { current, latest: String::new(), available: false, url: repo_url, error: Some(e) },
   }
 }
 

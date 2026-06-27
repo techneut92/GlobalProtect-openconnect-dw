@@ -2,12 +2,15 @@
 
 ## Unreleased
 
-- An **update-available badge** (download icon) now appears on the settings gear
-  and the About item when a newer release exists, and the app **checks for updates
-  on startup**.
+- An **update-available badge** (download icon) appears on the settings gear and
+  the About item when a newer release exists for **the app or the backend**, and
+  the app **checks for updates on startup**.
+- The **About screen** now shows the app and the backend side by side — version,
+  install type and update status for each — with separate "Update GP Client" and
+  "Update backend" actions.
 - Removed the GUI/backend **version-mismatch warning**: compatibility is enforced
   by the wire-protocol handshake at connect, so a mere version difference no longer
-  warns. The About screen now shows the **backend version** next to the app version.
+  warns.
 
 ## 1.1.0 - 2026-06-27
 
