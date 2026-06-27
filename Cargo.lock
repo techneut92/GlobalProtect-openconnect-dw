@@ -2081,6 +2081,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gp-protocol"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "specta",
+]
+
+[[package]]
 name = "gpapi"
 version = "1.0.5"
 dependencies = [
