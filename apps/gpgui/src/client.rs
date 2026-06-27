@@ -10,7 +10,7 @@ use tokio::sync::mpsc;
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::crypto::Crypto;
-use crate::proto::{WsEvent, WsRequest};
+use gp_protocol::{WsEvent, WsRequest};
 
 /// Written by gpservice at startup; format is `pid:port`.
 const LOCK_FILE: &str = "/var/run/gpservice.lock";

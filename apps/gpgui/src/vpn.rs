@@ -14,11 +14,10 @@ use std::time::Duration;
 use anyhow::{bail, Context, Result};
 
 use crate::connect::{build_connect_request, AuthParams, ConnOpts};
-use crate::proto::VpnState;
 use crate::state::{ConnDetails, Shared, Status};
 use crate::transport::{self, Transport};
 use crate::tray::TrayHandle;
-use serde_json::Value;
+use gp_protocol::{ConnectedInfo, VpnState};
 
 /// Parameters captured from the UI at connect time. `pin` lives only here and
 /// in the spawned processes — it is never persisted.
@@ -249,9 +248,8 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64) -> Res
   notifier.log("Connecting to gpservice…");
   let (transport, mut events) = transport::open(&key).await?;
 
-  let value = serde_json::to_value(&request).context("serialising ConnectRequest")?;
   transport
-    .send_connect(value)
+    .send_connect(request)
     .await
     .context("sending Connect to gpservice")?;
   notifier.log("Connect request sent; bringing up tunnel…");
@@ -295,11 +293,11 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64) -> Res
 }
 
 /// Pull display details out of the `ConnectedInfo` JSON (`{info, sessionInfo}`).
-fn parse_conn_details(v: &Value) -> ConnDetails {
-  let info = &v["info"];
-  let portal = info["portal"].as_str().unwrap_or_default().to_string();
-  let gw_name = info["gateway"]["name"].as_str().unwrap_or_default();
-  let gw_addr = info["gateway"]["address"].as_str().unwrap_or_default();
+fn parse_conn_details(info: &ConnectedInfo) -> ConnDetails {
+  let ci = info.info();
+  let portal = ci.portal().to_string();
+  let gw = ci.gateway();
+  let (gw_name, gw_addr) = (gw.name(), gw.server());
   let gateway = if gw_name.is_empty() || gw_name == gw_addr {
     gw_addr.to_string()
   } else {
@@ -308,24 +306,26 @@ fn parse_conn_details(v: &Value) -> ConnDetails {
 
   // Prefer an absolute expiry epoch (for a live countdown); fall back to
   // now + lifetime, then to the static human string.
-  let session = &v["sessionInfo"];
   let now = unix_now();
-  let expires_at = session["userExpires"]
-    .as_u64()
-    .filter(|&e| e > now)
-    .or_else(|| session["lifetimeSecs"].as_u64().map(|l| now + l));
-  let expires = match expires_at {
-    Some(at) => humanize_expiry(at),
-    None => session["expiresInHuman"].as_str().unwrap_or_default().to_string(),
+  let (expires_at, expires) = match info.session_info() {
+    Some(s) => {
+      let expires_at = s
+        .user_expires
+        .map(|e| e as u64)
+        .filter(|&e| e > now)
+        .or_else(|| s.lifetime_secs.map(|l| now + l as u64));
+      let expires = match expires_at {
+        Some(at) => humanize_expiry(at),
+        None => s.expires_in_human.clone().unwrap_or_default(),
+      };
+      (expires_at, expires)
+    }
+    None => (None, String::new()),
   };
 
   // Tunnel facts reported by gpservice (added to ConnectedInfo).
-  let iface = v["tunIface"].as_str().unwrap_or_default().to_string();
-  let ip = v["ipv4"]
-    .as_str()
-    .or_else(|| v["ipv6"].as_str())
-    .unwrap_or_default()
-    .to_string();
+  let iface = info.tun_iface().unwrap_or_default().to_string();
+  let ip = info.ipv4().or(info.ipv6()).unwrap_or_default().to_string();
 
   ConnDetails { portal, gateway, expires, expires_at, ip, iface }
 }

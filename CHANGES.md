@@ -299,6 +299,38 @@ backend-install flow:
   built `.deb` in a clean Ubuntu image and gates the release, mirroring the rpm
   install test.
 
+## 2026-06-27 — Shared `gp-protocol` wire-protocol crate + version negotiation
+
+Extracted the GUI↔`gpservice` wire contract into its own crate so the two sides
+can't drift, and gave it a negotiated version range — groundwork for the planned
+independent backend/GUI versioning and repo split (see `docs/split-plan.md`,
+Phase 1).
+
+- **New `crates/gp-protocol`** (© 2026 Dylan Westra, GPL-3.0): the single source
+  of truth for the messages exchanged over the loopback WebSocket and the D-Bus
+  service. All wire types moved here out of `gpapi` — `ClientOs`, `Gateway`,
+  `SessionInfo`/`SessionWarning` (+ the time-formatting helpers), `ConnectInfo`/
+  `ConnectedInfo`/`VpnState`, the `ConnectArgs`/`ConnectRequest`/`WsRequest`
+  cluster, `WsEvent`, `VpnEnv`. `gpapi::service` now re-exports them so call
+  sites are unchanged. The crate is light (serde only — no `reqwest`/`openssl`/
+  `cryptoki`) so the GUI can depend on it without the backend's stack.
+- **Deleted `apps/gpgui/src/proto.rs`** — the GUI's hand-synced, `Value`-payload
+  mirror of the protocol. `gpgui` depends on `gp-protocol` directly and is now
+  typed end-to-end (`send_connect` takes a `ConnectRequest`; `parse_conn_details`
+  reads a typed `ConnectedInfo`). The structural source of GUI↔backend drift is
+  gone.
+- **Protocol version negotiation** (`gpservice` ↔ `gpgui`): `VpnEnv` advertises
+  the backend's `PROTOCOL_MIN..=PROTOCOL_MAX` range; the GUI negotiates the
+  highest version both support at connect and refuses only when the ranges don't
+  overlap — naming which side is too old. Missing fields default to baseline `1`,
+  so a backend that predates the handshake stays compatible. Native/loopback
+  transport; the Flatpak/D-Bus path keeps the package-version compatibility check.
+- **Wire-format CI guard** (`crates/gp-protocol/tests/wire_format.rs` + a
+  `wire-format-guard` job in `.github/workflows/build.yaml`): a snapshot test
+  serializes every top-level protocol message to JSON and fails the build if the
+  wire format changes without a deliberate snapshot regen — so the protocol can't
+  drift unnoticed, and a real change forces a `PROTOCOL_MAX` decision.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of

@@ -15,22 +15,47 @@ Key decisions:
 
 ---
 
+## Status (2026-06-27)
+- v1.0.5 released — GitHub + COPR + OBS (Ubuntu 26.04) all at 1.0.5.
+- Phase 1 **in progress** on branch `phase1-gp-protocol`:
+  - ✅ `crates/gp-protocol` + `PROTOCOL_VERSION` (on `main`, `660a61c`)
+  - ✅ `ClientOs` migrated, workspace builds, **GUI tested (connected OK)** (`4ae4a15`)
+  - ✅ `gp-protocol` licensed © Dylan Westra, GPL-3.0 (`90cfa83`)
+  - migration pattern proven: move type → `gpapi` re-exports → call sites unchanged → build.
+- **Nothing merged to `main`** beyond the harmless `gp-protocol` crate skeleton.
+
 ## Phase 1 — Shared protocol contract (foundation)
-- [ ] Create `crates/gp-protocol` — single source of truth for `WsRequest` / `WsEvent` / `VpnState` / `ConnectRequest`
-- [ ] Add a `PROTOCOL_VERSION` constant
-- [ ] Delete `gpgui`'s hand-mirrored `proto.rs`; depend on `gp-protocol` instead (kills the drift)
-- [ ] Add protocol messages that hand SSO to the GUI: e.g. `WsEvent::SamlAuth { url, … }` (backend → GUI "start embedded flow with this data") + the cookie coming back
+- [x] Create `crates/gp-protocol` — single source of truth for `WsRequest` / `WsEvent` / `VpnState` / `ConnectRequest`
+- [x] Add a `PROTOCOL_VERSION` constant
+- [x] Migrate **all** wire types to `gp-protocol` (`gpapi::service` is now re-exports):
+  `ClientOs`, `Gateway`/`PriorityRule`, `SessionInfo`/`SessionWarning` (+ time helpers),
+  `ConnectInfo`/`ConnectedInfo`/`VpnState`, `ConnectArgs`/`ConnectRequest`/`DisconnectRequest`/`WsRequest`,
+  `WsEvent`, `VpnEnv`. (`SessionRequestArgs`, `LaunchGuiRequest`, `UpdateGuiRequest` stay in `gpapi` — not part of the GUI↔service protocol.)
+- [x] **Delete `gpgui`'s `proto.rs` mirror** → depend on `gp-protocol` (drift killed). `send_connect` is typed `ConnectRequest`; `parse_conn_details` uses typed `ConnectedInfo` via new accessors (`ConnectInfo::portal`, `ConnectedInfo::{tun_iface,ipv4,ipv6}`, `VpnState::label`). Workspace builds + GUI smoke-test.
+- [x] **`PROTOCOL_VERSION` handshake** — `VpnEnv` carries the backend's `protocol_version`; the GUI checks it on connect (loopback) and refuses an incompatible protocol. (Flatpak/D-Bus still uses the package `major.minor` check — a follow-up could add a D-Bus property for parity.)
+- [ ] **SSO-handoff messages** (`WsEvent::SamlAuth { url, … }` + cookie back) — **moved to Phase 3**, where the GUI's in-process webview consumes them (no point adding a message with no consumer).
+
+**Phase 1 done** (branch `phase1-gp-protocol`): protocol crate is the single source of truth, the `gpgui` mirror is gone, the version handshake is live, workspace builds, GUI connect tested.
 
 ## Phase 2 — Webkit-free backend (extract the webview)
+
+> ⚠️ **Phases 2 and 3 must land together.** Today the GUI does SSO by spawning the
+> webview `gpauth` (`SamlAuthLauncher.auth_executable`). Removing the webview from
+> the backend breaks that path unless the GUI's own in-process webview SSO
+> (Phase 3) lands in the same change. Don't merge a half — the intermediate state
+> has no working SSO. Best done with the GUI runnable to test (not unattended).
+
 - [ ] Move `crates/auth/src/webview/webview_auth.rs` + its `tauri`/webkit deps into `apps/gpgui`
 - [ ] Delete the `webview-auth` feature from `gpapi` / `auth` / `gpauth` / `gpclient` (structural, not gated)
 - [ ] Make `--browser` the default SSO path for the CLI
 - [ ] Decide `gpauth`: keep as a webkit-free browser-only helper, or fold into `gpclient`
 - [ ] Strip `webkit2gtk` / `libsoup` / `gtk` / appindicator from backend packaging (`control.in`, `.spec`) → leaner deps, more buildable distros
+- [ ] Re-verify packaging builds shrink + still install (rpm/deb smoketests already gate this)
 
 ## Phase 3 — GUI embedded SSO, protocol-driven
 - [ ] GUI runs the embedded SAML in its own Tauri webview (no spawned `gpauth`; drop `auth_executable`)
 - [ ] Wire the flow: backend prelogin → `SamlAuth` over the protocol → GUI opens webview → captures cookie → `ConnectRequest` back
+- [ ] **Cache the SSO session** (feature): store the SAML auth cookie per identity in the keyring (`secrets.rs`). On reconnect, **try the cached cookie first**; only if the portal/gateway rejects it (expired/invalid) fall back to the webview/browser SSO. Avoids a full re-login on every disconnect.
 
 ## Phase 4 — Independent versioning + handshake
 - [ ] Give `gpgui` its own version (drop `version.workspace = true`)

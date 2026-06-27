@@ -4,7 +4,7 @@ use anyhow::Result;
 use futures_util::StreamExt;
 use tokio::sync::mpsc;
 
-use crate::proto::VpnState;
+use gp_protocol::VpnState;
 
 #[zbus::proxy(
   interface = "io.github.techneut92.GPService1",

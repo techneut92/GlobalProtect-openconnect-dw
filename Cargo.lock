@@ -2081,6 +2081,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "gp-protocol"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "humantime",
+ "serde",
+ "serde_json",
+ "specta",
+]
+
+[[package]]
 name = "gpapi"
 version = "1.0.5"
 dependencies = [
@@ -2094,6 +2105,7 @@ dependencies = [
  "cryptoki",
  "dns-lookup",
  "env_logger",
+ "gp-protocol",
  "gtk",
  "humantime",
  "log",
@@ -2183,6 +2195,7 @@ dependencies = [
  "chacha20poly1305",
  "directories",
  "futures-util",
+ "gp-protocol",
  "gpapi",
  "gtk",
  "keyring",
@@ -2214,6 +2227,7 @@ dependencies = [
  "compile-time",
  "env_logger",
  "futures",
+ "gp-protocol",
  "gpapi",
  "log",
  "openconnect",

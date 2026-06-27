@@ -13,12 +13,11 @@ use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
 use base64::Engine;
-use serde_json::Value;
 use tokio::sync::mpsc;
 
 use crate::client::{self, Handle};
 use crate::dbus_client::{self, DbusHandle};
-use crate::proto::{VpnState, WsEvent, WsRequest};
+use gp_protocol::{ConnectRequest, DisconnectRequest, VpnState, WsEvent, WsRequest};
 
 pub enum Transport {
   Loopback(Handle),
@@ -26,7 +25,7 @@ pub enum Transport {
 }
 
 impl Transport {
-  pub async fn send_connect(&self, request: Value) -> Result<()> {
+  pub async fn send_connect(&self, request: ConnectRequest) -> Result<()> {
     match self {
       Transport::Loopback(h) => h.send(WsRequest::Connect(Box::new(request))).await,
       Transport::Dbus(h) => h.send_connect(serde_json::to_string(&request)?).await,
@@ -35,7 +34,7 @@ impl Transport {
 
   pub async fn send_disconnect(&self) -> Result<()> {
     match self {
-      Transport::Loopback(h) => h.send(WsRequest::Disconnect(())).await,
+      Transport::Loopback(h) => h.send(WsRequest::Disconnect(DisconnectRequest)).await,
       Transport::Dbus(h) => h.send_disconnect().await,
     }
   }
@@ -62,7 +61,27 @@ pub async fn open(key: &[u8]) -> Result<(Transport, mpsc::Receiver<VpnState>)> {
   // decrypt it, a stale/foreign gpservice is running with a different key — fail
   // with an actionable message instead of silently dropping on the first send.
   match tokio::time::timeout(Duration::from_secs(5), events.recv()).await {
-    Ok(Some(_)) => {}
+    Ok(Some(ev)) => {
+      // Protocol handshake: the first event is VpnEnv, which advertises the
+      // backend's MIN..=MAX protocol range. Refuse only if it doesn't overlap
+      // ours; otherwise the highest common version is used (both speak v1 today).
+      // The direction tells the user which side is too old.
+      if let WsEvent::VpnEnv(env) = &ev {
+        let (g_min, g_max) = (gp_protocol::PROTOCOL_MIN, gp_protocol::PROTOCOL_MAX);
+        let (b_min, b_max) = (env.protocol_min, env.protocol_max);
+        if g_min.max(b_min) > g_max.min(b_max) {
+          let who = if b_max < g_min {
+            "the backend is too old — update it (Settings → About)"
+          } else {
+            "GP Client is too old — update it (Settings → About)"
+          };
+          bail!(
+            "incompatible wire protocol: GP Client speaks v{g_min}..={g_max}, \
+             the backend speaks v{b_min}..={b_max} — {who}"
+          );
+        }
+      }
+    }
     Ok(None) => bail!("gpservice closed the connection immediately"),
     Err(_) => bail!(
       "couldn't authenticate to gpservice — another instance is likely running with a different key. \
