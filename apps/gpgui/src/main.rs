@@ -28,7 +28,6 @@ mod connect;
 mod crypto;
 mod dbus_client;
 mod pkcs11;
-mod proto;
 mod secrets;
 mod state;
 mod system;
