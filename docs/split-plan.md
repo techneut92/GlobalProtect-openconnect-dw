@@ -38,25 +38,34 @@ Key decisions:
 
 **Phase 1 done** (branch `phase1-gp-protocol`): protocol crate is the single source of truth, the `gpgui` mirror is gone, the version handshake is live, workspace builds, GUI connect tested.
 
-## Phase 2 — Webkit-free backend (extract the webview)
+## Phase 2 + 3 — Webkit-free backend + GUI-owned SSO (refined after the arch map)
 
-> ⚠️ **Phases 2 and 3 must land together.** Today the GUI does SSO by spawning the
-> webview `gpauth` (`SamlAuthLauncher.auth_executable`). Removing the webview from
-> the backend breaks that path unless the GUI's own in-process webview SSO
-> (Phase 3) lands in the same change. Don't merge a half — the intermediate state
-> has no working SSO. Best done with the GUI runnable to test (not unattended).
+> **Key finding:** the GUI **already owns the whole auth flow** — `gpgui` does
+> prelogin + SAML SSO + builds the `ConnectRequest` itself (`connect.rs`); the
+> backend (`gpservice`) only runs the tunnel. So "drive SSO over the protocol" is
+> **moot** — nothing to protocol-ize. Today the GUI does the webview by **spawning
+> the external `gpauth`** (`SamlAuthLauncher`, `connect.rs:178`), and that
+> subprocess is the *only* thing pulling webkit into the backend (`gpclient` is
+> already built `--no-default-features`; `gpservice` has no webkit).
+>
+> So this is **three safe, sequential steps** — the "must land together" risk is
+> just ordering (**A before B**). Done on branch `phase2-webkit-free`, GUI testable
+> throughout.
 
-- [ ] Move `crates/auth/src/webview/webview_auth.rs` + its `tauri`/webkit deps into `apps/gpgui`
-- [ ] Delete the `webview-auth` feature from `gpapi` / `auth` / `gpauth` / `gpclient` (structural, not gated)
-- [ ] Make `--browser` the default SSO path for the CLI
-- [ ] Decide `gpauth`: keep as a webkit-free browser-only helper, or fold into `gpclient`
-- [ ] Strip `webkit2gtk` / `libsoup` / `gtk` / appindicator from backend packaging (`control.in`, `.spec`) → leaner deps, more buildable distros
-- [ ] Re-verify packaging builds shrink + still install (rpm/deb smoketests already gate this)
+### A. GUI does SSO in-process
+- [ ] `apps/gpgui` depends on `auth` (`webview-auth` + `browser-auth`) directly.
+- [ ] `connect.rs build_connect_request`: replace `SamlAuthLauncher…launch()` (spawn `gpauth`) with **in-process** `WebviewAuthenticator::new(server, &gp_params).with_auth_request(saml).authenticate(&app_handle)` (embedded) / `BrowserAuthenticator` (browser). Convert `SamlAuthData → Credential` via `Credential::try_from(SamlAuthResult::Success(..))`.
+- [ ] **Thread the `AppHandle`** — `vpn::connect` runs in the background command-loop task (via `cmd_tx`), not the Tauri command, so stash the `AppHandle` in `AppState` at setup and read it in `build_connect_request`. ← the one tricky bit.
+- [ ] Test: GUI SAML connect works in-process (no `gpauth` spawned). Nothing else breaks — `gpauth` still serves `gpclient`.
 
-## Phase 3 — GUI embedded SSO, protocol-driven
-- [ ] GUI runs the embedded SAML in its own Tauri webview (no spawned `gpauth`; drop `auth_executable`)
-- [ ] Wire the flow: backend prelogin → `SamlAuth` over the protocol → GUI opens webview → captures cookie → `ConnectRequest` back
-- [ ] **Cache the SSO session** (feature): store the SAML auth cookie per identity in the keyring (`secrets.rs`). On reconnect, **try the cached cookie first**; only if the portal/gateway rejects it (expired/invalid) fall back to the webview/browser SSO. Avoids a full re-login on every disconnect.
+### B. Backend webkit-free (only after A works)
+- [ ] `apps/gpauth`: drop `webview-auth` from `default` → browser-only (no tauri/webkit).
+- [ ] `crates/auth`: keep the `webview-auth` feature but **only `gpgui` enables it**; backend uses `browser-auth`.
+- [ ] `crates/gpapi`: drop the `tauri`/`gtk` feature + the empty `webview-auth` marker; `SamlAuthLauncher`'s now-unused `--default-browser` path can go.
+- [ ] Strip `libwebkit2gtk` from the **backend** package (`control.in` runtime dep + `.spec` Requires); keep it on the GUI package. Verify rpm/deb smoketests + size shrink.
+
+### C. SSO session caching (feature)
+- [ ] Cache the SAML cookie/credential per identity in the keyring (`secrets.rs`). On reconnect, try it first; on portal/gateway rejection (expired) fall back to webview/browser SSO. Avoids a full re-login on every disconnect.
 
 ## Phase 4 — Independent versioning + handshake
 - [ ] Give `gpgui` its own version (drop `version.workspace = true`)
