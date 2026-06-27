@@ -53,6 +53,7 @@ Key decisions:
 ## Phase 3 — GUI embedded SSO, protocol-driven
 - [ ] GUI runs the embedded SAML in its own Tauri webview (no spawned `gpauth`; drop `auth_executable`)
 - [ ] Wire the flow: backend prelogin → `SamlAuth` over the protocol → GUI opens webview → captures cookie → `ConnectRequest` back
+- [ ] **Cache the SSO session** (feature): store the SAML auth cookie per identity in the keyring (`secrets.rs`). On reconnect, **try the cached cookie first**; only if the portal/gateway rejects it (expired/invalid) fall back to the webview/browser SSO. Avoids a full re-login on every disconnect.
 
 ## Phase 4 — Independent versioning + handshake
 - [ ] Give `gpgui` its own version (drop `version.workspace = true`)

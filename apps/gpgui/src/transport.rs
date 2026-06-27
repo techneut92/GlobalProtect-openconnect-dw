@@ -61,7 +61,19 @@ pub async fn open(key: &[u8]) -> Result<(Transport, mpsc::Receiver<VpnState>)> {
   // decrypt it, a stale/foreign gpservice is running with a different key — fail
   // with an actionable message instead of silently dropping on the first send.
   match tokio::time::timeout(Duration::from_secs(5), events.recv()).await {
-    Ok(Some(_)) => {}
+    Ok(Some(ev)) => {
+      // Protocol handshake: the first event is VpnEnv, which carries the
+      // backend's wire-protocol version. Refuse to speak an incompatible one.
+      if let WsEvent::VpnEnv(env) = &ev {
+        let (ours, theirs) = (gp_protocol::PROTOCOL_VERSION, env.protocol_version);
+        if theirs != ours {
+          bail!(
+            "GP Client speaks wire protocol v{ours} but the backend speaks v{theirs} — \
+             update whichever is older (see Settings → About)."
+          );
+        }
+      }
+    }
     Ok(None) => bail!("gpservice closed the connection immediately"),
     Err(_) => bail!(
       "couldn't authenticate to gpservice — another instance is likely running with a different key. \
