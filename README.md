@@ -40,12 +40,30 @@ GUI is a clean, open Tauri rewrite).
 
 ## Contents
 
+- [Quickstart](#quickstart)
 - [Features](#features)
 - [Install](#install)
 - [Usage](#usage)
 - [Building from source](#building-from-source)
 - [Distribution roadmap](#distribution-roadmap)
 - [License](#license)
+
+## Quickstart
+
+Grab the latest GP Client Flatpak and run it:
+
+```bash
+curl -fLO https://github.com/techneut92/GlobalProtect-openconnect-dw/releases/latest/download/io.github.techneut92.gpgui.flatpak
+flatpak install --user io.github.techneut92.gpgui.flatpak
+flatpak run io.github.techneut92.gpgui
+```
+
+That's the whole GUI. On first launch the app guides you through the rest —
+installing the backend service (with the exact command for your distro), creating
+your encrypted vault, and adding an identity.
+
+**CLI only?** The `gpclient` command ships with the backend package — skip the
+Flatpak and follow the [Install](#install) instructions below.
 
 ## Features
 
