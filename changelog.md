@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.2 - 2026-06-28
 
 - Fixed the main-screen **"Update" banner button** doing nothing — it invoked the
   updater without the target version, so it failed silently and the banner hung on

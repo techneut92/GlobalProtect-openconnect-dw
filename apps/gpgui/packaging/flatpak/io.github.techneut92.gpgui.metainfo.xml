@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.1.2" date="2026-06-28">
+      <description>
+        <p>Fixed the main-screen Update banner button (it did nothing); main window is slightly taller so the banner no longer makes the content scroll.</p>
+      </description>
+    </release>
     <release version="1.1.1" date="2026-06-27">
       <description>
         <p>Update-available badge (app and backend) with a startup check; redesigned About showing app + backend side by side; fixed "Update backend" on atomic/rpm-ostree systems.</p>
