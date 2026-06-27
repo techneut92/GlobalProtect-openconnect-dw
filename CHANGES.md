@@ -325,6 +325,11 @@ Phase 1).
   overlap — naming which side is too old. Missing fields default to baseline `1`,
   so a backend that predates the handshake stays compatible. Native/loopback
   transport; the Flatpak/D-Bus path keeps the package-version compatibility check.
+- **Wire-format CI guard** (`crates/gp-protocol/tests/wire_format.rs` + a
+  `wire-format-guard` job in `.github/workflows/build.yaml`): a snapshot test
+  serializes every top-level protocol message to JSON and fails the build if the
+  wire format changes without a deliberate snapshot regen — so the protocol can't
+  drift unnoticed, and a real change forces a `PROTOCOL_MAX` decision.
 
 ### Third-party components
 
