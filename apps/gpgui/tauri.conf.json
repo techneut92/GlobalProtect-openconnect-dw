@@ -1,7 +1,7 @@
 {
   "$schema": "https://cdn.jsdelivr.net/gh/tauri-apps/tauri@tauri-v2.1.1/crates/tauri-cli/config.schema.json",
   "productName": "GP Client",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "identifier": "io.github.techneut92.gpgui",
   "build": {
     "frontendDist": "ui",

@@ -1,11 +1,13 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 - 2026-06-28
 
 - The **backend is now webkit-free**. The SAML SSO webview moved entirely into the
   GUI (it runs in-process), so the backend package (`gpservice`/`gpclient`/`gpauth`)
   no longer depends on `libwebkit2gtk` — a leaner install that builds on more
   distros. The graphical client keeps webkit, since it owns the webview now.
+- As a side benefit, the GUI now **remembers your SSO session across reconnects**
+  within a running session, so reconnecting no longer re-prompts for SSO each time.
 
 ## 1.1.2 - 2026-06-28
 

@@ -74,7 +74,8 @@ Flatpak and follow the [Install](#install) instructions below.
 
 - **Smart-card / PKCS#11 auth** — YubiKey PIV (or any PKCS#11 token) client
   certificate for portal *and* gateway login.
-- **SAML SSO** (embedded webview or external browser) and username/password.
+- **SAML SSO** — embedded webview in the GUI (in-process), or the system browser —
+  plus username/password.
 - **Encrypted identity vault** — save multiple connections, optionally unlocked
   from your keyring (GNOME Keyring / KWallet / COSMIC).
 - **System tray** with state-aware icons, connect-from-tray, and notifications.
@@ -90,7 +91,7 @@ It has two parts:
 | Part | What it is | How to get it |
 |------|------------|---------------|
 | **GP Client** (GUI) | The unprivileged app | `.flatpak` bundle (recommended) |
-| **Backend service** | Privileged helper that brings up the tunnel (`gpservice` + `gpclient` + `gpauth`) | host package (`.rpm`/`.deb`/`.pkg.tar.zst`/`.apk`) |
+| **Backend service** | Privileged, **webkit-free** helper that brings up the tunnel (`gpservice` + `gpclient` + `gpauth`) | host package (`.rpm`/`.deb`/`.pkg.tar.zst`/`.apk`) |
 
 The GUI talks to the backend over D-Bus, so the backend must be a **host
 package** (it needs root + the TUN device). The app's "backend not installed"
