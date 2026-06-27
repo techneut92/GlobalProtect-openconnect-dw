@@ -32,8 +32,10 @@ Key decisions:
   `ConnectInfo`/`ConnectedInfo`/`VpnState`, `ConnectArgs`/`ConnectRequest`/`DisconnectRequest`/`WsRequest`,
   `WsEvent`, `VpnEnv`. (`SessionRequestArgs`, `LaunchGuiRequest`, `UpdateGuiRequest` stay in `gpapi` — not part of the GUI↔service protocol.)
 - [x] **Delete `gpgui`'s `proto.rs` mirror** → depend on `gp-protocol` (drift killed). `send_connect` is typed `ConnectRequest`; `parse_conn_details` uses typed `ConnectedInfo` via new accessors (`ConnectInfo::portal`, `ConnectedInfo::{tun_iface,ipv4,ipv6}`, `VpnState::label`). Workspace builds + GUI smoke-test.
-- [ ] **`PROTOCOL_VERSION` handshake** — small remaining piece: backend stamps it (e.g. into `VpnEnv`), GUI checks on connect, mismatch → the existing update UI (replaces the `major.minor` heuristic).
+- [x] **`PROTOCOL_VERSION` handshake** — `VpnEnv` carries the backend's `protocol_version`; the GUI checks it on connect (loopback) and refuses an incompatible protocol. (Flatpak/D-Bus still uses the package `major.minor` check — a follow-up could add a D-Bus property for parity.)
 - [ ] **SSO-handoff messages** (`WsEvent::SamlAuth { url, … }` + cookie back) — **moved to Phase 3**, where the GUI's in-process webview consumes them (no point adding a message with no consumer).
+
+**Phase 1 done** (branch `phase1-gp-protocol`): protocol crate is the single source of truth, the `gpgui` mirror is gone, the version handshake is live, workspace builds, GUI connect tested.
 
 ## Phase 2 — Webkit-free backend (extract the webview)
 
