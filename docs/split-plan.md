@@ -52,8 +52,14 @@ Key decisions:
 > just ordering (**A before B**). Done on branch `phase2-webkit-free`, GUI testable
 > throughout.
 
+> **Status:** A ✅ (in-process SSO, tested — no `gpauth` spawned) and B ✅
+> (`gpservice`/`gpclient`/`gpauth` = 0 webkit/tauri deps; backend package webkit
+> stripped) are **done** on `phase2-webkit-free`. C (SSO caching) is next — note
+> the in-process webview already gives partial caching for free (shared cookie
+> store within a GUI session).
+
 ### A. GUI does SSO in-process
-- [ ] `apps/gpgui` depends on `auth` (`webview-auth` + `browser-auth`) directly.
+- [x] `apps/gpgui` depends on `auth` (`webview-auth` + `browser-auth`) directly.
 - [ ] `connect.rs build_connect_request`: replace `SamlAuthLauncher…launch()` (spawn `gpauth`) with **in-process** `WebviewAuthenticator::new(server, &gp_params).with_auth_request(saml).authenticate(&app_handle)` (embedded) / `BrowserAuthenticator` (browser). Convert `SamlAuthData → Credential` via `Credential::try_from(SamlAuthResult::Success(..))`.
 - [ ] **Thread the `AppHandle`** — `vpn::connect` runs in the background command-loop task (via `cmd_tx`), not the Tauri command, so stash the `AppHandle` in `AppState` at setup and read it in `build_connect_request`. ← the one tricky bit.
 - [ ] Test: GUI SAML connect works in-process (no `gpauth` spawned). Nothing else breaks — `gpauth` still serves `gpclient`.
