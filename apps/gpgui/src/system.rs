@@ -394,7 +394,15 @@ pub fn backend_install_script(kind: InstallKind) -> Option<String> {
     format!("cd \"$(mktemp -d)\" && curl -fLO '{base}/{file}' && {install} './{file}'")
   };
   match kind {
-    InstallKind::RpmOstree => Some(dl_install(&rpm, "rpm-ostree install -y")),
+    // The backend may already be layered as an older local RPM. rpm-ostree
+    // refuses to request the same package twice ("conflicting requests"), so
+    // remove the old layer first (tolerant if it isn't there) before layering the
+    // new RPM — both changes stack onto the next deployment, applied on one reboot.
+    InstallKind::RpmOstree => Some(format!(
+      "cd \"$(mktemp -d)\" && curl -fLO '{base}/{rpm}' && \
+       (rpm-ostree uninstall -y globalprotect-openconnect-dw >/dev/null 2>&1 || true) && \
+       rpm-ostree install -y './{rpm}'"
+    )),
     InstallKind::Apt => Some(dl_install(&deb, "apt-get install -y")),
     InstallKind::Apk => Some(dl_install(&apk, "apk add --allow-untrusted")),
     InstallKind::Dnf => Some(format!("dnf install -y '{base}/{rpm}'")),
