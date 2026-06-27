@@ -80,7 +80,7 @@ Flatpak and follow the [Install](#install) instructions below.
 - **System tray** with state-aware icons, connect-from-tray, and notifications.
 - **CLI and GUI** — the CLI (`gpclient`) is fully scriptable; the GUI (GP Client)
   is an unprivileged app that drives a small privileged host service.
-- Multi-portal / direct-gateway, auto-connect at login, start-minimized.
+- Multi-portal / direct-gateway, start at login (minimized to the tray).
 
 ## Install
 
