@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Packaging: the Fedora COPR publish now runs from the release pipeline **only
+  after the RPM install test passes** — a package that fails the smoke test is
+  never published to COPR.
+
 ## 1.0.3 - 2026-06-27
 - GUI: the GUI↔backend compatibility warning now only appears on a **feature
   (minor) or breaking (major)** version divergence — patch-level differences (the

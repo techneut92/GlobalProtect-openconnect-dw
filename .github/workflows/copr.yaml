@@ -1,14 +1,12 @@
-name: COPR
+name: COPR (manual)
 
-# Build the backend (+ native -gui) RPMs on Fedora COPR for every release tag.
-# COPR compiles the SRPM in a clean, network-less mock chroot per target, so the
-# source RPM ships vendored cargo deps (OFFLINE=1) and the bundled openconnect /
-# libxml2 submodule sources.
+# Manual / ad-hoc COPR rebuilds (e.g. to rebuild against a newly added Fedora
+# chroot without cutting a release). The RELEASE flow is handled by the
+# `copr-publish` job in build.yaml, which is gated on the rpm-install-test so a
+# package that fails the smoke test is never published — do NOT add a tag
+# trigger here or releases would publish to COPR twice (and ungated).
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - v*.*.*
 
 concurrency:
   group: copr-${{ github.ref }}
