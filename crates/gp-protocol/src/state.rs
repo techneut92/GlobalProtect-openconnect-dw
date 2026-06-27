@@ -52,6 +52,18 @@ impl ConnectedInfo {
   pub fn session_info(&self) -> Option<&SessionInfo> {
     self.session_info.as_ref()
   }
+
+  pub fn tun_iface(&self) -> Option<&str> {
+    self.tun_iface.as_deref()
+  }
+
+  pub fn ipv4(&self) -> Option<&str> {
+    self.ipv4.as_deref()
+  }
+
+  pub fn ipv6(&self) -> Option<&str> {
+    self.ipv6.as_deref()
+  }
 }
 
 impl ConnectInfo {
@@ -63,8 +75,24 @@ impl ConnectInfo {
     }
   }
 
+  pub fn portal(&self) -> &str {
+    &self.portal
+  }
+
   pub fn gateway(&self) -> &Gateway {
     &self.gateway
+  }
+}
+
+impl VpnState {
+  /// Short human label for the current state (used by the GUI tray/status).
+  pub fn label(&self) -> &'static str {
+    match self {
+      VpnState::Disconnected => "Disconnected",
+      VpnState::Connecting(_) => "Connecting…",
+      VpnState::Connected(_) => "Connected",
+      VpnState::Disconnecting => "Disconnecting…",
+    }
   }
 }
 
