@@ -301,19 +301,23 @@
     $('updateBackendBtn').onclick = async () => {
       const btn = $('updateBackendBtn');
       btn.disabled = true; btn.textContent = 'Updating…';
-      setUbLog('Approve the password prompt — downloading and installing the backend (this can take a few minutes).', '');
+      const phase = 'Approve the administrator prompt — GP Client is downloading the backend and installing it (on atomic/rpm-ostree systems it is layered and applied on the next reboot).';
+      let secs = 0;
+      setUbLog(phase, '');
+      const tick = setInterval(() => { secs++; setUbLog(phase + '  Working… ' + secs + 's', ''); }, 1000);
       try {
         // No kind → the backend is downloaded for this OS, at the GUI's version.
         const r = await invoke('install_backend');
+        clearInterval(tick);
         if (r.ok) {
           btn.hidden = true;
-          setUbLog(r.needsReboot ? 'Backend updated — reboot to finish.' : 'Backend updated.', 'ok');
+          setUbLog(r.needsReboot ? 'Backend updated — reboot to finish applying it.' : 'Backend updated.', 'ok');
           if (!r.needsReboot) loadAbout();
         } else {
           btn.disabled = false; btn.textContent = 'Update backend';
           setUbLog(r.message || 'Update failed — install the backend package manually.', 'err');
         }
-      } catch (e) { btn.disabled = false; btn.textContent = 'Update backend'; setUbLog('' + e, 'err'); }
+      } catch (e) { clearInterval(tick); btn.disabled = false; btn.textContent = 'Update backend'; setUbLog('' + e, 'err'); }
     };
     $('checkUpdateBtn').onclick = async () => {
       if (!hasTauri) { openExt(updateUrl); return; }

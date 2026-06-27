@@ -11,6 +11,9 @@
 - Removed the GUI/backend **version-mismatch warning**: compatibility is enforced
   by the wire-protocol handshake at connect, so a mere version difference no longer
   warns.
+- Fixed **"Update backend" on atomic / rpm-ostree** systems — it failed with
+  *"conflicting requests"* when a backend was already layered; it now replaces the
+  old layer first. The button also shows clearer, live progress while it runs.
 
 ## 1.1.0 - 2026-06-27
 
