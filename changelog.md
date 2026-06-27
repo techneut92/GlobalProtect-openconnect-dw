@@ -1,13 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 - 2026-06-27
 
 - Reliability: the GUI and backend now **negotiate a wire-protocol version** at
   connect — they settle on the highest version both support, so a newer GUI keeps
   working with an older backend and vice-versa. Only a genuine incompatibility is
-  refused, and the message says which side to update. Under the hood the GUI↔
-  backend protocol moved into a shared crate so the two can no longer drift out of
-  sync.
+  refused, and the message says which side to update (and whether to upgrade or
+  downgrade GP Client). Under the hood the GUI↔backend protocol moved into a
+  shared crate so the two can no longer drift out of sync.
+- The `gpservice` system-service journal is much quieter — the verbose D-Bus
+  handshake/dispatch logging is capped at `warn`.
 
 ## 1.0.5 - 2026-06-27
 

@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.1.0" date="2026-06-27">
+      <description>
+        <p>Shared gp-protocol wire crate with negotiated version ranges so the GUI and backend can't drift; clearer update/downgrade guidance on mismatch; quieter gpservice journal.</p>
+      </description>
+    </release>
     <release version="1.0.5" date="2026-06-27">
       <description>
         <p>Ubuntu 26.04 apt repo (openSUSE Build Service); deb install smoketest gating releases; per-distro Install docs.</p>
