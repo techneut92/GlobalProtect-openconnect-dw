@@ -144,7 +144,7 @@ impl Notifier {
   }
 }
 
-pub fn run(rx: Receiver<UiCommand>, notifier: Notifier) {
+pub fn run(rx: Receiver<UiCommand>, notifier: Notifier, app_handle: tauri::AppHandle) {
   let rt = match tokio::runtime::Runtime::new() {
     Ok(rt) => rt,
     Err(e) => {
@@ -169,7 +169,7 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier) {
           rt.block_on(async { let _ = h.send_disconnect().await; });
         }
 
-        match rt.block_on(connect(&params, &notifier, generation)) {
+        match rt.block_on(connect(&params, &notifier, generation, &app_handle)) {
           Ok(h) => handle = Some(h),
           // `{:#}` includes the full anyhow context chain (e.g. "single sign-on
           // was cancelled or failed: …") so the user sees the real reason.
@@ -189,7 +189,7 @@ pub fn run(rx: Receiver<UiCommand>, notifier: Notifier) {
 }
 
 /// The full v2 connect pipeline. Returns the live transport on success.
-async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64) -> Result<Transport> {
+async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_handle: &tauri::AppHandle) -> Result<Transport> {
   if !p.as_gateway {
     bail!("Only 'connect directly as gateway' is supported in this build");
   }
@@ -240,7 +240,7 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64) -> Res
   };
 
   notifier.log("Authenticating (prelogin + SSO)…");
-  let request = build_connect_request(&auth).await?;
+  let request = build_connect_request(&auth, app_handle).await?;
 
   // Shared loopback secret (used only by the loopback transport).
   let key = crate::config::load_or_create_api_key();

@@ -836,7 +836,7 @@ fn main() {
 
       let notifier = Notifier::new(setup_shared.clone(), tray_handle, on_change);
       let rx = cmd_rx.lock().unwrap().take().expect("setup runs once");
-      std::thread::spawn(move || vpn::run(rx, notifier));
+      std::thread::spawn(move || vpn::run(rx, notifier, handle));
 
       // Background: notify once on launch if a newer release is out. This covers
       // the start-hidden case, where the in-window update banner isn't visible.
