@@ -266,8 +266,17 @@ jobs:
   # own offline SRPM from source and submits it (COPR compiles all 6 chroots).
   copr-publish:
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    # Gate on the FULL build set (same as gh-release): a release is atomic, so
+    # the backend must not publish to COPR if any build phase failed — including
+    # the GUI flatpak. Otherwise a tag could ship a half-release (backend on COPR
+    # but no GUI / no GitHub release).
     needs:
+      - tarball
+      - tarball-offline
+      - build-gp
       - rpm-install-test
+      - deb-install-test
+      - flatpak
     runs-on: ubuntu-latest
     container:
       image: registry.fedoraproject.org/fedora:latest
