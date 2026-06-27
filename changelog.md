@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.5 - 2026-06-27
 
 - Packaging: **Ubuntu 26.04 apt repo** — the backend (and native `-gui`) can be
   installed and auto-updated from an openSUSE Build Service repo
