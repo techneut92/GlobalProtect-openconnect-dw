@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.0.5" date="2026-06-27">
+      <description>
+        <p>Ubuntu 26.04 apt repo (openSUSE Build Service); deb install smoketest gating releases; per-distro Install docs.</p>
+      </description>
+    </release>
     <release version="1.0.4" date="2026-06-27">
       <description>
         <p>Packaging: Fedora COPR now also builds for Enterprise Linux 10 (RHEL/AlmaLinux/Rocky 10); COPR publish gated on the RPM install test.</p>
