@@ -31,6 +31,8 @@
 /// types in this crate. Not tied to the app/backend release version.
 pub const PROTOCOL_VERSION: u32 = 1;
 
+pub mod gateway;
 pub mod os;
 
+pub use gateway::{Gateway, PriorityRule};
 pub use os::ClientOs;
