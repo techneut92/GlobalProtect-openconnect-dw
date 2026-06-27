@@ -50,13 +50,18 @@ GUI is a clean, open Tauri rewrite).
 
 ## Quickstart
 
-Grab the latest GP Client Flatpak and run it:
+Install — or update — GP Client to the latest release with one command, then run it:
 
 ```bash
-curl -fLO https://github.com/techneut92/GlobalProtect-openconnect-dw/releases/latest/download/io.github.techneut92.gpgui.flatpak
-flatpak install --user io.github.techneut92.gpgui.flatpak
+curl -fLO https://github.com/techneut92/GlobalProtect-openconnect-dw/releases/latest/download/io.github.techneut92.gpgui.flatpak \
+  && flatpak install --user --or-update --assumeyes io.github.techneut92.gpgui.flatpak
 flatpak run io.github.techneut92.gpgui
 ```
+
+The download URL always points at the newest release, so **re-running the first
+command updates** you to the latest version (keeping your vault and settings) —
+`--or-update` installs it the first time and updates it after. The app can also
+update itself from its About page.
 
 That's the whole GUI. On first launch the app guides you through the rest —
 installing the backend service (with the exact command for your distro), creating
@@ -98,22 +103,6 @@ flatpak install --user io.github.techneut92.gpgui.flatpak
 flatpak run io.github.techneut92.gpgui
 ```
 
-### Backend service — host package
-
-Download `globalprotect-openconnect-dw-<version>…` for your distro and install
-the file directly:
-
-```bash
-# Fedora / RHEL            sudo dnf install ./globalprotect-openconnect-dw-*.rpm
-# Atomic (Silverblue/…)    sudo rpm-ostree install ./globalprotect-openconnect-dw-*.rpm   # then reboot
-# Debian / Ubuntu          sudo apt install ./globalprotect-openconnect-dw_*.deb
-# Arch                     sudo pacman -U ./globalprotect-openconnect-dw-*.pkg.tar.zst
-# Alpine                   sudo apk add --allow-untrusted ./globalprotect-openconnect-dw-*.apk
-```
-
-The `…-gui` package and generic `…bin.tar.xz` are also attached for a fully
-native (non-Flatpak) install.
-
 ### Backend — Fedora COPR
 
 On Fedora, the backend can be installed (and kept updated) from COPR:
@@ -138,6 +127,23 @@ systemctl reboot
 
 The package ships no install scriptlets and writes only under `/usr`, so it
 layers cleanly with `rpm-ostree`.
+
+### Backend service — host package (manual download)
+
+Without a repo, download `globalprotect-openconnect-dw-<version>…` for your
+distro from the [release](https://github.com/techneut92/GlobalProtect-openconnect-dw/releases)
+and install the file directly:
+
+```bash
+# Fedora / RHEL            sudo dnf install ./globalprotect-openconnect-dw-*.rpm
+# Atomic (Silverblue/…)    sudo rpm-ostree install ./globalprotect-openconnect-dw-*.rpm   # then reboot
+# Debian / Ubuntu          sudo apt install ./globalprotect-openconnect-dw_*.deb
+# Arch                     sudo pacman -U ./globalprotect-openconnect-dw-*.pkg.tar.zst
+# Alpine                   sudo apk add --allow-untrusted ./globalprotect-openconnect-dw-*.apk
+```
+
+The `…-gui` package and generic `…bin.tar.xz` are also attached for a fully
+native (non-Flatpak) install.
 
 ## Usage
 

@@ -5,8 +5,10 @@
 - Packaging: the Fedora COPR publish now runs from the release pipeline **only
   after the RPM install test passes** — a package that fails the smoke test is
   never published to COPR.
-- Docs: added a **Quickstart** to the README — a one-line Flatpak install of the
-  latest release (and a CLI-only pointer to the backend package).
+- Docs: added a **Quickstart** to the README — one command to install *or update*
+  GP Client to the latest Flatpak release (and a CLI-only pointer to the backend
+  package); reordered Install so repo-based installs (COPR) come before the
+  manual host-package download.
 
 ## 1.0.3 - 2026-06-27
 - GUI: the GUI↔backend compatibility warning now only appears on a **feature
