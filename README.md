@@ -103,7 +103,7 @@ flatpak install --user io.github.techneut92.gpgui.flatpak
 flatpak run io.github.techneut92.gpgui
 ```
 
-### Backend — Fedora COPR
+### Backend — Fedora COPR (and RHEL / AlmaLinux / Rocky 10)
 
 On Fedora, the backend can be installed (and kept updated) from COPR:
 
@@ -113,6 +113,18 @@ sudo dnf install globalprotect-openconnect-dw
 # optional native (non-Flatpak) GUI:
 sudo dnf install globalprotect-openconnect-dw-gui
 ```
+
+The same COPR repo also builds for **Enterprise Linux 10** — RHEL 10,
+AlmaLinux 10, Rocky 10, CentOS Stream 10 — via EPEL 10:
+
+```bash
+sudo dnf install epel-release   # if not already enabled
+sudo dnf copr enable techneut92/globalprotect-openconnect-dw
+sudo dnf install globalprotect-openconnect-dw
+```
+
+> EL **9** (RHEL/Alma/Rocky 9) isn't built — its Rust (1.84) is older than the
+> dependency tree needs (≥ 1.88). Use the Flatpak GUI there instead.
 
 On **atomic** Fedora (Silverblue / Kinoite / Bazzite / Bluefin — no `dnf copr`),
 add the repo file and layer it, then reboot:
@@ -220,11 +232,17 @@ distribution channels to set up as the project matures:
 - [x] **GitHub Releases** — `.rpm` / `.deb` / `.pkg.tar.zst` / `.apk` / `.bin.tar.xz` + `.flatpak` bundle
 - [ ] **Flathub** — submit `io.github.techneut92.gpgui` (AppStream metainfo is in
       `apps/gpgui/packaging/flatpak/`)
-- [ ] **Fedora COPR** — backend (+ native `-gui`) `.rpm`; CI auto-submits the
-      SRPM on each tag (`.github/workflows/copr.yaml`) — pending project + token
+- [x] **Fedora COPR** — backend + native `-gui` `.rpm`, built & published from the
+      release pipeline (gated on the RPM install test). Live:
+      `dnf copr enable techneut92/globalprotect-openconnect-dw`. Also covers
+      RHEL / AlmaLinux / Rocky / CentOS where their Rust is new enough (see note).
 - [ ] **Arch AUR** — backend + GUI
-- [ ] **Debian/Ubuntu PPA**
-- [ ] **openSUSE OBS**
+- [ ] **Debian/Ubuntu PPA / openSUSE OBS** — *constrained:* the dependency tree
+      needs **Rust ≥ 1.88**, so source-build services only work on distros that
+      ship a recent Rust (Fedora, openSUSE Tumbleweed, the newest EL/Ubuntu).
+      Debian ≤13, Ubuntu LTS, and EL9 ship older Rust and can't build from source
+      — those users should use the **Flatpak** or the prebuilt `.deb`/`.rpm` from
+      GitHub Releases.
 - [ ] **NixOS flake** — `flake.nix` builds the whole workspace (incl. GUI) from
       source and is checked in CI (`.github/workflows/nix.yaml`); use the git
       fetcher so the submodules come along (the `github:` shorthand omits them):

@@ -280,6 +280,15 @@ backend-install flow:
   `copr-publish` job that `needs` the RPM install test, so a package that fails
   the smoke test is never published. The standalone `copr.yaml` is now
   manual-only (`workflow_dispatch`) to avoid a second, ungated publish on tags.
+- **COPR Enterprise Linux 10**: the COPR project now also builds for EPEL 10
+  (RHEL 10, AlmaLinux 10, Rocky 10, CentOS Stream 10) on x86_64 + aarch64.
+- **Distro Rust constraint (documented):** the dependency tree requires
+  rustc ≥ 1.88 (`time` 1.88, `zbus` 1.87, `icu` 1.86), and the workspace is
+  edition 2024 (≥ 1.85). Source-build packaging therefore only works on distros
+  shipping a recent Rust — Fedora, openSUSE Tumbleweed, EL 10. Debian ≤ 13,
+  Ubuntu LTS, and EL 9 ship older Rust and can't build from source; those users
+  use the Flatpak or the prebuilt `.deb`/`.rpm`. (This is why the openSUSE OBS /
+  Debian-Ubuntu PPA roadmap items are constrained.)
 - **Docs**: README Ko-fi support badge.
 
 ### Third-party components
