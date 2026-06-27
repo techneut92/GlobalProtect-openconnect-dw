@@ -325,7 +325,7 @@
       // the settings gear, independent of the compatibility banner below.
       let u = null;
       try { u = await invoke('check_update'); } catch (e) {}
-      markUpdate(u && u.available);
+      markUpdate(u && (u.available || u.backendUpdate));
 
       // No version-mismatch banner: real GUI<->backend compatibility is enforced
       // by the protocol handshake at connect (a hard error on no overlap). A mere
