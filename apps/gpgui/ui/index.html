@@ -315,20 +315,26 @@
       const btn = b.querySelector('button');
       if (btn && onClick) btn.onclick = onClick;
     }
+    function markUpdate(on) {
+      const b = $('winSettings');
+      if (b) b.classList.toggle('has-update', !!on);
+    }
     async function refreshBanners() {
       if (!hasTauri) return;
-      if (sysInfo && sysInfo.backendInstalled && !sysInfo.compatible) {
-        setBanner('<span>App v' + sysInfo.guiVersion + ' and backend v' + (sysInfo.backendVersion || '?') + " don't match — update both.</span>", 'warn');
+      // Check for a newer release on startup. This drives the up-arrow badge on
+      // the settings gear, independent of the compatibility banner below.
+      let u = null;
+      try { u = await invoke('check_update'); } catch (e) {}
+      markUpdate(u && u.available);
+
+      // No version-mismatch banner: real GUI<->backend compatibility is enforced
+      // by the protocol handshake at connect (a hard error on no overlap). A mere
+      // version difference is fine, so we only surface "update available" here.
+      if (u && u.available) {
+        setBanner('<span>Update available — v' + u.latest + '</span><button class="banner-btn">Update</button>', 'info',
+          async () => { try { setBanner('<span>Starting update…</span>', 'info'); $('topBanner').textContent = await invoke('run_update', { url: u.url }); } catch (e) {} });
         return;
       }
-      try {
-        const u = await invoke('check_update');
-        if (u.available) {
-          setBanner('<span>Update available — v' + u.latest + '</span><button class="banner-btn">Update</button>', 'info',
-            async () => { try { setBanner('<span>Starting update…</span>', 'info'); $('topBanner').textContent = await invoke('run_update', { url: u.url }); } catch (e) {} });
-          return;
-        }
-      } catch (e) {}
       setBanner('');
     }
     function setBkStatus(msg, kind) {

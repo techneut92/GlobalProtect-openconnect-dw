@@ -245,21 +245,25 @@
       if (!hasTauri) { $('aboutVer').textContent = 'dev build'; return; }
       try {
         const s = await invoke('system_info');
-        $('aboutVer').textContent = 'v' + s.guiVersion;
+        const beVer = !s.backendInstalled ? 'not installed' : (s.backendVersion ? 'v' + s.backendVersion : 'installed');
+        $('aboutVer').innerHTML = 'v' + s.guiVersion + ' <span style="color:var(--muted);font-weight:400;">· backend ' + beVer + '</span>';
         $('aboutOs').textContent = s.osName;
         if (s.flatpakRuntime) { $('aboutRuntimeRow').hidden = false; $('aboutRuntime').textContent = s.flatpakRuntime; }
         $('aboutKind').textContent = s.running + (s.running === 'Native package' ? ' (' + s.installKind + ')' : '');
         $('aboutBackend').innerHTML = !s.backendInstalled
           ? '<span style="color:var(--red)">not installed</span>'
           : (s.backendVersion ? 'v' + s.backendVersion : 'installed');
-        const mismatch = s.backendInstalled && !s.compatible;
-        $('compatWarn').hidden = !mismatch;
-        $('updateBackendBtn').hidden = !mismatch;
-        if (mismatch) {
-          $('compatWarn').textContent =
-            'Version mismatch — the GUI is v' + s.guiVersion + ' but the backend service is v' + (s.backendVersion || '?') + '. Update the backend to match.';
-          $('updateBackendBtn').textContent = 'Update backend to v' + s.guiVersion;
-        }
+        // No version-mismatch warning — GUI<->backend compatibility is enforced
+        // by the protocol handshake at connect, not a version heuristic. Offer the
+        // backend update (and badge the About nav) only when a newer release exists.
+        $('compatWarn').hidden = true;
+        let u = null;
+        try { u = await invoke('check_update'); } catch (e) {}
+        const updAvail = !!(u && u.available);
+        $('updateBackendBtn').hidden = !updAvail;
+        if (updAvail) $('updateBackendBtn').textContent = 'Update backend to v' + u.latest;
+        const nav = document.querySelector('.settings-nav[data-sec="about"]');
+        if (nav) nav.classList.toggle('has-update', updAvail);
       } catch (e) {}
     }
     function setUbLog(msg, kind) {

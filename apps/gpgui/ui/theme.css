@@ -254,6 +254,19 @@ body.settings { background: var(--bg-grad); }
 }
 .settings-nav:hover { color: var(--text-soft); }
 .settings-nav.active { background: rgba(84,168,255,.12); color: #cfe4ff; font-weight: 600; box-shadow: inset 0 0 0 1px rgba(84,168,255,.25); }
+
+/* "Update available" badge — a small up-arrow shown on the settings gear and the
+   About nav button when check_update finds a newer release (set via JS). */
+.wbtn.has-update, .settings-nav.has-update { position: relative; }
+.wbtn.has-update::after, .settings-nav.has-update::after {
+  content: "";
+  position: absolute;
+  width: 14px; height: 14px;
+  background: url("update-badge.png") center / contain no-repeat;
+  pointer-events: none;
+}
+.wbtn.has-update::after { top: -3px; right: -3px; }
+.settings-nav.has-update::after { top: 50%; right: 10px; transform: translateY(-50%); }
 .settings-content { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; padding: 20px 22px 28px; position: relative; }
 .settings-sec h2 { font-size: 16px; font-weight: 680; color: #f2f4fa; letter-spacing: -.2px; margin: 0; }
 .settings-sec .desc { font-size: 12.5px; color: var(--muted); margin: 5px 0 18px; }

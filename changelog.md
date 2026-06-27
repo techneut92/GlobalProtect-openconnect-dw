@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- An **update-available badge** (download icon) now appears on the settings gear
+  and the About item when a newer release exists, and the app **checks for updates
+  on startup**.
+- Removed the GUI/backend **version-mismatch warning**: compatibility is enforced
+  by the wire-protocol handshake at connect, so a mere version difference no longer
+  warns. The About screen now shows the **backend version** next to the app version.
+
 ## 1.1.0 - 2026-06-27
 
 - Reliability: the GUI and backend now **negotiate a wire-protocol version** at

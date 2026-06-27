@@ -346,6 +346,19 @@ Phase 1).
   flatpak (matching `gh-release`). A release is atomic — the backend can't
   publish to COPR if any build phase failed.
 
+## 2026-06-27 — GUI: update badge, startup update check, drop version-mismatch warning
+
+- **Update-available badge** (`apps/gpgui/ui/`): a download-icon badge
+  (`update-badge.png`) shows on the settings gear (`index.html`) and the About
+  nav item (`settings.html`) when `check_update` finds a newer release. The check
+  runs on startup via `refreshBanners()`.
+- **Removed the version-mismatch warning**: the GUI no longer warns when its
+  `major.minor` differs from the backend's package version (the old heuristic).
+  Real compatibility is enforced by the `gp-protocol` handshake at connect, so a
+  version difference is harmless. The About header now shows the backend version
+  beside the app version, and the "Update backend" button is gated on an available
+  update rather than a mismatch.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of
