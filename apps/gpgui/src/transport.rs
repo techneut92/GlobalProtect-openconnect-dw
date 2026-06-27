@@ -13,12 +13,11 @@ use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
 use base64::Engine;
-use serde_json::Value;
 use tokio::sync::mpsc;
 
 use crate::client::{self, Handle};
 use crate::dbus_client::{self, DbusHandle};
-use crate::proto::{VpnState, WsEvent, WsRequest};
+use gp_protocol::{ConnectRequest, DisconnectRequest, VpnState, WsEvent, WsRequest};
 
 pub enum Transport {
   Loopback(Handle),
@@ -26,7 +25,7 @@ pub enum Transport {
 }
 
 impl Transport {
-  pub async fn send_connect(&self, request: Value) -> Result<()> {
+  pub async fn send_connect(&self, request: ConnectRequest) -> Result<()> {
     match self {
       Transport::Loopback(h) => h.send(WsRequest::Connect(Box::new(request))).await,
       Transport::Dbus(h) => h.send_connect(serde_json::to_string(&request)?).await,
@@ -35,7 +34,7 @@ impl Transport {
 
   pub async fn send_disconnect(&self) -> Result<()> {
     match self {
-      Transport::Loopback(h) => h.send(WsRequest::Disconnect(())).await,
+      Transport::Loopback(h) => h.send(WsRequest::Disconnect(DisconnectRequest)).await,
       Transport::Dbus(h) => h.send_disconnect().await,
     }
   }

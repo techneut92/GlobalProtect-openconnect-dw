@@ -18,6 +18,7 @@ tauri-build = { version = "2", features = [] }
 # marker feature (empty — pulls NO webkit) just lets the auth launcher pass
 # `--default-browser`/webview flags through to the gpauth binary.
 gpapi = { path = "../../crates/gpapi", features = ["webview-auth"] }
+gp-protocol = { path = "../../crates/gp-protocol" }
 
 anyhow.workspace = true
 base64.workspace = true
