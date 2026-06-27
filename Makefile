@@ -77,11 +77,9 @@ build-rs:
 		rm -vf rust-toolchain.toml; \
 	fi
 
-	# gpservice (daemon) + gpclient (CLI) stay lean and webkit-free.
-	$(CARGO) build $(CARGO_BUILD_ARGS) -p gpclient -p gpservice --no-default-features
-	# gpauth is built WITH its default features (webview-auth) so the GUI's
-	# embedded-webview SSO works; it links webkit (hence the backend's webkit dep).
-	$(CARGO) build $(CARGO_BUILD_ARGS) -p gpauth
+	# The whole backend stays lean + webkit-free: gpauth is now a browser-only
+	# SAML helper — the embedded-webview SSO moved into the GUI (gpgui, in-process).
+	$(CARGO) build $(CARGO_BUILD_ARGS) -p gpclient -p gpservice -p gpauth --no-default-features
 
 	# Optional: build OUR Tauri GUI from source (apps/gpgui) for a native+GUI
 	# package. This is never the upstream proprietary gpgui binary.

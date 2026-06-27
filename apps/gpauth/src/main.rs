@@ -2,9 +2,6 @@
 
 mod cli;
 
-#[cfg(feature = "webview-auth")]
-mod webview_auth;
-
 #[tokio::main]
 async fn main() {
   cli::run().await;

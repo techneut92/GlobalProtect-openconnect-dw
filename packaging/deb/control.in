@@ -37,7 +37,6 @@ Depends:
   libpcsclite1,
   policykit-1 | polkitd,
   dbus,
-  libwebkit2gtk-4.1-0,
   libsecret-1-0,
 Conflicts: globalprotect-openconnect
 Description: GlobalProtect VPN backend (PKCS#11 fork)
