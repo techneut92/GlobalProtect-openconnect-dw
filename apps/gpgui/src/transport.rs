@@ -70,14 +70,17 @@ pub async fn open(key: &[u8]) -> Result<(Transport, mpsc::Receiver<VpnState>)> {
         let (g_min, g_max) = (gp_protocol::PROTOCOL_MIN, gp_protocol::PROTOCOL_MAX);
         let (b_min, b_max) = (env.protocol_min, env.protocol_max);
         if g_min.max(b_min) > g_max.min(b_max) {
-          let who = if b_max < g_min {
-            "the backend is too old — update it (Settings → About)"
+          // No overlap. Point the user at the right move for *the client*: if the
+          // GUI is behind the backend, upgrade it; if it's ahead, the backend
+          // needs updating (or the client can be downgraded to match).
+          let advice = if g_max < b_min {
+            "GP Client is older than the backend — update GP Client (Settings → About)"
           } else {
-            "GP Client is too old — update it (Settings → About)"
+            "GP Client is newer than the backend — update the backend, or downgrade GP Client to match"
           };
           bail!(
             "incompatible wire protocol: GP Client speaks v{g_min}..={g_max}, \
-             the backend speaks v{b_min}..={b_max} — {who}"
+             the backend speaks v{b_min}..={b_max} — {advice}"
           );
         }
       }
