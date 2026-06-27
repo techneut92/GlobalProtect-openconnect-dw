@@ -27,21 +27,13 @@ Key decisions:
 ## Phase 1 — Shared protocol contract (foundation)
 - [x] Create `crates/gp-protocol` — single source of truth for `WsRequest` / `WsEvent` / `VpnState` / `ConnectRequest`
 - [x] Add a `PROTOCOL_VERSION` constant
-- [ ] Migrate remaining wire types (each: move → re-export from `gpapi` → build). Per-type care: field visibility / where impls live.
-  - [x] `ClientOs`
-  - [x] `Gateway` (+ `PriorityRule`) — moved with `pub` fields (wire data)
-  - [ ] `SessionInfo` / `SessionWarning` — **heavier**: carries time-formatting impls + helpers (`format_duration_secs` etc.) and needs a `humantime` dep on `gp-protocol`. Keep `SessionRequestArgs` in `gpapi` (backend-internal). Move the helpers too (orphan rule forbids inherent impls outside `gp-protocol`).
-  - [ ] `ConnectInfo` / `ConnectedInfo` / `VpnState` — needs `SessionInfo` first
-  - [ ] `ConnectArgs` / `ConnectRequest` / `DisconnectRequest` / `WsRequest` — `ConnectArgs` has many builder methods (move them all)
-  - [ ] `WsEvent`
-  - [ ] `VpnEnv`
-
-> The first 3 types are migrated and the **workspace builds** (branch
-> `phase1-gp-protocol`). The remaining ones carry impl logic, so do them one at a
-> time with `cargo check --workspace` after each — the file edits are interleaved
-> (e.g. `session.rs` mixes `SessionRequestArgs` with the moving types).
-- [ ] Delete `gpgui`'s hand-mirrored `proto.rs`; depend on `gp-protocol` instead (kills the drift)
-- [ ] Add protocol messages that hand SSO to the GUI: e.g. `WsEvent::SamlAuth { url, … }` (backend → GUI "start embedded flow with this data") + the cookie coming back
+- [x] Migrate **all** wire types to `gp-protocol` (`gpapi::service` is now re-exports):
+  `ClientOs`, `Gateway`/`PriorityRule`, `SessionInfo`/`SessionWarning` (+ time helpers),
+  `ConnectInfo`/`ConnectedInfo`/`VpnState`, `ConnectArgs`/`ConnectRequest`/`DisconnectRequest`/`WsRequest`,
+  `WsEvent`, `VpnEnv`. (`SessionRequestArgs`, `LaunchGuiRequest`, `UpdateGuiRequest` stay in `gpapi` — not part of the GUI↔service protocol.)
+- [x] **Delete `gpgui`'s `proto.rs` mirror** → depend on `gp-protocol` (drift killed). `send_connect` is typed `ConnectRequest`; `parse_conn_details` uses typed `ConnectedInfo` via new accessors (`ConnectInfo::portal`, `ConnectedInfo::{tun_iface,ipv4,ipv6}`, `VpnState::label`). Workspace builds + GUI smoke-test.
+- [ ] **`PROTOCOL_VERSION` handshake** — small remaining piece: backend stamps it (e.g. into `VpnEnv`), GUI checks on connect, mismatch → the existing update UI (replaces the `major.minor` heuristic).
+- [ ] **SSO-handoff messages** (`WsEvent::SamlAuth { url, … }` + cookie back) — **moved to Phase 3**, where the GUI's in-process webview consumes them (no point adding a message with no consumer).
 
 ## Phase 2 — Webkit-free backend (extract the webview)
 
