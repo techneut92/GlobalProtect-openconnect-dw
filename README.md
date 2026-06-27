@@ -204,10 +204,6 @@ distribution channels to set up as the project matures:
       `nix build 'git+https://github.com/techneut92/GlobalProtect-openconnect-dw?submodules=1#default'`
 - [ ] **Docker image** — CLI-only (`gpclient`/`gpauth`); CI job present, publish disabled
 
-Each requires its own packaging metadata, signing keys/secrets, and (for
-Flathub/AUR) an external submission — tracked here so future releases just tick
-the boxes.
-
 ## Support
 
 If this project saves you some time, you can support its development on Ko-fi:
