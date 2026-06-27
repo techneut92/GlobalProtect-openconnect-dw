@@ -330,6 +330,10 @@ Phase 1).
   serializes every top-level protocol message to JSON and fails the build if the
   wire format changes without a deliberate snapshot regen — so the protocol can't
   drift unnoticed, and a real change forces a `PROTOCOL_MAX` decision.
+- **Quieter service journal**: `gpservice` caps the `zbus` log target at `warn`
+  (`apps/gpservice/src/cli.rs`). zbus logs the D-Bus handshake and every method
+  dispatch at INFO, which flooded the journal; the service's own logs are
+  unchanged.
 
 ### Third-party components
 
