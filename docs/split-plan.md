@@ -15,18 +15,43 @@ Key decisions:
 
 ---
 
+## Status (2026-06-27)
+- v1.0.5 released — GitHub + COPR + OBS (Ubuntu 26.04) all at 1.0.5.
+- Phase 1 **in progress** on branch `phase1-gp-protocol`:
+  - ✅ `crates/gp-protocol` + `PROTOCOL_VERSION` (on `main`, `660a61c`)
+  - ✅ `ClientOs` migrated, workspace builds, **GUI tested (connected OK)** (`4ae4a15`)
+  - ✅ `gp-protocol` licensed © Dylan Westra, GPL-3.0 (`90cfa83`)
+  - migration pattern proven: move type → `gpapi` re-exports → call sites unchanged → build.
+- **Nothing merged to `main`** beyond the harmless `gp-protocol` crate skeleton.
+
 ## Phase 1 — Shared protocol contract (foundation)
-- [ ] Create `crates/gp-protocol` — single source of truth for `WsRequest` / `WsEvent` / `VpnState` / `ConnectRequest`
-- [ ] Add a `PROTOCOL_VERSION` constant
+- [x] Create `crates/gp-protocol` — single source of truth for `WsRequest` / `WsEvent` / `VpnState` / `ConnectRequest`
+- [x] Add a `PROTOCOL_VERSION` constant
+- [ ] Migrate remaining wire types (each: move → re-export from `gpapi` → build). Per-type care: field visibility / where impls live.
+  - [x] `ClientOs`
+  - [ ] `Gateway` (+ `PriorityRule`) — fields are `pub(crate)`, `parse_gateways` sets them directly → add a constructor
+  - [ ] `SessionInfo` / `SessionWarning`
+  - [ ] `ConnectInfo` / `ConnectedInfo` / `VpnState`
+  - [ ] `ConnectArgs` / `ConnectRequest` / `DisconnectRequest` / `WsRequest`
+  - [ ] `WsEvent`
+  - [ ] `VpnEnv`
 - [ ] Delete `gpgui`'s hand-mirrored `proto.rs`; depend on `gp-protocol` instead (kills the drift)
 - [ ] Add protocol messages that hand SSO to the GUI: e.g. `WsEvent::SamlAuth { url, … }` (backend → GUI "start embedded flow with this data") + the cookie coming back
 
 ## Phase 2 — Webkit-free backend (extract the webview)
+
+> ⚠️ **Phases 2 and 3 must land together.** Today the GUI does SSO by spawning the
+> webview `gpauth` (`SamlAuthLauncher.auth_executable`). Removing the webview from
+> the backend breaks that path unless the GUI's own in-process webview SSO
+> (Phase 3) lands in the same change. Don't merge a half — the intermediate state
+> has no working SSO. Best done with the GUI runnable to test (not unattended).
+
 - [ ] Move `crates/auth/src/webview/webview_auth.rs` + its `tauri`/webkit deps into `apps/gpgui`
 - [ ] Delete the `webview-auth` feature from `gpapi` / `auth` / `gpauth` / `gpclient` (structural, not gated)
 - [ ] Make `--browser` the default SSO path for the CLI
 - [ ] Decide `gpauth`: keep as a webkit-free browser-only helper, or fold into `gpclient`
 - [ ] Strip `webkit2gtk` / `libsoup` / `gtk` / appindicator from backend packaging (`control.in`, `.spec`) → leaner deps, more buildable distros
+- [ ] Re-verify packaging builds shrink + still install (rpm/deb smoketests already gate this)
 
 ## Phase 3 — GUI embedded SSO, protocol-driven
 - [ ] GUI runs the embedded SAML in its own Tauri webview (no spawned `gpauth`; drop `auth_executable`)
