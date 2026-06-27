@@ -276,6 +276,10 @@ backend-install flow:
 - **RPM install test** (`.github/workflows/build.yaml`): a pipeline job installs
   the freshly built RPM in a clean Fedora image (where `dnf` resolves the runtime
   deps) and asserts the rpm-ostree invariants; the GitHub release gates on it.
+- **COPR publish gated** (`.github/workflows/build.yaml`): the COPR upload is a
+  `copr-publish` job that `needs` the RPM install test, so a package that fails
+  the smoke test is never published. The standalone `copr.yaml` is now
+  manual-only (`workflow_dispatch`) to avoid a second, ungated publish on tags.
 - **Docs**: README Ko-fi support badge.
 
 ### Third-party components

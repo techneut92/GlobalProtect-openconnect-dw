@@ -220,6 +220,48 @@ jobs:
         done
         echo "OK — no scriptlets, /usr-only: layers cleanly on atomic Fedora"
 
+  # Publish to Fedora COPR — only after rpm-install-test passes, so a package
+  # that fails the smoke test is never published. Release tags only. Builds its
+  # own offline SRPM from source and submits it (COPR compiles all 6 chroots).
+  copr-publish:
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    needs:
+      - rpm-install-test
+    runs-on: ubuntu-latest
+    container:
+      image: registry.fedoraproject.org/fedora:latest
+    env:
+      COPR_PROJECT: techneut92/globalprotect-openconnect-dw
+    steps:
+    - name: Install tooling
+      run: |
+        dnf -y install --setopt=install_weak_deps=False \
+          git rpm-build rpmdevtools cargo make xz tar gzip findutils copr-cli
+    - name: Checkout (with submodules)
+      uses: actions/checkout@v6
+      with:
+        submodules: recursive
+    - name: Trust the workspace (container checkout)
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+    - name: Build offline source RPM
+      run: make srpm OFFLINE=1
+    - name: Configure copr-cli
+      env:
+        COPR_CONFIG: ${{ secrets.COPR_CONFIG }}
+      run: |
+        if [ -z "$COPR_CONFIG" ]; then
+          echo "::error::COPR_CONFIG secret is not set — add your ~/.config/copr token block as a repo secret."
+          exit 1
+        fi
+        mkdir -p ~/.config
+        printf '%s\n' "$COPR_CONFIG" > ~/.config/copr
+        chmod 600 ~/.config/copr
+    - name: Submit build to COPR
+      run: |
+        srpm=$(ls .build/rpm/*.src.rpm)
+        echo "Submitting $srpm to $COPR_PROJECT (builds all project chroots)"
+        copr-cli build "$COPR_PROJECT" "$srpm"
+
   build-docker-image:
     # Disabled: builds and pushes a container image to Docker Hub (needs
     # DOCKER_HUB_USERNAME/TOKEN secrets). Re-enable when you set up publishing.
