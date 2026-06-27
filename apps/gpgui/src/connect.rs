@@ -1,21 +1,22 @@
 //! v2 connect path — the authentication half.
 //!
-//! Runs portal/gateway **prelogin + SAML SSO unprivileged** (so the `gpauth`
-//! webview inherits this process's display/D-Bus), then assembles the
-//! `ConnectRequest` that the root `gpservice` needs to drive the openconnect
-//! tunnel. Mirrors the auth pipeline in `apps/gpclient/src/connect.rs`, minus
-//! the tunnel — that's gpservice's job.
+//! Runs portal/gateway **prelogin + SAML SSO in-process** — the embedded webview
+//! runs inside this Tauri app (no external `gpauth` spawn), so the backend can be
+//! webkit-free. Then assembles the `ConnectRequest` that the root `gpservice`
+//! needs to drive the openconnect tunnel — that part is gpservice's job.
 
 use anyhow::{bail, Context, Result};
+use auth::{BrowserAuthenticator, WebviewAuthenticator};
 use gpapi::{
+  auth::SamlAuthResult,
   credential::{Credential, PasswordCredential},
   gateway::{gateway_login, Gateway, GatewayLogin},
   gp_params::{ClientOs, GpParams},
   portal::{prelogin, Prelogin},
-  process::auth_launcher::SamlAuthLauncher,
   service::{request::ConnectRequest, vpn_state::ConnectInfo},
   utils::host_utils,
 };
+use tauri::AppHandle;
 
 /// Inputs captured from the UI for a connection attempt.
 pub struct AuthParams {
@@ -134,7 +135,7 @@ fn os_version(os: &ClientOs) -> String {
 
 /// Authenticate (prelogin → SAML → gateway login) and build the
 /// `ConnectRequest` for gpservice. Runs as the unprivileged GUI user.
-pub async fn build_connect_request(p: &AuthParams) -> Result<ConnectRequest> {
+pub async fn build_connect_request(p: &AuthParams, app_handle: &AppHandle) -> Result<ConnectRequest> {
   let o = &p.opts;
   let client_os = ClientOs::from(p.os.as_str());
   // Allow an explicit OS-version override from the advanced options.
@@ -175,19 +176,23 @@ pub async fn build_connect_request(p: &AuthParams) -> Result<ConnectRequest> {
   } else {
     match &prelogin {
       Prelogin::Saml(saml) => {
-        SamlAuthLauncher::new(&p.server)
-          // gpauth is bundled at /app/bin under Flatpak; the default is /usr/bin.
-          .auth_executable(crate::system::is_flatpak().then_some("/app/bin/gpauth"))
-          .gateway(true)
-          .saml_request(saml.saml_request())
-          .user_agent(&p.user_agent)
-          .os(p.os.as_str())
-          .os_version(Some(&os_version))
-          .ignore_tls_errors(o.ignore_tls_errors)
-          .default_browser(p.use_browser)
-          .launch()
-          .await
-          .context("single sign-on was cancelled or failed")?
+        // SAML SSO runs IN-PROCESS — gpgui is already a Tauri + webkit app, so we
+        // no longer spawn the external `gpauth` binary (that's what let the backend
+        // drop webkit). Embedded webview by default; system browser if requested.
+        let auth_data = if p.use_browser {
+          BrowserAuthenticator::new(saml.saml_request(), "default")
+            .authenticate()
+            .await
+            .context("single sign-on (browser) was cancelled or failed")?
+        } else {
+          WebviewAuthenticator::new(&p.server, &gp_params)
+            .with_auth_request(saml.saml_request())
+            .authenticate(app_handle)
+            .await
+            .context("single sign-on was cancelled or failed")?
+        };
+        Credential::try_from(SamlAuthResult::Success(auth_data))
+          .context("could not build a credential from the SSO result")?
       }
       Prelogin::Standard(_) => {
         bail!("This server needs a username and password — choose the \"Username & password\" method")
