@@ -13,3 +13,4 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 specta = { workspace = true, features = ["derive"] }
 chrono = { workspace = true }
+humantime = { workspace = true }
