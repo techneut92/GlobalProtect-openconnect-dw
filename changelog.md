@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.1 - 2026-06-27
 
 - An **update-available badge** (download icon) appears on the settings gear and
   the About item when a newer release exists for **the app or the backend**, and

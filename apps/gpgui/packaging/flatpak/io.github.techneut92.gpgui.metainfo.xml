@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.1.1" date="2026-06-27">
+      <description>
+        <p>Update-available badge (app and backend) with a startup check; redesigned About showing app + backend side by side; fixed "Update backend" on atomic/rpm-ostree systems.</p>
+      </description>
+    </release>
     <release version="1.1.0" date="2026-06-27">
       <description>
         <p>Shared gp-protocol wire crate with negotiated version ranges so the GUI and backend can't drift; clearer update/downgrade guidance on mismatch; quieter gpservice journal.</p>
