@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Fixed the main-screen **"Update" banner button** doing nothing — it invoked the
+  updater without the target version, so it failed silently and the banner hung on
+  "Starting update…". It now updates correctly (and shows an error if it can't).
+  The Settings → About "Update GP Client" button was unaffected.
+- Main window is 10px taller so the update banner no longer makes the content
+  scroll.
+
 ## 1.1.1 - 2026-06-27
 
 - An **update-available badge** (download icon) appears on the settings gear and
