@@ -332,7 +332,7 @@
       // version difference is fine, so we only surface "update available" here.
       if (u && u.available) {
         setBanner('<span>Update available — v' + u.latest + '</span><button class="banner-btn">Update</button>', 'info',
-          async () => { try { setBanner('<span>Starting update…</span>', 'info'); $('topBanner').textContent = await invoke('run_update', { url: u.url }); } catch (e) {} });
+          async () => { try { setBanner('<span>Starting update…</span>', 'info'); $('topBanner').textContent = await invoke('run_update', { url: u.url, version: u.latest }); } catch (e) { setBanner('<span>Update failed — ' + e + '. Try Settings → About.</span>', 'warn'); } });
         return;
       }
       setBanner('');
