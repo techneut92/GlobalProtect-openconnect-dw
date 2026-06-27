@@ -8,6 +8,7 @@
 .cargo
 .build
 SNAPSHOT
+OFFLINE_BUILD
 
 # Tauri generated files
 gen

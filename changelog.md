@@ -10,6 +10,13 @@
 - Packaging: the **Nix flake builds again** — it now builds the whole workspace,
   including the GUI, from source and is verified in CI
   (`nix build 'git+https://github.com/techneut92/GlobalProtect-openconnect-dw?submodules=1#default'`).
+- Packaging: **Fedora COPR** — the backend (and an optional native `-gui`) RPM is
+  now built on COPR for each release (Fedora x86_64 + aarch64), installable with
+  `dnf copr enable techneut92/globalprotect-openconnect-dw` (or layered with
+  `rpm-ostree` on atomic Fedora — see the README).
+- CI: an **RPM install test** installs the freshly built package in a clean
+  Fedora image (resolving the real runtime deps) and checks it layers cleanly on
+  atomic (no install scriptlets, `/usr`-only); the release gates on it.
 - Docs: added a Ko-fi support link to the README.
 
 ## 1.0.2 - 2026-06-26
