@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Reliability: the GUI and backend now **negotiate a wire-protocol version** at
+  connect — they settle on the highest version both support, so a newer GUI keeps
+  working with an older backend and vice-versa. Only a genuine incompatibility is
+  refused, and the message says which side to update. Under the hood the GUI↔
+  backend protocol moved into a shared crate so the two can no longer drift out of
+  sync.
+
 ## 1.0.5 - 2026-06-27
 
 - Packaging: **Ubuntu 26.04 apt repo** — the backend (and native `-gui`) can be
