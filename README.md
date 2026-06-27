@@ -103,6 +103,8 @@ flatpak install --user io.github.techneut92.gpgui.flatpak
 flatpak run io.github.techneut92.gpgui
 ```
 
+---
+
 ### Backend — Fedora COPR (and RHEL / AlmaLinux / Rocky 10)
 
 On Fedora, the backend can be installed (and kept updated) from COPR:
@@ -140,18 +142,44 @@ systemctl reboot
 The package ships no install scriptlets and writes only under `/usr`, so it
 layers cleanly with `rpm-ostree`.
 
+---
+
 ### Backend service — host package (manual download)
 
-Without a repo, download `globalprotect-openconnect-dw-<version>…` for your
-distro from the [release](https://github.com/techneut92/GlobalProtect-openconnect-dw/releases)
-and install the file directly:
+Without a repo, download the matching `globalprotect-openconnect-dw-<version>…`
+file for your distro from the
+[release](https://github.com/techneut92/GlobalProtect-openconnect-dw/releases)
+and install it directly:
+
+**Fedora / RHEL / AlmaLinux / Rocky**
 
 ```bash
-# Fedora / RHEL            sudo dnf install ./globalprotect-openconnect-dw-*.rpm
-# Atomic (Silverblue/…)    sudo rpm-ostree install ./globalprotect-openconnect-dw-*.rpm   # then reboot
-# Debian / Ubuntu          sudo apt install ./globalprotect-openconnect-dw_*.deb
-# Arch                     sudo pacman -U ./globalprotect-openconnect-dw-*.pkg.tar.zst
-# Alpine                   sudo apk add --allow-untrusted ./globalprotect-openconnect-dw-*.apk
+sudo dnf install ./globalprotect-openconnect-dw-*.rpm
+```
+
+**Atomic Fedora** (Silverblue / Kinoite / Bazzite / Bluefin)
+
+```bash
+sudo rpm-ostree install ./globalprotect-openconnect-dw-*.rpm   # then reboot
+```
+
+**Debian / Ubuntu** — the prebuilt `.deb` runs on **Debian 12+ and Ubuntu 22.04+**
+(needs glibc ≥ 2.34):
+
+```bash
+sudo apt install ./globalprotect-openconnect-dw_*.deb
+```
+
+**Arch**
+
+```bash
+sudo pacman -U ./globalprotect-openconnect-dw-*.pkg.tar.zst
+```
+
+**Alpine**
+
+```bash
+sudo apk add --allow-untrusted ./globalprotect-openconnect-dw-*.apk
 ```
 
 The `…-gui` package and generic `…bin.tar.xz` are also attached for a fully
