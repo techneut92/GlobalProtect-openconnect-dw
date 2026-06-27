@@ -54,18 +54,24 @@ modules:
   # libpcsclite client (to reach host pcscd via --socket=pcsc). The client/socket
   # protocol is stable, so an older release is fine against a newer host pcscd.
   - name: pcsc-lite
+    buildsystem: meson
     config-opts:
-      - --disable-libsystemd
-      - --disable-libudev
-      - --disable-polkit
-      - --enable-confdir=/app/etc
-    # Ship the BSD-3-Clause license text with the bundled binary.
+      - -Dlibsystemd=false
+      - -Dlibudev=false
+      - -Dpolkit=false
+    # Ship the BSD-3-Clause license text with the bundled binary. meson builds
+    # out-of-tree in _flatpak_build/, so COPYING is one directory up.
     post-install:
-      - install -Dm644 COPYING /app/share/licenses/pcsc-lite/COPYING
+      - install -Dm644 ../COPYING /app/share/licenses/pcsc-lite/COPYING
     sources:
-      - type: archive
-        url: https://pcsclite.apdu.fr/files/pcsc-lite-2.0.3.tar.bz2
-        sha256: f42ee9efa489e9ff5d328baefa26f9c515be65021856e78d99ad1f0ead9ec85d
+      # Git tag rather than the apdu.fr tarball: that server keeps only the
+      # latest two releases, so a pinned tarball 404s on the next release (it
+      # just did, breaking the build). pcsc-lite uses meson since 2.x, which
+      # builds straight from a git checkout — and tags don't disappear.
+      - type: git
+        url: https://salsa.debian.org/rousseau/PCSC.git
+        tag: '2.5.1'
+        commit: 5b93c58217f3633800264f68054f58c211090b45
 
   # opensc — provides /app/lib/pkcs11/opensc-pkcs11.so
   - name: opensc

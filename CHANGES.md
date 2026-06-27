@@ -335,6 +335,17 @@ Phase 1).
   dispatch at INFO, which flooded the journal; the service's own logs are
   unchanged.
 
+## 2026-06-27 — Release-pipeline fixes (1.1.0)
+
+- **Flatpak**: bundle `pcsc-lite` from its **git tag + meson** rather than the
+  apdu.fr tarball. apdu.fr keeps only the latest two releases, so a pinned
+  tarball 404s on the next upstream release (it broke the 1.1.0 flatpak build);
+  git tags are stable and pcsc-lite has used meson since 2.x. (Also fixed the
+  `COPYING` license-copy path for meson's out-of-tree build.)
+- **CI**: `copr-publish` now gates on the **full build set** including the GUI
+  flatpak (matching `gh-release`). A release is atomic — the backend can't
+  publish to COPR if any build phase failed.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of
