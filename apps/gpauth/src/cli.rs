@@ -56,10 +56,6 @@ struct Cli {
   #[arg(long, help = "Ignore TLS errors")]
   ignore_tls_errors: bool,
 
-  #[cfg(feature = "webview-auth")]
-  #[arg(long, help = "Use the default browser for authentication")]
-  default_browser: bool,
-
   #[arg(
     long,
     help = "The browser to use for authentication, e.g., `default`, `firefox`, `chrome`, `chromium`, or the path to the browser executable",
@@ -67,14 +63,6 @@ struct Cli {
     num_args=0..=1
   )]
   browser: Option<String>,
-
-  #[cfg(feature = "webview-auth")]
-  #[arg(long, help = "The HiDPI mode, useful for high-resolution screens")]
-  hidpi: bool,
-
-  #[cfg(feature = "webview-auth")]
-  #[arg(long, help = "Clean the cache of the embedded browser")]
-  pub clean: bool,
 
   #[command(flatten)]
   verbose: InfoLevelVerbosity,
@@ -92,9 +80,6 @@ impl Args for Cli {
 
 impl Cli {
   fn prepare_env(&self) -> anyhow::Result<Option<NamedTempFile>> {
-    #[cfg(feature = "webview-auth")]
-    gpapi::utils::env_utils::patch_gui_runtime_env(self.hidpi);
-
     if self.fix_openssl {
       info!("Fixing OpenSSL environment");
       let file = openssl::fix_openssl_env()?;
@@ -120,29 +105,15 @@ impl Cli {
       None => auth_prelogin(&server, &gp_params).await?,
     };
 
-    #[cfg(feature = "webview-auth")]
-    let browser = self
-      .browser
-      .as_deref()
-      .or_else(|| self.default_browser.then(|| "default"));
+    // Browser-only: the embedded webview SSO now lives in the GUI (gpgui runs it
+    // in-process), so gpauth never needs webkit. Defaults to the system browser.
+    let browser = self.browser.as_deref().unwrap_or("default");
+    let authenticator = BrowserAuthenticator::new(&auth_request, browser);
+    let auth_result = authenticator.authenticate().await;
+    print_auth_result(auth_result);
 
-    #[cfg(not(feature = "webview-auth"))]
-    let browser = self.browser.as_deref().or(Some("default"));
-
-    if let Some(browser) = browser {
-      let authenticator = BrowserAuthenticator::new(&auth_request, browser);
-      let auth_result = authenticator.authenticate().await;
-
-      print_auth_result(auth_result);
-
-      // explicitly drop openssl_conf to avoid the unused variable warning
-      drop(openssl_conf);
-      return Ok(());
-    }
-
-    #[cfg(feature = "webview-auth")]
-    crate::webview_auth::authenticate(server, gp_params, auth_request, self.clean, openssl_conf).await?;
-
+    // Keep the temp OpenSSL config alive until auth completes.
+    drop(openssl_conf);
     Ok(())
   }
 

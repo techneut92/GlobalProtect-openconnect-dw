@@ -6,9 +6,6 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
-[build-dependencies]
-tauri-build = { version = "2", features = [], optional = true }
-
 [dependencies]
 common = { path = "../../crates/common" }
 gpapi = { path = "../../crates/gpapi", features = ["clap"] }
@@ -27,10 +24,3 @@ compile-time.workspace = true
 
 # Pin to specific version due to MSRV
 home = "=0.5.11"
-
-# webview auth dependencies
-tauri = { workspace = true, optional = true }
-
-[features]
-default = ["webview-auth"]
-webview-auth = ["auth/webview-auth", "dep:tauri", "dep:tauri-build"]
