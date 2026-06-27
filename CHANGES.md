@@ -359,6 +359,25 @@ Phase 1).
   beside the app version, and the "Update backend" button is gated on an available
   update rather than a mismatch.
 
+## 2026-06-28 — Webkit-free backend: SAML webview moved into the GUI
+
+Phase 2 of the backend/GUI split (`docs/split-plan.md`). The GUI already owned the
+auth flow (prelogin + SSO + building the `ConnectRequest`); it just delegated the
+SAML webview to a spawned `gpauth` subprocess. That subprocess was the only thing
+pulling webkit into the backend, so it's moved in-process.
+
+- **A — GUI runs SSO in-process** (`apps/gpgui`): depends on the `auth` crate
+  (`webview-auth` + `browser-auth`) and runs `WebviewAuthenticator` /
+  `BrowserAuthenticator` directly with its own Tauri `AppHandle` (threaded
+  `setup` → `vpn::run` → `connect` → `build_connect_request`) instead of spawning
+  `gpauth`. `SamlAuthData → Credential` via `Credential::try_from`.
+- **B — backend is webkit-free**: `gpauth` is now a browser-only SAML helper
+  (dropped the `webview-auth` feature, `tauri`/`tauri-build` deps, the embedded
+  webview path and `build.rs`). `gpservice`/`gpclient`/`gpauth` have **0
+  webkit/tauri deps**; the backend `.deb`/`.rpm` no longer require `libwebkit2gtk`
+  (the `-gui` package keeps it). Side benefit: the in-process webview shares one
+  cookie store, so SSO is remembered across reconnects within a GUI session.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of

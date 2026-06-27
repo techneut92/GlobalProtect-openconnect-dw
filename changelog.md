@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- The **backend is now webkit-free**. The SAML SSO webview moved entirely into the
+  GUI (it runs in-process), so the backend package (`gpservice`/`gpclient`/`gpauth`)
+  no longer depends on `libwebkit2gtk` — a leaner install that builds on more
+  distros. The graphical client keeps webkit, since it owns the webview now.
+
 ## 1.1.2 - 2026-06-28
 
 - Fixed the main-screen **"Update" banner button** doing nothing — it invoked the
