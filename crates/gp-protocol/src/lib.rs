@@ -31,12 +31,16 @@
 /// types in this crate. Not tied to the app/backend release version.
 pub const PROTOCOL_VERSION: u32 = 1;
 
+pub mod env;
+pub mod event;
 pub mod gateway;
 pub mod os;
 pub mod request;
 pub mod session;
 pub mod state;
 
+pub use env::VpnEnv;
+pub use event::WsEvent;
 pub use gateway::{Gateway, PriorityRule};
 pub use os::ClientOs;
 pub use request::{ConnectArgs, ConnectRequest, DisconnectRequest, UpdateLogLevelRequest, WsRequest};
