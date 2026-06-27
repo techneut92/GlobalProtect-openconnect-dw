@@ -96,94 +96,119 @@ The GUI talks to the backend over D-Bus, so the backend must be a **host
 package** (it needs root + the TUN device). The app's "backend not installed"
 screen shows the exact command for your distro.
 
-### GUI — Flatpak (recommended)
+### GUI — Flatpak (any distro)
+
+The graphical client runs anywhere as a Flatpak:
 
 ```bash
-flatpak install --user io.github.techneut92.gpgui.flatpak
+curl -fLO https://github.com/techneut92/GlobalProtect-openconnect-dw/releases/latest/download/io.github.techneut92.gpgui.flatpak
+flatpak install --user --or-update --assumeyes io.github.techneut92.gpgui.flatpak
 flatpak run io.github.techneut92.gpgui
 ```
 
+The **backend service** is a host package — find your distro below.
+
 ---
 
-### Backend — Fedora COPR (and RHEL / AlmaLinux / Rocky 10)
+### Fedora
 
-On Fedora, the backend can be installed (and kept updated) from COPR:
+Install (and auto-update) from COPR:
 
 ```bash
 sudo dnf copr enable techneut92/globalprotect-openconnect-dw
 sudo dnf install globalprotect-openconnect-dw
-# optional native (non-Flatpak) GUI:
-sudo dnf install globalprotect-openconnect-dw-gui
+sudo dnf install globalprotect-openconnect-dw-gui   # optional native (non-Flatpak) GUI
 ```
 
-The same COPR repo also builds for **Enterprise Linux 10** — RHEL 10,
-AlmaLinux 10, Rocky 10, CentOS Stream 10 — via EPEL 10:
-
-```bash
-sudo dnf install epel-release   # if not already enabled
-sudo dnf copr enable techneut92/globalprotect-openconnect-dw
-sudo dnf install globalprotect-openconnect-dw
-```
-
-> EL **9** (RHEL/Alma/Rocky 9) isn't built — its Rust (1.84) is older than the
-> dependency tree needs (≥ 1.88). Use the Flatpak GUI there instead.
-
-On **atomic** Fedora (Silverblue / Kinoite / Bazzite / Bluefin — no `dnf copr`),
-add the repo file and layer it, then reboot:
+**Atomic** (Silverblue / Kinoite / Bazzite / Bluefin — no `dnf copr`): add the repo
+file, layer it, and reboot:
 
 ```bash
 fed=$(rpm -E %fedora)
 sudo curl -fsSL -o /etc/yum.repos.d/_copr_techneut92-gpoc-dw.repo \
   "https://copr.fedorainfracloud.org/coprs/techneut92/globalprotect-openconnect-dw/repo/fedora-$fed/techneut92-globalprotect-openconnect-dw-fedora-$fed.repo"
-rpm-ostree install globalprotect-openconnect-dw   # add -gui too for the native GUI
+rpm-ostree install globalprotect-openconnect-dw   # add -gui for the native GUI
 systemctl reboot
 ```
 
-The package ships no install scriptlets and writes only under `/usr`, so it
-layers cleanly with `rpm-ostree`.
-
----
-
-### Backend service — host package (manual download)
-
-Without a repo, download the matching `globalprotect-openconnect-dw-<version>…`
-file for your distro from the
-[release](https://github.com/techneut92/GlobalProtect-openconnect-dw/releases)
-and install it directly:
-
-**Fedora / RHEL / AlmaLinux / Rocky**
+Or grab the `.rpm` from the
+[release](https://github.com/techneut92/GlobalProtect-openconnect-dw/releases):
 
 ```bash
 sudo dnf install ./globalprotect-openconnect-dw-*.rpm
 ```
 
-**Atomic Fedora** (Silverblue / Kinoite / Bazzite / Bluefin)
+---
+
+### RHEL / AlmaLinux / Rocky / CentOS Stream 10
+
+The same COPR repo builds for Enterprise Linux 10 via EPEL:
 
 ```bash
-sudo rpm-ostree install ./globalprotect-openconnect-dw-*.rpm   # then reboot
+sudo dnf install epel-release
+sudo dnf copr enable techneut92/globalprotect-openconnect-dw
+sudo dnf install globalprotect-openconnect-dw
 ```
 
-**Debian / Ubuntu** — the prebuilt `.deb` runs on **Debian 12+ and Ubuntu 22.04+**
-(needs glibc ≥ 2.34):
+Or a manual `.rpm` from the
+[release](https://github.com/techneut92/GlobalProtect-openconnect-dw/releases):
+
+```bash
+sudo dnf install ./globalprotect-openconnect-dw-*.rpm
+```
+
+> EL **9** isn't built — its Rust (1.84) is older than the dependency tree needs
+> (≥ 1.88). Use the Flatpak GUI on EL 9.
+
+---
+
+### Debian / Ubuntu
+
+**Ubuntu 26.04** — install (and auto-update) from the apt repo:
+
+```bash
+. /etc/os-release   # uses VERSION_ID, e.g. 26.04
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL "https://download.opensuse.org/repositories/home:Techneut92:gp-client/xUbuntu_$VERSION_ID/Release.key" \
+  | gpg --dearmor | sudo tee /etc/apt/keyrings/gp-client.gpg >/dev/null
+echo "deb [signed-by=/etc/apt/keyrings/gp-client.gpg] https://download.opensuse.org/repositories/home:Techneut92:gp-client/xUbuntu_$VERSION_ID/ /" \
+  | sudo tee /etc/apt/sources.list.d/gp-client.list
+sudo apt update && sudo apt install globalprotect-openconnect-dw
+```
+
+**Any other Debian/Ubuntu** — download the `.deb` from the
+[release](https://github.com/techneut92/GlobalProtect-openconnect-dw/releases) and
+install it directly. The prebuilt package runs on **Debian 12+ and Ubuntu 22.04+**
+(glibc ≥ 2.34):
 
 ```bash
 sudo apt install ./globalprotect-openconnect-dw_*.deb
 ```
 
-**Arch**
+> Only Ubuntu 26.04 has an apt repo (its Rust is new enough to build from
+> source); on older Debian/Ubuntu use the manual `.deb` or the Flatpak GUI for
+> auto-updates.
+
+---
+
+### Arch
 
 ```bash
 sudo pacman -U ./globalprotect-openconnect-dw-*.pkg.tar.zst
 ```
 
-**Alpine**
+---
+
+### Alpine
 
 ```bash
 sudo apk add --allow-untrusted ./globalprotect-openconnect-dw-*.apk
 ```
 
-The `…-gui` package and generic `…bin.tar.xz` are also attached for a fully
-native (non-Flatpak) install.
+---
+
+A `…-gui` package and a generic `…bin.tar.xz` are attached to every release for a
+fully native (non-Flatpak) install.
 
 ## Usage
 

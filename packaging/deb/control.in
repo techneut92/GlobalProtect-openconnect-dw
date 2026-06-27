@@ -22,7 +22,7 @@ Build-Depends: debhelper (>= 9),
   libwebkit2gtk-4.1-dev,
   libayatana-appindicator3-dev,
   librsvg2-dev,
-  rust-@RUST_VERSION@-all
+  rust-@RUST_VERSION@-all | rust-all
 Homepage: https://github.com/techneut92/GlobalProtect-openconnect-dw
 
 Package: globalprotect-openconnect-dw

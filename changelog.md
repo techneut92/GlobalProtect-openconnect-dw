@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Packaging: **Ubuntu 26.04 apt repo** — the backend (and native `-gui`) can be
+  installed and auto-updated from an openSUSE Build Service repo
+  (`download.opensuse.org/repositories/home:Techneut92:gp-client/xUbuntu_26.04`).
+  Other Debian/Ubuntu keep the prebuilt `.deb` + the Flatpak (older distros ship
+  Rust too old to build from source).
+- CI: a **deb install smoketest** installs the freshly built `.deb` in a clean
+  Ubuntu image (apt resolves the runtime deps) and gates the release — the deb
+  counterpart of the rpm install test.
+- Docs: the Install section is reorganized **per distro**, each distro's repo and
+  manual options together.
+
 ## 1.0.4 - 2026-06-27
 
 - Packaging: the **Fedora COPR repo now also covers Enterprise Linux 10** — RHEL 10,

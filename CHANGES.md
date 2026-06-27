@@ -290,6 +290,14 @@ backend-install flow:
   use the Flatpak or the prebuilt `.deb`/`.rpm`. (This is why the openSUSE OBS /
   Debian-Ubuntu PPA roadmap items are constrained.)
 - **Docs**: README Ko-fi support badge.
+- **Ubuntu 26.04 apt repo (OBS)**: the backend + native `-gui` are built on the
+  openSUSE Build Service for Ubuntu 26.04 (Rust 1.93 ≥ the 1.88 floor) and served
+  as a signed apt repo. The deb `Build-Depends` gained `rust-1.89-all | rust-all`
+  so the build resolves on Ubuntu's `rust-all`. Older Debian/Ubuntu keep the
+  prebuilt `.deb` (runs on Debian 12+/Ubuntu 22.04+, glibc ≥ 2.34) + the Flatpak.
+- **Deb install test** (`.github/workflows/build.yaml`): installs the freshly
+  built `.deb` in a clean Ubuntu image and gates the release, mirroring the rpm
+  install test.
 
 ### Third-party components
 
