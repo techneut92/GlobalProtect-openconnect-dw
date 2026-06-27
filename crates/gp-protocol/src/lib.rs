@@ -19,3 +19,7 @@
 /// The wire-protocol version. Bump on any incompatible change to the message
 /// types in this crate. Not tied to the app/backend release version.
 pub const PROTOCOL_VERSION: u32 = 1;
+
+pub mod os;
+
+pub use os::ClientOs;
