@@ -220,6 +220,34 @@ jobs:
         done
         echo "OK — no scriptlets, /usr-only: layers cleanly on atomic Fedora"
 
+  # Install the freshly built x86_64 .deb in a clean Ubuntu image, where apt
+  # resolves the real runtime deps — the deb counterpart of rpm-install-test.
+  deb-install-test:
+    needs: build-gp
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:latest
+    steps:
+    - name: Download .deb artifact (amd64)
+      uses: actions/download-artifact@v8
+      with:
+        name: artifact-gp-deb-amd64
+        path: debs
+    - name: Install backend + native GUI (apt resolves deps)
+      run: |
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -qq
+        apt-get install -y ./debs/globalprotect-openconnect-dw*amd64.deb
+    - name: Verify the install
+      run: |
+        set -eux
+        command -v gpclient gpservice gpauth gpgui
+        gpclient --help >/dev/null
+        test -f /usr/share/dbus-1/system-services/io.github.techneut92.GPService.service
+        test -f /usr/share/dbus-1/system.d/io.github.techneut92.GPService.conf
+        test -f /usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy
+        test -f /usr/share/applications/io.github.techneut92.gpgui.desktop
+
   # Publish to Fedora COPR — only after rpm-install-test passes, so a package
   # that fails the smoke test is never published. Release tags only. Builds its
   # own offline SRPM from source and submits it (COPR compiles all 6 chroots).
@@ -357,6 +385,7 @@ jobs:
       - tarball-offline
       - build-gp
       - rpm-install-test
+      - deb-install-test
       - flatpak
 
     steps:
