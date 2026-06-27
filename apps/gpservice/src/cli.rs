@@ -164,6 +164,9 @@ impl Cli {
     let inner_logger = env_logger::builder()
       // Set the log level to the Trace level, the logs will be filtered
       .filter_level(log::LevelFilter::Trace)
+      // zbus logs the D-Bus handshake + every method dispatch at INFO, which
+      // floods the service journal; cap it at Warn regardless of verbosity.
+      .filter_module("zbus", log::LevelFilter::Warn)
       .format(move |buf, record| {
         let timestamp = buf.timestamp();
         writeln!(
