@@ -8,43 +8,9 @@ use specta::Type;
 
 use crate::utils::request::create_identity;
 
-#[derive(Debug, Serialize, Deserialize, Clone, Type, Default)]
-pub enum ClientOs {
-  #[cfg_attr(not(target_os = "macos"), default)]
-  Linux,
-  Windows,
-  #[cfg_attr(target_os = "macos", default)]
-  Mac,
-}
-
-impl From<&str> for ClientOs {
-  fn from(os: &str) -> Self {
-    match os {
-      "Linux" => ClientOs::Linux,
-      "Windows" => ClientOs::Windows,
-      "Mac" => ClientOs::Mac,
-      _ => ClientOs::Linux,
-    }
-  }
-}
-
-impl ClientOs {
-  pub fn as_str(&self) -> &str {
-    match self {
-      ClientOs::Linux => "Linux",
-      ClientOs::Windows => "Windows",
-      ClientOs::Mac => "Mac",
-    }
-  }
-
-  pub fn to_openconnect_os(&self) -> &str {
-    match self {
-      ClientOs::Linux => "linux",
-      ClientOs::Windows => "win",
-      ClientOs::Mac => "mac-intel",
-    }
-  }
-}
+// `ClientOs` now lives in the shared `gp-protocol` crate; re-exported here so
+// `gpapi::gp_params::ClientOs` keeps working across the workspace.
+pub use gp_protocol::ClientOs;
 
 #[derive(Debug, Serialize, Deserialize, Type, Default, Clone)]
 pub struct GpParams {

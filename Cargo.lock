@@ -2104,6 +2104,7 @@ dependencies = [
  "cryptoki",
  "dns-lookup",
  "env_logger",
+ "gp-protocol",
  "gtk",
  "humantime",
  "log",
