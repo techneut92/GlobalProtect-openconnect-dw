@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.0.3" date="2026-06-27">
+      <description>
+        <p>Patch-tolerant backend compatibility warning; store screenshots; Fedora COPR packaging; Nix flake builds from source.</p>
+      </description>
+    </release>
     <release version="1.0.2" date="2026-06-26">
       <description>
         <p>In-app update downloads and reinstalls the new Flatpak; tidier update UI.</p>

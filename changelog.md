@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.3 - 2026-06-27
 - GUI: the GUI↔backend compatibility warning now only appears on a **feature
   (minor) or breaking (major)** version divergence — patch-level differences (the
   `x` in `vz.y.x`) are treated as compatible and no longer show the mismatch

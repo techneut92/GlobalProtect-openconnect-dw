@@ -1,5 +1,8 @@
 # GP Client
 
+[![Copr build status](https://copr.fedorainfracloud.org/coprs/techneut92/globalprotect-openconnect-dw/package/globalprotect-openconnect-dw/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/techneut92/globalprotect-openconnect-dw/package/globalprotect-openconnect-dw/)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](./LICENSE)
+
 A GlobalProtect-compatible VPN client for Linux with **smart-card / PKCS#11
 (YubiKey PIV) certificate authentication** — alongside SAML single sign-on and
 username/password. Built on [OpenConnect](https://www.infradead.org/openconnect/),
