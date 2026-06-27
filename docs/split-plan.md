@@ -29,12 +29,17 @@ Key decisions:
 - [x] Add a `PROTOCOL_VERSION` constant
 - [ ] Migrate remaining wire types (each: move → re-export from `gpapi` → build). Per-type care: field visibility / where impls live.
   - [x] `ClientOs`
-  - [ ] `Gateway` (+ `PriorityRule`) — fields are `pub(crate)`, `parse_gateways` sets them directly → add a constructor
-  - [ ] `SessionInfo` / `SessionWarning`
-  - [ ] `ConnectInfo` / `ConnectedInfo` / `VpnState`
-  - [ ] `ConnectArgs` / `ConnectRequest` / `DisconnectRequest` / `WsRequest`
+  - [x] `Gateway` (+ `PriorityRule`) — moved with `pub` fields (wire data)
+  - [ ] `SessionInfo` / `SessionWarning` — **heavier**: carries time-formatting impls + helpers (`format_duration_secs` etc.) and needs a `humantime` dep on `gp-protocol`. Keep `SessionRequestArgs` in `gpapi` (backend-internal). Move the helpers too (orphan rule forbids inherent impls outside `gp-protocol`).
+  - [ ] `ConnectInfo` / `ConnectedInfo` / `VpnState` — needs `SessionInfo` first
+  - [ ] `ConnectArgs` / `ConnectRequest` / `DisconnectRequest` / `WsRequest` — `ConnectArgs` has many builder methods (move them all)
   - [ ] `WsEvent`
   - [ ] `VpnEnv`
+
+> The first 3 types are migrated and the **workspace builds** (branch
+> `phase1-gp-protocol`). The remaining ones carry impl logic, so do them one at a
+> time with `cargo check --workspace` after each — the file edits are interleaved
+> (e.g. `session.rs` mixes `SessionRequestArgs` with the moving types).
 - [ ] Delete `gpgui`'s hand-mirrored `proto.rs`; depend on `gp-protocol` instead (kills the drift)
 - [ ] Add protocol messages that hand SSO to the GUI: e.g. `WsEvent::SamlAuth { url, … }` (backend → GUI "start embedded flow with this data") + the cookie coming back
 
