@@ -180,6 +180,46 @@ jobs:
         path: |
           build-gp-${{ matrix.package }}/artifacts/*
 
+  # Install the freshly built x86_64 RPM in a clean Fedora image, where dnf
+  # resolves the real runtime deps (openconnect/opensc/pcsc-lite/webkit/...) —
+  # the dependency resolution the dropped in-builder smoke test couldn't do.
+  # Also asserts the rpm-ostree-layerable invariants (no scriptlets, /usr-only).
+  rpm-install-test:
+    needs: build-gp
+    runs-on: ubuntu-latest
+    container:
+      image: registry.fedoraproject.org/fedora:latest
+    steps:
+    - name: Download RPM artifact (x86_64)
+      uses: actions/download-artifact@v8
+      with:
+        name: artifact-gp-rpm-amd64
+        path: rpms
+    - name: Install backend + native GUI (dnf resolves deps)
+      run: dnf -y install ./rpms/globalprotect-openconnect-dw-*.x86_64.rpm
+    - name: Verify the install
+      run: |
+        set -eux
+        command -v gpclient gpservice gpauth gpgui
+        gpclient --help >/dev/null
+        test -f /usr/share/dbus-1/system-services/io.github.techneut92.GPService.service
+        test -f /usr/share/dbus-1/system.d/io.github.techneut92.GPService.conf
+        test -f /usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy
+        test -f /usr/share/applications/io.github.techneut92.gpgui.desktop
+    - name: Atomic-safety checks (must layer cleanly with rpm-ostree)
+      run: |
+        set -e
+        for pkg in globalprotect-openconnect-dw globalprotect-openconnect-dw-gui; do
+          if [ -n "$(rpm -q --scripts "$pkg")" ]; then
+            echo "::error::$pkg ships install scriptlets — breaks rpm-ostree layering"
+            rpm -q --scripts "$pkg"; exit 1
+          fi
+          if rpm -ql "$pkg" | grep -vE '^/usr/'; then
+            echo "::error::$pkg ships files outside /usr — not rpm-ostree friendly"; exit 1
+          fi
+        done
+        echo "OK — no scriptlets, /usr-only: layers cleanly on atomic Fedora"
+
   build-docker-image:
     # Disabled: builds and pushes a container image to Docker Hub (needs
     # DOCKER_HUB_USERNAME/TOKEN secrets). Re-enable when you set up publishing.
@@ -274,6 +314,7 @@ jobs:
       - tarball
       - tarball-offline
       - build-gp
+      - rpm-install-test
       - flatpak
 
     steps:

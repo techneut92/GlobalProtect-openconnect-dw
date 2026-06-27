@@ -93,6 +93,31 @@ the file directly:
 The `…-gui` package and generic `…bin.tar.xz` are also attached for a fully
 native (non-Flatpak) install.
 
+### Backend — Fedora COPR
+
+On Fedora, the backend can be installed (and kept updated) from COPR:
+
+```bash
+sudo dnf copr enable techneut92/globalprotect-openconnect-dw
+sudo dnf install globalprotect-openconnect-dw
+# optional native (non-Flatpak) GUI:
+sudo dnf install globalprotect-openconnect-dw-gui
+```
+
+On **atomic** Fedora (Silverblue / Kinoite / Bazzite / Bluefin — no `dnf copr`),
+add the repo file and layer it, then reboot:
+
+```bash
+fed=$(rpm -E %fedora)
+sudo curl -fsSL -o /etc/yum.repos.d/_copr_techneut92-gpoc-dw.repo \
+  "https://copr.fedorainfracloud.org/coprs/techneut92/globalprotect-openconnect-dw/repo/fedora-$fed/techneut92-globalprotect-openconnect-dw-fedora-$fed.repo"
+rpm-ostree install globalprotect-openconnect-dw   # add -gui too for the native GUI
+systemctl reboot
+```
+
+The package ships no install scriptlets and writes only under `/usr`, so it
+layers cleanly with `rpm-ostree`.
+
 ## Usage
 
 ### Graphical (GP Client)
@@ -168,7 +193,8 @@ distribution channels to set up as the project matures:
 - [x] **GitHub Releases** — `.rpm` / `.deb` / `.pkg.tar.zst` / `.apk` / `.bin.tar.xz` + `.flatpak` bundle
 - [ ] **Flathub** — submit `io.github.techneut92.gpgui` (AppStream metainfo is in
       `apps/gpgui/packaging/flatpak/`)
-- [ ] **Fedora COPR** — backend `.rpm`
+- [ ] **Fedora COPR** — backend (+ native `-gui`) `.rpm`; CI auto-submits the
+      SRPM on each tag (`.github/workflows/copr.yaml`) — pending project + token
 - [ ] **Arch AUR** — backend + GUI
 - [ ] **Debian/Ubuntu PPA**
 - [ ] **openSUSE OBS**

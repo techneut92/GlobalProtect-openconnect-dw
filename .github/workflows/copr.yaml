@@ -1,0 +1,60 @@
+name: COPR
+
+# Build the backend (+ native -gui) RPMs on Fedora COPR for every release tag.
+# COPR compiles the SRPM in a clean, network-less mock chroot per target, so the
+# source RPM ships vendored cargo deps (OFFLINE=1) and the bundled openconnect /
+# libxml2 submodule sources.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - v*.*.*
+
+concurrency:
+  group: copr-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # owner/project on copr.fedorainfracloud.org — change the owner if your COPR
+  # username differs from the GitHub one.
+  COPR_PROJECT: techneut92/globalprotect-openconnect-dw
+
+jobs:
+  copr-build:
+    runs-on: ubuntu-latest
+    container:
+      image: registry.fedoraproject.org/fedora:latest
+    steps:
+      - name: Install tooling
+        run: |
+          dnf -y install --setopt=install_weak_deps=False \
+            git rpm-build rpmdevtools cargo make xz tar gzip findutils copr-cli
+
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Trust the workspace (container checkout)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build offline source RPM
+        run: make srpm OFFLINE=1
+
+      - name: Configure copr-cli
+        env:
+          COPR_CONFIG: ${{ secrets.COPR_CONFIG }}
+        run: |
+          if [ -z "$COPR_CONFIG" ]; then
+            echo "::error::COPR_CONFIG secret is not set — add your ~/.config/copr token block as a repo secret."
+            exit 1
+          fi
+          mkdir -p ~/.config
+          printf '%s\n' "$COPR_CONFIG" > ~/.config/copr
+          chmod 600 ~/.config/copr
+
+      - name: Submit build to COPR
+        run: |
+          srpm=$(ls .build/rpm/*.src.rpm)
+          echo "Submitting $srpm to $COPR_PROJECT (builds all project chroots)"
+          copr-cli build "$COPR_PROJECT" "$srpm"

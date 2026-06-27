@@ -268,6 +268,14 @@ backend-install flow:
   warned about.
 - **Flatpak**: added `<screenshots>` to the AppStream metainfo for software-store
   listings.
+- **Fedora COPR** (`Makefile`, `.github/workflows/copr.yaml`): added a `make srpm`
+  target (offline/vendored source RPM) and a CI workflow that submits it to COPR
+  on each tag, building the backend and the native `-gui` subpackage for Fedora
+  (x86_64 + aarch64). The spec carries no install scriptlets and writes only under
+  `/usr`, so it layers cleanly with `rpm-ostree` on atomic Fedora.
+- **RPM install test** (`.github/workflows/build.yaml`): a pipeline job installs
+  the freshly built RPM in a clean Fedora image (where `dnf` resolves the runtime
+  deps) and asserts the rpm-ostree invariants; the GitHub release gates on it.
 - **Docs**: README Ko-fi support badge.
 
 ### Third-party components

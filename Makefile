@@ -235,6 +235,18 @@ rpm: init-rpm tarball
 		cp $(HOME)/rpmbuild/SRPMS/$(PKG_NAME)*.rpm .build/rpm; \
 	fi
 
+# Build ONLY the source RPM (no local compile) — COPR/mock builds it in a clean
+# chroot per target. Pair with OFFLINE=1 so the vendored crates are baked into
+# the source tarball (COPR build roots have no network).
+srpm: init-rpm tarball
+	rm -rf $(HOME)/rpmbuild
+	rpmdev-setuptree
+
+	cp .build/tarball/${PKG}.tar.gz $(HOME)/rpmbuild/SOURCES/${PKG_NAME}.tar.gz
+	rpmbuild -bs .build/rpm/globalprotect-openconnect.spec
+
+	cp $(HOME)/rpmbuild/SRPMS/$(PKG_NAME)*.src.rpm .build/rpm
+
 clean-pkgbuild:
 	rm -rf .build/pkgbuild
 
