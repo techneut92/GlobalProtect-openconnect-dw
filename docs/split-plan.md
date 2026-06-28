@@ -54,7 +54,8 @@ Key decisions:
 
 > **Status (2026-06-28):** A ✅ + B ✅ are **done, merged to `main`, and released
 > as v1.2.0** (GitHub + COPR + OBS). The backend is webkit-free; the GUI owns the
-> webview in-process. **C (SSO caching) is the only remaining item.** (The
+> webview in-process. **Phase 2 is complete.** (SSO caching moved to
+[`features-todo.md`](./features-todo.md).) (The
 > in-process webview already gives partial caching for free — a shared cookie store
 > within a running GUI session.)
 
@@ -70,11 +71,10 @@ Key decisions:
 - [x] `gpservice`/`gpclient`/`gpauth` = **0 webkit/tauri deps** (verified via `cargo tree`).
 - [x] Stripped `libwebkit2gtk` from the **backend** package (`control.in` + `.spec`); the `-gui` package keeps it. *(Left `gpapi`'s `tauri`/`gtk` feature + empty `webview-auth` marker as-is — harmless, not enabled in the backend; cosmetic cleanup deferred.)*
 
-### C. SSO session caching (feature) — TODO, **opt-in toggle**
-- [ ] **Settings → Authentication → "Remember SSO session (experimental)"** toggle (off by default): a `cache_sso` config field + the switch in `settings.html` + the `SettingsForm` in `main.rs`. Carry the **(experimental)** tag in the label until the cached-cookie reconnect behavior is field-validated.
-- [ ] **Cache layer** (`secrets.rs`): store/load/clear the post-SSO credential **keyed by server** (avoids threading the identity name) in the keyring; gated on the toggle.
-- [ ] **Connect logic** (`connect.rs`): if the toggle is on and a cached cred exists, try `gateway_login` with it and **skip the webview**; on rejection (expired) fall back to fresh SSO + re-cache.
-- [ ] **Correctness to verify**: the durable cookie is GP's `portal_userauthcookie`; `gpclient` already reuses `AuthCookieCredential` this way (it has a `--no-reuse` flag). Needs a real **cached-reconnect test** to confirm the GUI path skips SSO (durable) rather than falling back (one-time cookie).
+### C. SSO session caching — moved to a feature backlog
+This was an opt-in convenience, not part of the webkit split (A+B are the
+meaningful work and they're done). It now lives in
+[`features-todo.md`](./features-todo.md).
 
 ## Phase 4 — Independent versioning + handshake
 - [ ] Give `gpgui` its own version (drop `version.workspace = true`)
