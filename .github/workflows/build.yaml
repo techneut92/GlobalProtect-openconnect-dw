@@ -6,17 +6,18 @@ on:
         description: 'GlobalProtect-openconnect branch to use for the snapshot release'
         required: true
         default: dev
-  push:
+  # Checks run on every PR to main (build + install tests; publish stays
+  # tag-gated, so PRs never publish). main itself has no push trigger, so a merge
+  # to main is free and there's no redundant main+tag double build.
+  pull_request:
+    branches: [main]
     paths-ignore:
       - LICENSE
       - "*.md"
       - .vscode
       - .devcontainer
-    branches:
-      - main
-      - hotfix/*
-      - feature/*
-      - release/*
+  # Releases run on version tags only.
+  push:
     tags:
       - v*.*.*
 
