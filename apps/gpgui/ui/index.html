@@ -465,9 +465,23 @@
 
     // ───────── state / orb / footer action ─────────
     function setLog(el, msg, err) { const e = $(el); e.textContent = msg || ''; e.classList.toggle('err', !!err); }
+    // Live connection timer. The backend doesn't send an elapsed value, so we
+    // count from when we first see "Connected" and tick the label every second.
+    let liveT0 = null;
+    function elapsedStr() {
+      if (!liveT0) return '00:00:00';
+      const d = Math.floor((Date.now() - liveT0) / 1000);
+      return [d / 3600, (d % 3600) / 60, d % 60].map((n) => String(Math.floor(n)).padStart(2, '0')).join(':');
+    }
+    setInterval(() => {
+      if (!liveT0) return;
+      const el = $('statusSub');
+      if (el && el.textContent.indexOf('Connected ·') === 0) el.textContent = 'Connected · ' + elapsedStr();
+    }, 1000);
     function render(s) {
       const kind = s.kind || 0;
       lastKind = kind;
+      if (kind === 2) { if (!liveT0) liveT0 = Date.now(); } else { liveT0 = null; }
       $('statusText').textContent = kind === 3 ? 'Error' : s.status;
       const dot = $('dot'); dot.style.background = RAW[kind] || '#6b7286'; dot.style.color = RAW[kind] || '#6b7286';
       dot.classList.toggle('live', kind === 1 || kind === 2);
@@ -480,7 +494,7 @@
       $('statusTitle').textContent = titles[kind] || titles[0];
       let sub = 'Your traffic is not encrypted';
       if (kind === 1) sub = 'Establishing secure tunnel';
-      else if (kind === 2) sub = 'Connected · ' + (s.elapsed || '00:00:00');
+      else if (kind === 2) sub = 'Connected · ' + (s.elapsed || elapsedStr());
       else if (kind === 3) sub = 'Check your credentials and retry';
       $('statusSub').textContent = sub;
 
