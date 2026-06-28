@@ -4,7 +4,9 @@
 
 - About: the separate "Update GP Client" and "Update backend" buttons are now a
   single **"Update all"** button next to "Check for updates" — it updates whichever
-  of the app and backend is behind.
+  of the app and backend is behind, **narrates each step**, and then offers a
+  **"Restart now"** button (or "Reboot now", when an atomic backend update needs a
+  reboot) to actually apply the update.
 
 ## 1.2.2 - 2026-06-28
 

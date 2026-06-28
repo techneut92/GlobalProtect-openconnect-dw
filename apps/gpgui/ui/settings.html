@@ -185,6 +185,7 @@
           <div class="update-actions">
             <button class="btn-soft" id="checkUpdateBtn">Check for updates</button>
             <button class="btn-action auto" id="updateAllBtn" hidden style="padding:0 16px;">Update all</button>
+            <button class="btn-action auto" id="restartBtn" hidden style="padding:0 16px;">Restart now</button>
           </div>
           <div class="bk-status" id="updateBackendLog" hidden style="margin-top:8px;"></div>
         </div>
@@ -281,6 +282,7 @@
         updGui = !!(u && u.available);
         updBackend = !!(u && u.backendUpdate);
         $('updateAllBtn').hidden = !(updGui || updBackend);
+        $('restartBtn').hidden = true;
         // One-line summary
         if (err) $('updateStatus').textContent = "Couldn't check: " + u.error;
         else if (u) {
@@ -300,26 +302,39 @@
     }
     $('updateAllBtn').onclick = async () => {
       if (!hasTauri) { openExt(updateUrl); return; }
-      const btn = $('updateAllBtn');
-      btn.disabled = true; btn.textContent = 'Updating…';
-      let secs = 0;
-      const tick = setInterval(() => { secs++; setUbLog('Updating…  ' + secs + 's — approve any prompt and wait.', ''); }, 1000);
-      const out = [];
-      try {
-        // Backend first (rpm-ostree layering / package install), then the GUI itself.
-        if (updBackend) {
-          const r = await invoke('install_backend');
-          out.push(r.ok ? (r.needsReboot ? 'Backend → v' + updateLatest + ' (reboot to finish)' : 'Backend updated') : ('Backend: ' + (r.message || 'failed')));
-        }
-        if (updGui) {
-          const r = await invoke('run_update', { url: updateUrl, version: updateLatest });
-          out.push('GP Client: ' + r);
-        }
-      } catch (e) { out.push('' + e); }
-      clearInterval(tick);
-      setUbLog(out.join('  ·  ') || 'Up to date.', 'ok');
+      const btn = $('updateAllBtn'), rb = $('restartBtn');
+      btn.disabled = true; btn.textContent = 'Updating…'; rb.hidden = true;
+      // Run a step while narrating the phase with a live elapsed counter.
+      const step = async (phase, fn) => {
+        let n = 0; setUbLog(phase, '');
+        const t = setInterval(() => { n++; setUbLog(phase + ' (' + n + 's)', ''); }, 1000);
+        try { return await fn(); } finally { clearInterval(t); }
+      };
+      const done = [];
+      let failed = false, needsReboot = false, guiUpdated = false;
+      // Backend first (host package / rpm-ostree layer), then the app.
+      if (updBackend) {
+        try {
+          const r = await step('Updating the backend service to v' + updateLatest + ' — approve the prompt; this can take a few minutes…',
+            () => invoke('install_backend'));
+          if (r.ok) { done.push('Backend updated to v' + updateLatest + (r.needsReboot ? ' — reboot to finish applying it' : '')); needsReboot = !!r.needsReboot; }
+          else { setUbLog('Backend update failed: ' + (r.message || 'unknown error'), 'err'); failed = true; }
+        } catch (e) { setUbLog('Backend update failed: ' + e, 'err'); failed = true; }
+      }
+      if (!failed && updGui) {
+        try {
+          const msg = await step('Downloading and installing GP Client v' + updateLatest + '…',
+            () => invoke('run_update', { url: updateUrl, version: updateLatest }));
+          done.push(msg); guiUpdated = true;
+        } catch (e) { setUbLog('GP Client update failed: ' + e, 'err'); failed = true; }
+      }
       btn.disabled = false; btn.textContent = 'Update all';
-      loadAbout();
+      if (!failed) {
+        setUbLog(done.join('  ·  ') || 'Already up to date.', 'ok');
+        // Offer the one action that actually applies the update.
+        if (needsReboot) { rb.textContent = 'Reboot now'; rb.onclick = () => invoke('reboot_host'); rb.hidden = false; btn.hidden = true; }
+        else if (guiUpdated) { rb.textContent = 'Restart GP Client'; rb.onclick = () => invoke('restart_app'); rb.hidden = false; btn.hidden = true; }
+      }
     };
     $('checkUpdateBtn').onclick = async () => {
       if (!hasTauri) { openExt(updateUrl); return; }
