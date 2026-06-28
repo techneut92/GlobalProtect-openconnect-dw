@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.2 - 2026-06-28
 
 - About (Flatpak): the **backend's version and install type** are now read from
   the host (via `flatpak-spawn`) instead of the sandbox — they previously showed
