@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1 - 2026-06-28
+
+- Fixed the **connection timer** on the main screen — it was stuck at `00:00:00`;
+  it now counts up while connected.
+- The **tray menu** no longer shows the full error text in its status line (just
+  "Error"), so a long message can't blow out the menu width.
+
 ## 1.2.0 - 2026-06-28
 
 - The **backend is now webkit-free**. The SAML SSO webview moved entirely into the
