@@ -490,6 +490,24 @@ pub fn flatpak_self_update(version: &str) -> Result<(), String> {
   }
 }
 
+/// Relaunch a fresh GP Client from the (now-updated) Flatpak deployment. The
+/// caller exits the current instance; the short sleep lets it go first so the new
+/// one starts against the new deployment.
+pub fn spawn_fresh_flatpak() {
+  let _ = Command::new("flatpak-spawn")
+    .args(["--host", "sh", "-c", &format!("sleep 1; flatpak run {FLATPAK_ID}")])
+    .spawn();
+}
+
+/// Reboot the host (to apply a layered backend on atomic systems).
+pub fn reboot_host() {
+  if is_flatpak() {
+    let _ = Command::new("flatpak-spawn").args(["--host", "systemctl", "reboot"]).spawn();
+  } else {
+    let _ = Command::new("systemctl").arg("reboot").spawn();
+  }
+}
+
 /// Open an http(s) URL in the host browser.
 pub fn open_url(url: &str) {
   if !(url.starts_with("https://") || url.starts_with("http://")) {

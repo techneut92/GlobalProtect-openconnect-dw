@@ -311,6 +311,24 @@ async fn check_update() -> UpdateInfo {
   }
 }
 
+/// Relaunch GP Client to apply a freshly-installed GUI update. Under Flatpak, exit
+/// and launch a fresh instance from the updated deployment; natively, re-exec.
+#[tauri::command]
+fn restart_app(app: tauri::AppHandle) {
+  if system::is_flatpak() {
+    system::spawn_fresh_flatpak();
+    app.exit(0);
+  } else {
+    app.restart();
+  }
+}
+
+/// Reboot the host (to finish applying a layered backend update).
+#[tauri::command]
+fn reboot_host() {
+  system::reboot_host();
+}
+
 /// Update action. On Flatpak: download the new `.flatpak` from the release and
 /// reinstall it (no hosted/Flathub remote yet, so `flatpak update` can't pull
 /// it). On native: open the release to grab the new packages.
@@ -717,6 +735,8 @@ fn main() {
       set_remember_unlock,
       check_update,
       run_update,
+      restart_app,
+      reboot_host,
       open_settings,
       save_settings,
       probe_auth,
