@@ -184,7 +184,9 @@
           <div class="update-status" id="updateStatus">Check for the latest release.</div>
           <div class="update-actions">
             <button class="btn-soft" id="checkUpdateBtn">Check for updates</button>
+            <button class="btn-action auto" id="updateAllBtn" hidden style="padding:0 16px;">Update all</button>
           </div>
+          <div class="bk-status" id="updateBackendLog" hidden style="margin-top:8px;"></div>
         </div>
 
         <div class="lbl" style="margin-top:18px;">GP Client (app)</div>
@@ -194,7 +196,6 @@
           <div class="drow" id="aboutRuntimeRow" hidden><div class="k">Flatpak runtime</div><div class="v" id="aboutRuntime">—</div></div>
           <div class="drow"><div class="k">Updates</div><div class="v" id="aboutGuiUpd">—</div></div>
         </div>
-        <button class="btn-action auto" id="updateNowBtn" hidden style="margin-top:10px;padding:0 16px;">Update GP Client</button>
 
         <div class="lbl" style="margin-top:18px;">Backend service</div>
         <div class="detail-card">
@@ -202,8 +203,6 @@
           <div class="drow"><div class="k">Install type</div><div class="v" id="aboutKind">—</div></div>
           <div class="drow"><div class="k">Updates</div><div class="v" id="aboutBeUpd">—</div></div>
         </div>
-        <button class="btn-soft" id="updateBackendBtn" hidden style="margin-top:10px;">Update backend</button>
-        <div class="bk-status" id="updateBackendLog" hidden></div>
 
         <div class="lbl" style="margin-top:18px;">System</div>
         <div class="detail-card">
@@ -248,7 +247,7 @@
     // ───────── About / updates ─────────
     const REPO_URL = 'https://github.com/techneut92/GlobalProtect-openconnect-dw';
     const UPSTREAM_URL = 'https://github.com/yuezk/GlobalProtect-openconnect';
-    let updateUrl = REPO_URL + '/releases', updateLatest = '';
+    let updateUrl = REPO_URL + '/releases', updateLatest = '', updGui = false, updBackend = false;
     function openExt(url) { if (hasTauri) invoke('open_url', { url }); else window.open(url, '_blank'); }
     $('repoLink').onclick = (e) => { e.preventDefault(); openExt(REPO_URL + '/releases'); };
     $('upstreamLink').onclick = (e) => { e.preventDefault(); openExt(UPSTREAM_URL); };
@@ -276,11 +275,12 @@
         const muted = (t) => '<span style="color:var(--muted)">' + t + '</span>';
         const avail = (v) => '<span style="color:var(--green)">Update available — v' + v + '</span>';
         $('aboutGuiUpd').innerHTML = err ? muted('—') : (u && u.available ? avail(u.latest) : muted('Up to date'));
-        $('updateNowBtn').hidden = !(u && u.available);
         $('aboutBeUpd').innerHTML = (!s.backendInstalled || err) ? muted('—') : (u && u.backendUpdate ? avail(u.latest) : muted('Up to date'));
-        $('updateBackendBtn').hidden = !(u && u.backendUpdate);
-        if (u && u.backendUpdate) $('updateBackendBtn').textContent = 'Update backend to v' + u.latest;
         if (u) { updateUrl = u.url || updateUrl; updateLatest = u.latest || ''; }
+        // One "Update all" button handles whichever of app/backend is behind.
+        updGui = !!(u && u.available);
+        updBackend = !!(u && u.backendUpdate);
+        $('updateAllBtn').hidden = !(updGui || updBackend);
         // One-line summary
         if (err) $('updateStatus').textContent = "Couldn't check: " + u.error;
         else if (u) {
@@ -298,39 +298,33 @@
       if (!msg) { el.hidden = true; el.textContent = ''; el.className = 'bk-status'; return; }
       el.hidden = false; el.textContent = msg; el.className = 'bk-status' + (kind ? ' ' + kind : '');
     }
-    $('updateBackendBtn').onclick = async () => {
-      const btn = $('updateBackendBtn');
+    $('updateAllBtn').onclick = async () => {
+      if (!hasTauri) { openExt(updateUrl); return; }
+      const btn = $('updateAllBtn');
       btn.disabled = true; btn.textContent = 'Updating…';
-      const phase = 'Approve the administrator prompt — GP Client is downloading the backend and installing it (on atomic/rpm-ostree systems it is layered and applied on the next reboot).';
       let secs = 0;
-      setUbLog(phase, '');
-      const tick = setInterval(() => { secs++; setUbLog(phase + '  Working… ' + secs + 's', ''); }, 1000);
+      const tick = setInterval(() => { secs++; setUbLog('Updating…  ' + secs + 's — approve any prompt and wait.', ''); }, 1000);
+      const out = [];
       try {
-        // No kind → the backend is downloaded for this OS, at the GUI's version.
-        const r = await invoke('install_backend');
-        clearInterval(tick);
-        if (r.ok) {
-          btn.hidden = true;
-          setUbLog(r.needsReboot ? 'Backend updated — reboot to finish applying it.' : 'Backend updated.', 'ok');
-          if (!r.needsReboot) loadAbout();
-        } else {
-          btn.disabled = false; btn.textContent = 'Update backend';
-          setUbLog(r.message || 'Update failed — install the backend package manually.', 'err');
+        // Backend first (rpm-ostree layering / package install), then the GUI itself.
+        if (updBackend) {
+          const r = await invoke('install_backend');
+          out.push(r.ok ? (r.needsReboot ? 'Backend → v' + updateLatest + ' (reboot to finish)' : 'Backend updated') : ('Backend: ' + (r.message || 'failed')));
         }
-      } catch (e) { clearInterval(tick); btn.disabled = false; btn.textContent = 'Update backend'; setUbLog('' + e, 'err'); }
+        if (updGui) {
+          const r = await invoke('run_update', { url: updateUrl, version: updateLatest });
+          out.push('GP Client: ' + r);
+        }
+      } catch (e) { out.push('' + e); }
+      clearInterval(tick);
+      setUbLog(out.join('  ·  ') || 'Up to date.', 'ok');
+      btn.disabled = false; btn.textContent = 'Update all';
+      loadAbout();
     };
     $('checkUpdateBtn').onclick = async () => {
       if (!hasTauri) { openExt(updateUrl); return; }
       $('updateStatus').textContent = 'Checking…';
       await loadAbout();
-    };
-    $('updateNowBtn').onclick = async () => {
-      if (!hasTauri) { openExt(updateUrl); return; }
-      const btn = $('updateNowBtn'); btn.disabled = true; btn.textContent = 'Updating…';
-      $('updateStatus').textContent = 'Downloading and installing the update… this can take a minute.';
-      try { $('updateStatus').textContent = await invoke('run_update', { url: updateUrl, version: updateLatest }); }
-      catch (e) { $('updateStatus').textContent = '' + e; }
-      btn.disabled = false; btn.textContent = 'Update GP Client';
     };
 
     // form model — camelCase keys match Rust SettingsForm; cfg holds snake_case config keys
