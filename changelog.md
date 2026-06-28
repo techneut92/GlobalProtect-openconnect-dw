@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- About: the separate "Update GP Client" and "Update backend" buttons are now a
+  single **"Update all"** button next to "Check for updates" — it updates whichever
+  of the app and backend is behind.
+
 ## 1.2.2 - 2026-06-28
 
 - About (Flatpak): the **backend's version and install type** are now read from
