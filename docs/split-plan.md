@@ -71,7 +71,7 @@ Key decisions:
 - [x] Stripped `libwebkit2gtk` from the **backend** package (`control.in` + `.spec`); the `-gui` package keeps it. *(Left `gpapi`'s `tauri`/`gtk` feature + empty `webview-auth` marker as-is — harmless, not enabled in the backend; cosmetic cleanup deferred.)*
 
 ### C. SSO session caching (feature) — TODO, **opt-in toggle**
-- [ ] **Settings → Authentication → "Remember SSO session"** toggle (off by default): a `cache_sso` config field + the switch in `settings.html` + the `SettingsForm` in `main.rs`.
+- [ ] **Settings → Authentication → "Remember SSO session (experimental)"** toggle (off by default): a `cache_sso` config field + the switch in `settings.html` + the `SettingsForm` in `main.rs`. Carry the **(experimental)** tag in the label until the cached-cookie reconnect behavior is field-validated.
 - [ ] **Cache layer** (`secrets.rs`): store/load/clear the post-SSO credential **keyed by server** (avoids threading the identity name) in the keyring; gated on the toggle.
 - [ ] **Connect logic** (`connect.rs`): if the toggle is on and a cached cred exists, try `gateway_login` with it and **skip the webview**; on rejection (expired) fall back to fresh SSO + re-cache.
 - [ ] **Correctness to verify**: the durable cookie is GP's `portal_userauthcookie`; `gpclient` already reuses `AuthCookieCredential` this way (it has a `--no-reuse` flag). Needs a real **cached-reconnect test** to confirm the GUI path skips SSO (durable) rather than falling back (one-time cookie).
