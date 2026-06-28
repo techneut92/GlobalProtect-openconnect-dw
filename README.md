@@ -1,7 +1,10 @@
 # GP Client
 
+[![Release](https://img.shields.io/github/v/release/techneut92/GlobalProtect-openconnect-dw?label=release&color=brightgreen)](https://github.com/techneut92/GlobalProtect-openconnect-dw/releases/latest)
 [![Copr build status](https://copr.fedorainfracloud.org/coprs/techneut92/globalprotect-openconnect-dw/package/globalprotect-openconnect-dw/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/techneut92/globalprotect-openconnect-dw/package/globalprotect-openconnect-dw/)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](./LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/techneut92/GlobalProtect-openconnect-dw/total?label=downloads&color=blue)](https://github.com/techneut92/GlobalProtect-openconnect-dw/releases)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/techneut92)
 
 A GlobalProtect-compatible VPN client for Linux with **smart-card / PKCS#11
 (YubiKey PIV) certificate authentication** — alongside SAML single sign-on and
