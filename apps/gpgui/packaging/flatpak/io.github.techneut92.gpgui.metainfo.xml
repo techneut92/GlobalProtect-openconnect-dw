@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.2.1" date="2026-06-28">
+      <description>
+        <p>Fixed the main-screen connection timer (was stuck at 00:00:00) and stopped the tray menu from showing long error text.</p>
+      </description>
+    </release>
     <release version="1.2.0" date="2026-06-28">
       <description>
         <p>Webkit-free backend: the SAML SSO webview now runs in-process in the GUI, so the backend package no longer needs libwebkit2gtk. SSO is remembered across reconnects within a session.</p>
