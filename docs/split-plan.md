@@ -52,26 +52,29 @@ Key decisions:
 > just ordering (**A before B**). Done on branch `phase2-webkit-free`, GUI testable
 > throughout.
 
-> **Status:** A ✅ (in-process SSO, tested — no `gpauth` spawned) and B ✅
-> (`gpservice`/`gpclient`/`gpauth` = 0 webkit/tauri deps; backend package webkit
-> stripped) are **done** on `phase2-webkit-free`. C (SSO caching) is next — note
-> the in-process webview already gives partial caching for free (shared cookie
-> store within a GUI session).
+> **Status (2026-06-28):** A ✅ + B ✅ are **done, merged to `main`, and released
+> as v1.2.0** (GitHub + COPR + OBS). The backend is webkit-free; the GUI owns the
+> webview in-process. **C (SSO caching) is the only remaining item.** (The
+> in-process webview already gives partial caching for free — a shared cookie store
+> within a running GUI session.)
 
-### A. GUI does SSO in-process
+### A. GUI does SSO in-process — ✅ done (v1.2.0)
 - [x] `apps/gpgui` depends on `auth` (`webview-auth` + `browser-auth`) directly.
-- [ ] `connect.rs build_connect_request`: replace `SamlAuthLauncher…launch()` (spawn `gpauth`) with **in-process** `WebviewAuthenticator::new(server, &gp_params).with_auth_request(saml).authenticate(&app_handle)` (embedded) / `BrowserAuthenticator` (browser). Convert `SamlAuthData → Credential` via `Credential::try_from(SamlAuthResult::Success(..))`.
-- [ ] **Thread the `AppHandle`** — `vpn::connect` runs in the background command-loop task (via `cmd_tx`), not the Tauri command, so stash the `AppHandle` in `AppState` at setup and read it in `build_connect_request`. ← the one tricky bit.
-- [ ] Test: GUI SAML connect works in-process (no `gpauth` spawned). Nothing else breaks — `gpauth` still serves `gpclient`.
+- [x] `connect.rs build_connect_request`: in-process `WebviewAuthenticator` (embedded) / `BrowserAuthenticator` (browser); `SamlAuthData → Credential` via `Credential::try_from(SamlAuthResult::Success(..))`.
+- [x] `AppHandle` threaded `setup` → `vpn::run` → `connect` → `build_connect_request`. (No `AppState` change needed — `vpn::run` is spawned inside `setup`, where the handle is live.)
+- [x] Tested: GUI SAML connect works in-process — no `gpauth` spawned.
 
-### B. Backend webkit-free (only after A works)
-- [ ] `apps/gpauth`: drop `webview-auth` from `default` → browser-only (no tauri/webkit).
-- [ ] `crates/auth`: keep the `webview-auth` feature but **only `gpgui` enables it**; backend uses `browser-auth`.
-- [ ] `crates/gpapi`: drop the `tauri`/`gtk` feature + the empty `webview-auth` marker; `SamlAuthLauncher`'s now-unused `--default-browser` path can go.
-- [ ] Strip `libwebkit2gtk` from the **backend** package (`control.in` runtime dep + `.spec` Requires); keep it on the GUI package. Verify rpm/deb smoketests + size shrink.
+### B. Backend webkit-free — ✅ done (v1.2.0)
+- [x] `apps/gpauth`: dropped `webview-auth` entirely → browser-only (deleted `webview_auth.rs` + `build.rs`, removed `tauri`/`tauri-build`).
+- [x] Backend uses `browser-auth`; only `gpgui` enables `webview-auth`.
+- [x] `gpservice`/`gpclient`/`gpauth` = **0 webkit/tauri deps** (verified via `cargo tree`).
+- [x] Stripped `libwebkit2gtk` from the **backend** package (`control.in` + `.spec`); the `-gui` package keeps it. *(Left `gpapi`'s `tauri`/`gtk` feature + empty `webview-auth` marker as-is — harmless, not enabled in the backend; cosmetic cleanup deferred.)*
 
-### C. SSO session caching (feature)
-- [ ] Cache the SAML cookie/credential per identity in the keyring (`secrets.rs`). On reconnect, try it first; on portal/gateway rejection (expired) fall back to webview/browser SSO. Avoids a full re-login on every disconnect.
+### C. SSO session caching (feature) — TODO, **opt-in toggle**
+- [ ] **Settings → Authentication → "Remember SSO session"** toggle (off by default): a `cache_sso` config field + the switch in `settings.html` + the `SettingsForm` in `main.rs`.
+- [ ] **Cache layer** (`secrets.rs`): store/load/clear the post-SSO credential **keyed by server** (avoids threading the identity name) in the keyring; gated on the toggle.
+- [ ] **Connect logic** (`connect.rs`): if the toggle is on and a cached cred exists, try `gateway_login` with it and **skip the webview**; on rejection (expired) fall back to fresh SSO + re-cache.
+- [ ] **Correctness to verify**: the durable cookie is GP's `portal_userauthcookie`; `gpclient` already reuses `AuthCookieCredential` this way (it has a `--no-reuse` flag). Needs a real **cached-reconnect test** to confirm the GUI path skips SSO (durable) rather than falling back (one-time cookie).
 
 ## Phase 4 — Independent versioning + handshake
 - [ ] Give `gpgui` its own version (drop `version.workspace = true`)
