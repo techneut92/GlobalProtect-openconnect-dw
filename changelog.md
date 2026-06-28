@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.3 - 2026-06-28
 
 - About: the separate "Update GP Client" and "Update backend" buttons are now a
   single **"Update all"** button next to "Check for updates" — it updates whichever
