@@ -193,7 +193,7 @@ impl Tray for GpTray {
       .into(),
       MenuItem::Separator,
       StandardItem {
-        label: format!("Status: {}", status.label()),
+        label: format!("Status: {}", status.short_label()),
         enabled: false,
         ..Default::default()
       }

@@ -21,6 +21,18 @@ impl Status {
     }
   }
 
+  /// Short, fixed-width label for the tray menu — never the error message, which
+  /// would blow out the menu width.
+  pub fn short_label(&self) -> &'static str {
+    match self {
+      Status::Disconnected => "Disconnected",
+      Status::Connecting => "Connecting…",
+      Status::Connected => "Connected",
+      Status::Disconnecting => "Disconnecting…",
+      Status::Error(_) => "Error",
+    }
+  }
+
   /// True while a connection exists or is being set up/torn down.
   pub fn is_active(&self) -> bool {
     matches!(self, Status::Connecting | Status::Connected | Status::Disconnecting)
