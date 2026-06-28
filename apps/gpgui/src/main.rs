@@ -227,7 +227,9 @@ struct SystemInfo {
 
 #[tauri::command]
 fn system_info() -> SystemInfo {
-  let kind = system::detect();
+  // The backend lives on the host; under Flatpak `detect()` would report the GUI's
+  // own kind ("Flatpak"), so use the host-aware probe for the backend's package mgr.
+  let kind = system::host_install_kind();
   let backend_version = system::backend_version();
   let compatible = match &backend_version {
     Some(v) => system::same_feature_version(v, system::GUI_VERSION),
@@ -251,7 +253,7 @@ fn system_info() -> SystemInfo {
 /// waiting for the real result so the UI reports success/failure honestly.
 #[tauri::command]
 async fn install_backend(kind: Option<String>) -> serde_json::Value {
-  let kind = kind.map(|s| system::kind_from_str(&s)).unwrap_or_else(system::detect);
+  let kind = kind.map(|s| system::kind_from_str(&s)).unwrap_or_else(system::host_install_kind);
   let Some(script) = system::backend_install_script(kind) else {
     return serde_json::json!({ "ok": false, "message": "No installer for this system type — use the steps below." });
   };

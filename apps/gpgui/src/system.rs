@@ -173,25 +173,56 @@ pub fn host_config_dir() -> Option<std::path::PathBuf> {
 }
 
 /// Run `<bin> --version` and pull the first `x.y.z`-looking token out of stdout.
-fn binary_version(bin: &str) -> Option<String> {
-  let out = Command::new(bin).arg("--version").output().ok()?;
-  if !out.status.success() {
-    return None;
-  }
-  let text = String::from_utf8_lossy(&out.stdout);
+fn parse_version(text: &str) -> Option<String> {
   text
     .split_whitespace()
     .find(|t| t.chars().next().is_some_and(|c| c.is_ascii_digit()) && t.contains('.'))
     .map(|t| t.trim_matches(|c: char| !c.is_ascii_digit() && c != '.').to_string())
 }
 
+fn binary_version(bin: &str) -> Option<String> {
+  let out = Command::new(bin).arg("--version").output().ok()?;
+  if !out.status.success() {
+    return None;
+  }
+  parse_version(&String::from_utf8_lossy(&out.stdout))
+}
+
 /// The installed backend's version, or `None` when gpservice isn't present.
+/// In the Flatpak the host binary isn't visible in the sandbox, so ask the host.
 pub fn backend_version() -> Option<String> {
+  if is_flatpak() {
+    let out = Command::new("flatpak-spawn")
+      .args(["--host", "gpservice", "--version"])
+      .output()
+      .ok()?;
+    return out.status.success().then(|| parse_version(&String::from_utf8_lossy(&out.stdout))).flatten();
+  }
   let bin = crate::config::gpservice_binary();
   if !Path::new(&bin).exists() {
     return None;
   }
   binary_version(&bin)
+}
+
+/// The package manager that owns the **backend** (on the host) — even from inside
+/// the Flatpak sandbox. `detect()` returns `Flatpak` for the GUI itself, but the
+/// backend lives on the host, so probe the host directly via `flatpak-spawn`.
+pub fn host_install_kind() -> InstallKind {
+  if !is_flatpak() {
+    return detect();
+  }
+  let probe = "if [ -f /run/ostree-booted ]; then echo rpm-ostree; \
+    elif command -v dnf >/dev/null 2>&1; then echo dnf; \
+    elif command -v apt-get >/dev/null 2>&1; then echo apt; \
+    elif command -v pacman >/dev/null 2>&1; then echo pacman; \
+    elif command -v apk >/dev/null 2>&1; then echo apk; \
+    elif command -v zypper >/dev/null 2>&1; then echo zypper; \
+    else echo unknown; fi";
+  match Command::new("flatpak-spawn").args(["--host", "sh", "-c", probe]).output() {
+    Ok(o) if o.status.success() => kind_from_str(String::from_utf8_lossy(&o.stdout).trim()),
+    _ => InstallKind::Unknown,
+  }
 }
 
 pub fn backend_installed() -> bool {

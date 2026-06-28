@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- About (Flatpak): the **backend's version and install type** are now read from
+  the host (via `flatpak-spawn`) instead of the sandbox — they previously showed
+  `?` and "Flatpak". The "Update backend" action also targets the host package
+  manager when running as a Flatpak.
+
 ## 1.2.1 - 2026-06-28
 
 - Fixed the **connection timer** on the main screen — it was stuck at `00:00:00`;
