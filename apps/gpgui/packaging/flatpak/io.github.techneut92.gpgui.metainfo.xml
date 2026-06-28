@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.2.3" date="2026-06-28">
+      <description>
+        <p>One "Update all" button (replacing the separate app/backend buttons) that narrates each step and offers a Restart/Reboot button to apply the update.</p>
+      </description>
+    </release>
     <release version="1.2.2" date="2026-06-28">
       <description>
         <p>Under Flatpak, the About screen now reads the backend version and install type from the host (they showed "?" / "Flatpak" before).</p>
