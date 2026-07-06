@@ -705,6 +705,18 @@ fn main() {
   let cmd_rx = Mutex::new(Some(cmd_rx));
 
   tauri::Builder::default()
+    // Single-instance guard, registered first (Tauri requirement). When the app is
+    // relaunched (start menu, autostart) while already running — including hidden in
+    // the tray — this fires in the *running* instance instead of GTK re-running setup
+    // there (which panics: "a webview with label `main` already exists"). We just
+    // reveal the existing window; the second process exits immediately.
+    .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+      if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+      }
+    }))
     .manage(app_state)
     .on_window_event(|window, event| {
       // Close-to-tray: the X button hides the main window so the app keeps
