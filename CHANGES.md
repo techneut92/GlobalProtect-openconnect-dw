@@ -378,6 +378,16 @@ pulling webkit into the backend, so it's moved in-process.
   (the `-gui` package keeps it). Side benefit: the in-process webview shares one
   cookie store, so SSO is remembered across reconnects within a GUI session.
 
+## 2026-07-07 — GUI: single-instance relaunch fix
+
+Added `tauri-plugin-single-instance` (registered first) to `apps/gpgui`. On
+Linux, Tauri/WebKitGTK registers a GTK application under a unique app id, so
+relaunching while the app was still running (closed to the tray) forwarded the
+activation into the live instance and re-ran Tauri's `setup()` there — panicking
+with *"a webview with label `main` already exists"* and taking down the running
+app. The plugin's callback now fires in the running instance and simply
+shows/unminimizes/focuses the existing `main` window; the second process exits.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of
