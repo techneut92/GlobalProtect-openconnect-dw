@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.4 - 2026-07-07
+
+- Fixed a **crash on relaunch**: with the window closed to the tray (app still
+  running), opening it again from the launcher would kill the running instance
+  instead of showing the window. Relaunching now just reveals the existing
+  window.
+
 ## 1.2.3 - 2026-06-28
 
 - About: the separate "Update GP Client" and "Update backend" buttons are now a
