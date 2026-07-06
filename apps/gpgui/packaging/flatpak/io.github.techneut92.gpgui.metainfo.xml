@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.2.4" date="2026-07-07">
+      <description>
+        <p>Fixed a crash when relaunching the app from the launcher while it was still running in the tray — it now reveals the existing window instead.</p>
+      </description>
+    </release>
     <release version="1.2.3" date="2026-06-28">
       <description>
         <p>One "Update all" button (replacing the separate app/backend buttons) that narrates each step and offers a Restart/Reboot button to apply the update.</p>
