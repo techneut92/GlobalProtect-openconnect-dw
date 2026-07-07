@@ -388,6 +388,17 @@ with *"a webview with label `main` already exists"* and taking down the running
 app. The plugin's callback now fires in the running instance and simply
 shows/unminimizes/focuses the existing `main` window; the second process exits.
 
+## 2026-07-07 — Backend: re-init PKCS#11 before loading a client cert
+
+`gpservice` is long-lived and the tunnel runs in-process (no fork per connect),
+but GnuTLS's PKCS#11 token cache is process-global. After a smart-card re-seat, a
+`pcscd` cycle, or a suspend/resume, that cache went stale and
+`gnutls_pkcs11_obj_import_url()` returned `GNUTLS_E_REQUESTED_DATA_NOT_AVAILABLE`
+("data not available") even though the cert was physically present — the only
+workaround was restarting the service. `crates/openconnect/src/ffi/vpn.c` now
+calls `gnutls_pkcs11_reinit()` before loading a `pkcs11:` client cert so a
+re-seated token's certs are found automatically. File certs are unaffected.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of
