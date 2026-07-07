@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.2.6" date="2026-07-07">
+      <description>
+        <p>Fixed the relaunch-from-tray crash on Flatpak (the 1.2.4 fix didn't work inside the sandbox), and the VPN tunnel is now torn down if the app quits or crashes while connected so tun0 is never left dangling.</p>
+      </description>
+    </release>
     <release version="1.2.5" date="2026-07-07">
       <description>
         <p>Fixed smart-card (PKCS#11 / YubiKey) connections failing with "data not available" after a card re-seat, pcscd restart, or suspend/resume — the backend now recovers automatically without a service restart.</p>
