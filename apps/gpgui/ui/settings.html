@@ -236,12 +236,19 @@
 
     // rail nav
     const SECTIONS = ['general', 'auth', 'conn', 'support', 'about'];
+    function activate(sec) {
+      if (!SECTIONS.includes(sec)) return;
+      document.querySelectorAll('.settings-nav').forEach((x) => x.classList.toggle('active', x.dataset.sec === sec));
+      SECTIONS.forEach((s) => { $('sec-' + s).hidden = s !== sec; });
+    }
     document.querySelectorAll('.settings-nav').forEach((b) => {
-      b.onclick = () => {
-        document.querySelectorAll('.settings-nav').forEach((x) => x.classList.toggle('active', x === b));
-        SECTIONS.forEach((s) => { $('sec-' + s).hidden = b.dataset.sec !== s; });
-      };
+      b.onclick = () => activate(b.dataset.sec);
     });
+    // Deep-link from another window (e.g. the main screen's "update available"
+    // banner → About) when this window is already open.
+    if (hasTauri && TAURI.event) {
+      TAURI.event.listen('goto-section', (e) => { if (e && e.payload) activate(e.payload); });
+    }
 
     $('kofiBtn').onclick = (e) => { if (hasTauri) { e.preventDefault(); invoke('open_url', { url: 'https://ko-fi.com/techneut92?amount=2.50#checkoutModal' }); } };
 
@@ -440,6 +447,8 @@
       }
       applyToInputs();
       loadAbout();
+      // Cold-open deep-link: open_settings stashes the section in a global.
+      if (window.__gotoSection) activate(window.__gotoSection);
     })();
   </script>
 </body>

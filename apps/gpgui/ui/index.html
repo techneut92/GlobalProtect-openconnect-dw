@@ -330,9 +330,13 @@
       // No version-mismatch banner: real GUI<->backend compatibility is enforced
       // by the protocol handshake at connect (a hard error on no overlap). A mere
       // version difference is fine, so we only surface "update available" here.
-      if (u && u.available) {
-        setBanner('<span>Update available — v' + u.latest + '</span><button class="banner-btn">Update</button>', 'info',
-          async () => { try { setBanner('<span>Starting update…</span>', 'info'); $('topBanner').textContent = await invoke('run_update', { url: u.url, version: u.latest }); } catch (e) { setBanner('<span>Update failed — ' + e + '. Try Settings → About.</span>', 'warn'); } });
+      if (u && (u.available || u.backendUpdate)) {
+        // The app and backend update separately; the About page has the unified
+        // "Update all" flow (both, narrated, with restart/reboot). Send the user
+        // there rather than running a frontend-only update here.
+        const what = u.available && u.backendUpdate ? 'App & backend update' : (u.available ? 'App update' : 'Backend update');
+        setBanner('<span>' + what + ' available — v' + u.latest + '</span><button class="banner-btn">View</button>', 'info',
+          () => { if (hasTauri) invoke('open_settings', { section: 'about' }); });
         return;
       }
       setBanner('');
