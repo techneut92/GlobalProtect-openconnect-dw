@@ -420,7 +420,7 @@ fn save_settings(app: tauri::AppHandle, state: State<AppState>, form: SettingsFo
     let remember_was = c.remember_unlock;
     c.remember_unlock = form.remember_unlock;
     c.save();
-    autostart::set(c.run_at_startup);
+    autostart::set(c.run_at_startup, c.start_minimized);
     // Turning "remember unlock" off clears any stored PIN. Turning it on stores
     // the PIN at the next unlock (we don't hold the plaintext PIN here).
     if remember_was && !c.remember_unlock {
@@ -694,10 +694,13 @@ fn main() {
   let instance_listener = single_instance::acquire_or_signal();
 
   let cfg = Arc::new(Mutex::new(Config::load()));
-  // Keep the autostart entry in sync with the preference (which defaults on). On
+  // Keep the autostart entry in sync with the preferences (which default on). On
   // a fresh install this seeds it on first launch; the in-app toggle is the
   // source of truth and updates it via `save_settings`.
-  autostart::set(cfg.lock().unwrap().run_at_startup);
+  {
+    let c = cfg.lock().unwrap();
+    autostart::set(c.run_at_startup, c.start_minimized);
+  }
   // Register a float exception in any tiling shell present (Pop Shell, …) so the
   // window opens floating instead of tiled.
   tiling::ensure_float_exceptions();
