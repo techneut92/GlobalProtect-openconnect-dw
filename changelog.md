@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.8 - 2026-07-07
+
+- Fixed **"Start minimized" being ignored at login**: with the option off, the app
+  now shows its window when it autostarts, instead of always starting hidden in the
+  tray. The toggle now governs both the login launch and manual launches.
+
 ## 1.2.7 - 2026-07-07
 
 - Fixed **"Update all" not updating the backend**: it installed the backend at

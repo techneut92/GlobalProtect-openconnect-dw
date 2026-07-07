@@ -434,6 +434,16 @@ still defaults to `GUI_VERSION`, a matched pair). Separately, `check_update` no
 longer treats an unreadable installed-backend version as "up to date" — it offers
 the update instead of silently skipping it.
 
+## 2026-07-07 — GUI: "Start minimized" governs the autostart launch
+
+The XDG autostart entry always ran the GUI with `--hidden`, and startup treats
+`--hidden || start_minimized` as "start hidden" — so the login launch was
+unconditionally minimized to the tray, and the "Start minimized" toggle only
+affected manual launches. `autostart::set` now takes the `minimized` preference
+and appends `--hidden` to the entry only when it is set (both callers — the
+startup sync and `save_settings` — pass it), so the toggle governs the login
+launch too.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of
