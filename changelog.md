@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.7 - 2026-07-07
+
+- Fixed **"Update all" not updating the backend**: it installed the backend at
+  the version the app *currently* was, not the new one, so on an atomic (rpm-ostree)
+  system the backend stayed behind until you ran the update a second time. A single
+  "Update all" + reboot now moves both the app and the backend to the latest version.
+- The backend update is no longer skipped when its installed version can't be read
+  (the update is offered instead of silently assuming it's up to date).
+
 ## 1.2.6 - 2026-07-07
 
 - Fixed the **relaunch-from-tray crash on Flatpak**: with the window minimized to

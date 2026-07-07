@@ -420,6 +420,20 @@ Two related robustness fixes for the tray-relaunch crash.
   unique bus name losing its owner (`NameOwnerChanged`). No `tun0` is left up without a
   controlling frontend.
 
+## 2026-07-07 — GUI: install the backend at the latest version during "Update all"
+
+The one-click backend installer derived its download URL from `GUI_VERSION`
+(`env!("CARGO_PKG_VERSION")`, the running binary's compile-time version) rather
+than the target release. During "Update all" the flatpak GUI update only takes
+effect after restart, so `GUI_VERSION` stayed at the old version for the whole
+run — the backend was (re)installed at the old version, and on rpm-ostree
+re-layering the same version is a no-op, leaving the backend behind until a
+second Update-all. `install_backend` / `backend_install_script` now take an
+explicit target version; the updater passes the latest release (first-run install
+still defaults to `GUI_VERSION`, a matched pair). Separately, `check_update` no
+longer treats an unreadable installed-backend version as "up to date" — it offers
+the update instead of silently skipping it.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of
