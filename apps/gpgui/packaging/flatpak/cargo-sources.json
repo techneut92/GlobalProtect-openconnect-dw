@@ -6567,19 +6567,6 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
-        "url": "https://static.crates.io/crates/tauri-plugin-single-instance/tauri-plugin-single-instance-2.4.2.crate",
-        "sha256": "5c8f29386f5e9fdc699182388a33ee80a56de436d91b67459e86afef426282af",
-        "dest": "cargo/vendor/tauri-plugin-single-instance-2.4.2"
-    },
-    {
-        "type": "inline",
-        "contents": "{\"package\": \"5c8f29386f5e9fdc699182388a33ee80a56de436d91b67459e86afef426282af\", \"files\": {}}",
-        "dest": "cargo/vendor/tauri-plugin-single-instance-2.4.2",
-        "dest-filename": ".cargo-checksum.json"
-    },
-    {
-        "type": "archive",
-        "archive-type": "tar-gzip",
         "url": "https://static.crates.io/crates/tauri-runtime/tauri-runtime-2.11.1.crate",
         "sha256": "8fef478ba1d2ac21c2d528740b24d0cb315e1e8b1111aae53fafac34804371fc",
         "dest": "cargo/vendor/tauri-runtime-2.11.1"
