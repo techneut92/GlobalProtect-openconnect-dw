@@ -323,7 +323,7 @@
       if (updBackend) {
         try {
           const r = await step('Updating the backend service to v' + updateLatest + ' — approve the prompt; this can take a few minutes…',
-            () => invoke('install_backend'));
+            () => invoke('install_backend', { version: updateLatest }));
           if (r.ok) { done.push('Backend updated to v' + updateLatest + (r.needsReboot ? ' — reboot to finish applying it' : '')); needsReboot = !!r.needsReboot; }
           else { setUbLog('Backend update failed: ' + (r.message || 'unknown error'), 'err'); failed = true; }
         } catch (e) { setUbLog('Backend update failed: ' + e, 'err'); failed = true; }
