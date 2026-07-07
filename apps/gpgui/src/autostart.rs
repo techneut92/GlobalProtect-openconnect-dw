@@ -1,6 +1,7 @@
 //! XDG autostart ("Run at system startup"). Writes/removes a desktop entry in
-//! `~/.config/autostart/`. The entry launches the GUI with `--hidden` so it
-//! starts straight to the tray instead of popping the window at login.
+//! `~/.config/autostart/`. The entry launches the GUI with `--hidden` **only when
+//! "Start minimized" is enabled**, so that toggle controls the login behaviour too
+//! (otherwise autostart would always start hidden regardless of the preference).
 
 use std::path::PathBuf;
 
@@ -17,10 +18,12 @@ fn autostart_path() -> Option<PathBuf> {
 
 /// The command the autostart entry runs: `flatpak run …` under Flatpak (the host
 /// session can't exec the sandbox binary), the installed binary if present, else
-/// the current executable (dev builds).
-fn exec_line() -> String {
+/// the current executable (dev builds). `--hidden` (start minimized to the tray)
+/// is appended only when `minimized` is set.
+fn exec_line(minimized: bool) -> String {
+  let hidden = if minimized { " --hidden" } else { "" };
   if crate::system::is_flatpak() {
-    return format!("flatpak run {FLATPAK_ID} --hidden");
+    return format!("flatpak run {FLATPAK_ID}{hidden}");
   }
   let bin = if std::path::Path::new(INSTALLED_BIN).exists() {
     INSTALLED_BIN.to_string()
@@ -30,13 +33,14 @@ fn exec_line() -> String {
       .and_then(|p| p.to_str().map(str::to_string))
       .unwrap_or_else(|| "gpgui".to_string())
   };
-  // WEBKIT_DISABLE_DMABUF_RENDERER mirrors the .desktop launcher; --hidden starts
-  // minimized to the tray.
-  format!("env WEBKIT_DISABLE_DMABUF_RENDERER=1 {bin} --hidden")
+  // WEBKIT_DISABLE_DMABUF_RENDERER mirrors the .desktop launcher.
+  format!("env WEBKIT_DISABLE_DMABUF_RENDERER=1 {bin}{hidden}")
 }
 
-/// Create or remove the autostart entry to match `enabled`.
-pub fn set(enabled: bool) {
+/// Create or remove the autostart entry to match `enabled`. When enabled, the
+/// entry starts minimized to the tray only if `minimized` is set — so the
+/// "Start minimized" preference governs the login launch, not just manual ones.
+pub fn set(enabled: bool, minimized: bool) {
   let Some(path) = autostart_path() else { return };
   if enabled {
     if let Some(dir) = path.parent() {
@@ -52,7 +56,7 @@ pub fn set(enabled: bool) {
        Terminal=false\n\
        Categories=Network;Security;\n\
        X-GNOME-Autostart-enabled=true\n",
-      exec_line()
+      exec_line(minimized)
     );
     let _ = std::fs::write(&path, entry);
   } else {
