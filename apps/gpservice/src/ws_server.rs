@@ -5,7 +5,12 @@ use std::time::Duration;
 use axum::extract::ws::Message;
 use common::constants::GP_AUTH_BINARY;
 use gpapi::{
-  service::{event::WsEvent, request::WsRequest, vpn_env::VpnEnv, vpn_state::VpnState},
+  service::{
+    event::WsEvent,
+    request::{DisconnectRequest, WsRequest},
+    vpn_env::VpnEnv,
+    vpn_state::VpnState,
+  },
   utils::{crypto::Crypto, lock_file::LockFile, redact::Redaction},
 };
 use log::{info, warn};
@@ -96,16 +101,28 @@ impl WsServerContext {
     self.connections.write().await.retain(|c| !Arc::ptr_eq(c, &conn));
     let remaining = self.active.fetch_sub(1, Ordering::SeqCst).saturating_sub(1);
 
-    // Externally managed (GUI-launched) service: when the launching GUI goes
-    // away, no clients remain — shut down after a short grace period so a quick
-    // GUI reconnect doesn't kill the service mid-flight.
-    if self.exit_on_idle && remaining == 0 {
+    // The controlling GUI's socket dropped. Close-to-tray keeps the socket open,
+    // so this only fires on an actual GUI exit or crash. After a short grace
+    // period (so a relaunch/restart that reconnects doesn't kill a healthy
+    // tunnel), tear the tunnel down so no tun0 is left dangling without a
+    // frontend — and, if we were GUI-launched, shut the service down too.
+    if remaining == 0 {
       let active = Arc::clone(&self.active);
+      let ws_req_tx = self.ws_req_tx.clone();
       let token = self.cancel_token.clone();
+      let exit_on_idle = self.exit_on_idle;
       tokio::spawn(async move {
         tokio::time::sleep(Duration::from_secs(3)).await;
-        if active.load(Ordering::SeqCst) == 0 {
-          info!("No GUI client connected; shutting the service down");
+        if active.load(Ordering::SeqCst) != 0 {
+          return; // a client reconnected within the grace period
+        }
+        info!("No GUI client connected; disconnecting the tunnel");
+        let _ = ws_req_tx.send(WsRequest::Disconnect(DisconnectRequest)).await;
+        if exit_on_idle {
+          // Give the disconnect a moment to run the openconnect/vpnc teardown
+          // before cancelling the server and exiting.
+          tokio::time::sleep(Duration::from_secs(2)).await;
+          info!("Shutting the service down");
           token.cancel();
         }
       });
