@@ -29,6 +29,7 @@ mod crypto;
 mod dbus_client;
 mod pkcs11;
 mod secrets;
+mod single_instance;
 mod state;
 mod system;
 mod tiling;
@@ -349,22 +350,34 @@ async fn run_update(url: String, version: String) -> String {
   }
 }
 
-/// Open (or focus) the separate Advanced settings window.
+/// Open (or focus) the separate Advanced settings window. An optional `section`
+/// (e.g. "about") deep-links to that nav section — via a `goto-section` event
+/// when the window is already open, or an init-script global on a cold open.
 #[tauri::command]
-fn open_settings(app: tauri::AppHandle) -> Result<(), String> {
+fn open_settings(app: tauri::AppHandle, section: Option<String>) -> Result<(), String> {
   if let Some(w) = app.get_webview_window("settings") {
     let _ = w.set_focus();
+    if let Some(sec) = section {
+      let _ = w.emit("goto-section", sec);
+    }
     return Ok(());
   }
-  tauri::WebviewWindowBuilder::new(&app, "settings", tauri::WebviewUrl::App("settings.html".into()))
-    .title("Advanced settings")
-    .inner_size(560.0, 620.0)
-    .min_inner_size(560.0, 620.0)
-    .resizable(false)
-    .decorations(false)
-    .transparent(true)
-    .build()
-    .map_err(|e| e.to_string())?;
+  let mut builder =
+    tauri::WebviewWindowBuilder::new(&app, "settings", tauri::WebviewUrl::App("settings.html".into()))
+      .title("Advanced settings")
+      .inner_size(560.0, 620.0)
+      .min_inner_size(560.0, 620.0)
+      .resizable(false)
+      .decorations(false)
+      .transparent(true);
+  // Cold-open deep-link: stash the target section in a global before the page
+  // loads (robust — no URL-fragment encoding or emit/listen race). The init
+  // script only takes a fixed JSON string literal we control.
+  if let Some(sec) = section {
+    let js = format!("window.__gotoSection = {};", serde_json::to_string(&sec).unwrap_or_default());
+    builder = builder.initialization_script(&js);
+  }
+  builder.build().map_err(|e| e.to_string())?;
   Ok(())
 }
 
@@ -659,6 +672,13 @@ fn main() {
     )
     .init();
 
+  // Single-instance guard — the very first thing, before any GTK/Tauri init. If
+  // another instance is already running this signals it to reveal its window and
+  // exits; otherwise we hold the listener and service "show" pings in `setup`.
+  // Doing this pre-init is what makes it work in the Flatpak sandbox (where the
+  // D-Bus-based plugin didn't) and prevents the relaunch-crash entirely.
+  let instance_listener = single_instance::acquire_or_signal();
+
   let cfg = Arc::new(Mutex::new(Config::load()));
   // Keep the autostart entry in sync with the preference (which defaults on). On
   // a fresh install this seeds it on first launch; the in-app toggle is the
@@ -704,19 +724,10 @@ fn main() {
   let setup_frame = frame.clone();
   let cmd_rx = Mutex::new(Some(cmd_rx));
 
+  // Moved into setup so the accept loop can hold the AppHandle.
+  let instance_listener = Mutex::new(instance_listener);
+
   tauri::Builder::default()
-    // Single-instance guard, registered first (Tauri requirement). When the app is
-    // relaunched (start menu, autostart) while already running — including hidden in
-    // the tray — this fires in the *running* instance instead of GTK re-running setup
-    // there (which panics: "a webview with label `main` already exists"). We just
-    // reveal the existing window; the second process exits immediately.
-    .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
-      if let Some(w) = app.get_webview_window("main") {
-        let _ = w.show();
-        let _ = w.unminimize();
-        let _ = w.set_focus();
-      }
-    }))
     .manage(app_state)
     .on_window_event(|window, event| {
       // Close-to-tray: the X button hides the main window so the app keeps
@@ -764,6 +775,21 @@ fn main() {
     ])
     .setup(move |app| {
       let handle = app.handle().clone();
+
+      // Serve single-instance "show" pings: a relaunch while we're running (incl.
+      // hidden in the tray) connects to our abstract socket; reveal the window.
+      if let Some(listener) = instance_listener.lock().unwrap().take() {
+        let show_handle = handle.clone();
+        std::thread::spawn(move || {
+          single_instance::serve(listener, move || {
+            if let Some(w) = show_handle.get_webview_window("main") {
+              let _ = w.show();
+              let _ = w.unminimize();
+              let _ = w.set_focus();
+            }
+          });
+        });
+      }
 
       // Auto-tiling window managers tile every normal toplevel, including this
       // fixed-size one. On X11 (Pop Shell on Xorg, i3, bspwm) marking it a dialog
