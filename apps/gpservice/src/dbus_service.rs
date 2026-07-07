@@ -10,7 +10,9 @@
 //! pkexec path); for now the shipped system-bus policy gates the calls.
 
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
+use futures::StreamExt;
 use gpapi::service::{
   request::{ConnectRequest, DisconnectRequest, WsRequest},
   vpn_state::VpnState,
@@ -20,6 +22,11 @@ use tokio::sync::{mpsc, watch};
 use zbus::message::Header;
 use zbus::object_server::SignalEmitter;
 use zbus_polkit::policykit1::{AuthorityProxy, CheckAuthorizationFlags, Subject};
+
+/// Unique bus name of the GUI that owns the current tunnel (the last caller of
+/// `Connect`). Watched so we can drop the tunnel if that process dies without an
+/// explicit `Disconnect` — see [`watch_controller`].
+type Controller = Arc<Mutex<Option<String>>>;
 
 pub const BUS_NAME: &str = "io.github.techneut92.GPService";
 pub const OBJ_PATH: &str = "/io/github/techneut92/GPService";
@@ -61,6 +68,7 @@ async fn authorized(header: &Header<'_>) -> bool {
 struct GpService {
   ws_req_tx: mpsc::Sender<WsRequest>,
   vpn_state_rx: watch::Receiver<VpnState>,
+  controller: Controller,
 }
 
 #[zbus::interface(name = "io.github.techneut92.GPService1")]
@@ -72,6 +80,11 @@ impl GpService {
     }
     let req: ConnectRequest = serde_json::from_str(&request)
       .map_err(|e| zbus::fdo::Error::InvalidArgs(format!("invalid ConnectRequest: {e}")))?;
+    // Remember which GUI owns this tunnel so the watchdog can drop it if that
+    // process dies without disconnecting (a frontend crash).
+    if let Some(sender) = header.sender() {
+      *self.controller.lock().unwrap() = Some(sender.to_string());
+    }
     self
       .ws_req_tx
       .send(WsRequest::Connect(Box::new(req)))
@@ -84,6 +97,8 @@ impl GpService {
     if !authorized(&header).await {
       return Err(zbus::fdo::Error::AccessDenied("not authorised to manage the VPN".into()));
     }
+    // Explicit disconnect: stop watching the caller.
+    *self.controller.lock().unwrap() = None;
     self
       .ws_req_tx
       .send(WsRequest::Disconnect(DisconnectRequest))
@@ -105,9 +120,11 @@ impl GpService {
 /// state change. Runs until `vpn_state_rx` closes. Uses the **session** bus when
 /// `GP_DBUS_SESSION` is set (for development), otherwise the **system** bus.
 pub async fn run(ws_req_tx: mpsc::Sender<WsRequest>, mut vpn_state_rx: watch::Receiver<VpnState>) -> anyhow::Result<()> {
+  let controller: Controller = Arc::new(Mutex::new(None));
   let service = GpService {
-    ws_req_tx,
+    ws_req_tx: ws_req_tx.clone(),
     vpn_state_rx: vpn_state_rx.clone(),
+    controller: controller.clone(),
   };
 
   let session = std::env::var("GP_DBUS_SESSION").is_ok();
@@ -123,6 +140,21 @@ pub async fn run(ws_req_tx: mpsc::Sender<WsRequest>, mut vpn_state_rx: watch::Re
     if session { "session" } else { "system" }
   );
 
+  // Watchdog: this service is long-lived, so if the GUI that started the tunnel
+  // vanishes from the bus (crash / kill — not a clean Disconnect) the tunnel
+  // would otherwise stay up with no controlling frontend. Drop it when that
+  // happens so tun0 never dangles.
+  {
+    let conn = conn.clone();
+    let controller = controller.clone();
+    let ws_req_tx = ws_req_tx.clone();
+    tokio::spawn(async move {
+      if let Err(e) = watch_controller(conn, controller, ws_req_tx).await {
+        warn!("D-Bus controller watchdog stopped: {e}");
+      }
+    });
+  }
+
   // Re-broadcast VPN state changes as a signal.
   let iface_ref = conn.object_server().interface::<_, GpService>(OBJ_PATH).await?;
   loop {
@@ -135,5 +167,34 @@ pub async fn run(ws_req_tx: mpsc::Sender<WsRequest>, mut vpn_state_rx: watch::Re
     }
   }
 
+  Ok(())
+}
+
+/// Watch the bus for the controlling GUI disappearing. When the tracked unique
+/// name loses its owner (the GUI process died), send a `Disconnect` so the
+/// tunnel is torn down cleanly instead of lingering without a frontend.
+async fn watch_controller(
+  conn: zbus::Connection,
+  controller: Controller,
+  ws_req_tx: mpsc::Sender<WsRequest>,
+) -> anyhow::Result<()> {
+  let dbus = zbus::fdo::DBusProxy::new(&conn).await?;
+  let mut changes = dbus.receive_name_owner_changed().await?;
+  while let Some(signal) = changes.next().await {
+    let Ok(args) = signal.args() else {
+      continue;
+    };
+    // A name that gained an owner isn't a disconnect; only releases matter.
+    if args.new_owner().is_some() {
+      continue;
+    }
+    let gone = args.name().to_string();
+    let is_controller = controller.lock().unwrap().as_deref() == Some(gone.as_str());
+    if is_controller {
+      info!("Controlling GUI {gone} left the bus; disconnecting the tunnel");
+      let _ = ws_req_tx.send(WsRequest::Disconnect(DisconnectRequest)).await;
+      *controller.lock().unwrap() = None;
+    }
+  }
   Ok(())
 }
