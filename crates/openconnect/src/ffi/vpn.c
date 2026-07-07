@@ -1,6 +1,8 @@
 #include <openconnect.h>
+#include <gnutls/pkcs11.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <sys/utsname.h>
 #include <unistd.h>
@@ -141,6 +143,20 @@ int vpn_connect(const vpn_options *options, vpn_connected_callback callback)
 	     effective_local_hostname ? effective_local_hostname : "(not set)");
 
 	if (options->certificate) {
+		/*
+		 * gpservice is long-lived and the tunnel runs in-process (no
+		 * fork per connect), but GnuTLS's PKCS#11 token cache is
+		 * process-global. After a YubiKey re-seat, a pcscd cycle, or a
+		 * suspend/resume, that cache goes stale and
+		 * gnutls_pkcs11_obj_import_url() returns "data not available"
+		 * even though the cert is physically present. A fresh vpninfo
+		 * does not reset it, so re-init the PKCS#11 subsystem here (the
+		 * GnuTLS API made for "tokens changed") before loading a
+		 * pkcs11: cert. Non-pkcs11 (file) certs are unaffected.
+		 */
+		if (strncmp(options->certificate, "pkcs11:", 7) == 0) {
+			gnutls_pkcs11_reinit();
+		}
 		INFO("Setting client certificate: %s", options->certificate);
 		openconnect_set_client_cert(vpninfo, options->certificate,
 					    options->sslkey);
