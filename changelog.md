@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.6 - 2026-07-07
+
+- Fixed the **relaunch-from-tray crash on Flatpak**: with the window minimized to
+  the tray, opening the app again from the launcher crashed the running instance
+  (and left the VPN tunnel up). The fix in 1.2.4 didn't work inside the Flatpak
+  sandbox; it now reliably reveals the existing window instead.
+- The **VPN tunnel is now torn down if the app quits or crashes** while connected,
+  so `tun0` is never left up without the app controlling it. Minimizing to the
+  tray still keeps the tunnel running as before.
+
 ## 1.2.5 - 2026-07-07
 
 - Fixed PKCS#11 (smart-card / YubiKey) connections failing with **"data not
