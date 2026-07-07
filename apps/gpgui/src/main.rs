@@ -252,10 +252,18 @@ fn system_info() -> SystemInfo {
 
 /// One-click backend install: download + install via a single pkexec prompt,
 /// waiting for the real result so the UI reports success/failure honestly.
+///
+/// `version` is the target release to install. The updater passes the latest
+/// release so the backend reaches it; when omitted (first-run install of a
+/// missing backend) it defaults to this GUI's own version — a matched pair.
+/// Passing it matters because the running GUI's `GUI_VERSION` doesn't advance
+/// until a restart, so deriving the version from it would pin the backend to the
+/// *old* version during an update.
 #[tauri::command]
-async fn install_backend(kind: Option<String>) -> serde_json::Value {
+async fn install_backend(kind: Option<String>, version: Option<String>) -> serde_json::Value {
   let kind = kind.map(|s| system::kind_from_str(&s)).unwrap_or_else(system::host_install_kind);
-  let Some(script) = system::backend_install_script(kind) else {
+  let version = version.unwrap_or_else(|| system::GUI_VERSION.to_string());
+  let Some(script) = system::backend_install_script(kind, &version) else {
     return serde_json::json!({ "ok": false, "message": "No installer for this system type — use the steps below." });
   };
   let needs_reboot = kind == system::InstallKind::RpmOstree;
@@ -293,8 +301,14 @@ async fn check_update() -> UpdateInfo {
       UpdateInfo {
         available: newer(&current),
         // The backend is a separately-installed package, so an old backend is an
-        // available update even when the GUI is already current.
-        backend_update: backend.as_deref().map(newer).unwrap_or(false),
+        // available update even when the GUI is already current. If the backend is
+        // installed but its version can't be read (e.g. the host `--version` probe
+        // fails under Flatpak), don't silently treat it as up-to-date — offer the
+        // update rather than skipping it. Not-installed is handled by the install flow.
+        backend_update: match backend.as_deref() {
+          Some(v) => newer(v),
+          None => system::backend_installed(),
+        },
         current,
         latest: r.version,
         url: if r.url.is_empty() { repo_url } else { r.url },

@@ -412,8 +412,11 @@ pub fn kind_from_str(s: &str) -> InstallKind {
 /// Root shell script for the one-click Install button — mirrors `install_options`
 /// but runs as root via pkexec (no `sudo`, reboot left to the user). dnf/pacman/
 /// zypper install straight from the asset URL; the rest download first.
-pub fn backend_install_script(kind: InstallKind) -> Option<String> {
-  let v = GUI_VERSION;
+pub fn backend_install_script(kind: InstallKind, version: &str) -> Option<String> {
+  // The target release to install — the latest during an update, or this GUI's
+  // version on a first-run install. NOT `GUI_VERSION` directly: during an update
+  // the running GUI is still the old version, so that would pin the backend to it.
+  let v = version;
   let arch = std::env::consts::ARCH;
   let deb_arch = if arch == "aarch64" { "arm64" } else { "amd64" };
   let base = format!("https://github.com/{REPO}/releases/download/v{v}");
