@@ -399,6 +399,27 @@ workaround was restarting the service. `crates/openconnect/src/ffi/vpn.c` now
 calls `gnutls_pkcs11_reinit()` before loading a `pkcs11:` client cert so a
 re-seated token's certs are found automatically. File certs are unaffected.
 
+## 2026-07-07 — GUI: sandbox-safe single-instance; backend: drop tunnel on frontend loss
+
+Two related robustness fixes for the tray-relaunch crash.
+
+- **GUI single-instance without D-Bus** (`apps/gpgui`): `tauri-plugin-single-instance`
+  detects the second instance over a D-Bus session name, which doesn't work in the
+  Flatpak sandbox — so GTK's GApplication forwarded the relaunch into the primary,
+  re-ran setup, and panicked (`a webview with label `main` already exists`). Replaced
+  with an abstract-namespace Unix socket claimed at the top of `main()`, before any
+  GTK/Tauri init: the second instance signals the primary to reveal its window and
+  exits pre-init. Shared across Flatpak instances via the manifest's `--share=network`.
+  Dropped the plugin dependency. Also: the main-window "update available" banner now
+  opens the About page's unified Update-all flow instead of a frontend-only update.
+- **Tunnel teardown on frontend loss** (`apps/gpservice`): both transports forward
+  into the same `VpnTask`, so teardown is one shared action (send `Disconnect`) and
+  each transport detects its client vanishing — the WebSocket dropping (native; a
+  short grace period ignores a reconnecting relaunch, and close-to-tray keeps the
+  socket open) and, for the persistent D-Bus service (Flatpak), the `Connect` caller's
+  unique bus name losing its owner (`NameOwnerChanged`). No `tun0` is left up without a
+  controlling frontend.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of
