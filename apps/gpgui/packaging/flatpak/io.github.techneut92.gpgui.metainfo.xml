@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.2.7" date="2026-07-07">
+      <description>
+        <p>Fixed "Update all" so it moves the backend to the latest version too — previously it re-installed the app's current version, leaving the backend behind on atomic systems until a second run.</p>
+      </description>
+    </release>
     <release version="1.2.6" date="2026-07-07">
       <description>
         <p>Fixed the relaunch-from-tray crash on Flatpak (the 1.2.4 fix didn't work inside the sandbox), and the VPN tunnel is now torn down if the app quits or crashes while connected so tun0 is never left dangling.</p>
