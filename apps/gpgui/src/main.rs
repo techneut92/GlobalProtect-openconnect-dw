@@ -301,8 +301,14 @@ async fn check_update() -> UpdateInfo {
       UpdateInfo {
         available: newer(&current),
         // The backend is a separately-installed package, so an old backend is an
-        // available update even when the GUI is already current.
-        backend_update: backend.as_deref().map(newer).unwrap_or(false),
+        // available update even when the GUI is already current. If the backend is
+        // installed but its version can't be read (e.g. the host `--version` probe
+        // fails under Flatpak), don't silently treat it as up-to-date — offer the
+        // update rather than skipping it. Not-installed is handled by the install flow.
+        backend_update: match backend.as_deref() {
+          Some(v) => newer(v),
+          None => system::backend_installed(),
+        },
         current,
         latest: r.version,
         url: if r.url.is_empty() { repo_url } else { r.url },
