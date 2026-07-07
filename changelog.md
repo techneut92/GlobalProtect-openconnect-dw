@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.5 - 2026-07-07
+
+- Fixed PKCS#11 (smart-card / YubiKey) connections failing with **"data not
+  available"** after the card was re-seated, `pcscd` was restarted, or the
+  machine resumed from suspend. The long-running backend now re-reads the token
+  before each connection, so it recovers automatically instead of needing a
+  service restart.
+
 ## 1.2.4 - 2026-07-07
 
 - Fixed a **crash on relaunch**: with the window closed to the tray (app still
