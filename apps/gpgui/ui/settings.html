@@ -162,7 +162,49 @@
             <span>Support on Ko-fi</span>
           </a>
         </div>
-        <p class="help">Opens ko-fi.com in your browser.</p>
+        <div class="revolut-card">
+          <div class="kofi-head">
+            <div class="revolut-logo">
+              <svg width="26" height="26" viewBox="0 0 24 24"><text x="12" y="17.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="800" fill="#0666EB">R</text></svg>
+            </div>
+            <div>
+              <div class="kofi-title">Send a tip with Revolut</div>
+              <div class="kofi-sub">Quick one-off support via Revolut. 100% goes to development.</div>
+            </div>
+          </div>
+          <div class="revolut-qr-wrap">
+            <img class="revolut-qr" src="revolut-qr.png" width="150" height="150" alt="Revolut payment QR code for revolut.me/techneut92" />
+            <div class="revolut-qr-cap">Scan with your phone to open the link</div>
+          </div>
+          <a class="revolut-btn" id="revolutBtn" href="https://revolut.me/techneut92" target="_blank" rel="noreferrer">
+            <svg width="18" height="18" viewBox="0 0 24 24"><text x="12" y="17.5" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="800" fill="#fff">R</text></svg>
+            <span>Support via Revolut</span>
+          </a>
+        </div>
+        <div class="eth-card">
+          <div class="kofi-head">
+            <div class="eth-logo">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2 L12 9.6 L18.5 12.5 Z" fill="#8fa2f5"/><path d="M12 2 L5.5 12.5 L12 9.6 Z" fill="#c5cff9"/><path d="M12 16.1 L12 22 L18.5 13.7 Z" fill="#8fa2f5"/><path d="M12 22 L12 16.1 L5.5 13.7 Z" fill="#c5cff9"/><path d="M12 14.9 L18.5 12.5 L12 9.6 Z" fill="#627EEA"/><path d="M5.5 12.5 L12 14.9 L12 9.6 Z" fill="#8295ef"/></svg>
+            </div>
+            <div>
+              <div class="kofi-title">Send ETH (Ethereum)</div>
+              <div class="kofi-sub">Crypto tip via the Ethereum network. 100% goes to development.</div>
+            </div>
+          </div>
+          <div class="eth-qr-wrap">
+            <img class="eth-qr" src="eth-qr.png" width="150" height="150" alt="Ethereum address QR code" />
+            <div class="revolut-qr-cap">Scan with your wallet, or copy the address</div>
+          </div>
+          <div class="eth-addr-row">
+            <div class="eth-addr" id="ethAddr" title="0x15d9B8383A7cbe9f99F72aC29106C53bbcf4ea40">0x15d9B8383A7cbe9f99F72aC29106C53bbcf4ea40</div>
+            <button class="eth-copy" id="ethCopy" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              <span id="ethCopyLabel">Copy</span>
+            </button>
+          </div>
+          <div class="eth-net">Only send ETH or ERC-20 tokens on the Ethereum network.</div>
+        </div>
+        <p class="help">Opens ko-fi.com or revolut.me in your browser. The ETH address is on the Ethereum network.</p>
       </div>
 
       <!-- ABOUT -->
@@ -252,6 +294,19 @@
     }
 
     $('kofiBtn').onclick = (e) => { if (hasTauri) { e.preventDefault(); invoke('open_url', { url: 'https://ko-fi.com/techneut92?amount=2.50#checkoutModal' }); } };
+    $('revolutBtn').onclick = (e) => { if (hasTauri) { e.preventDefault(); invoke('open_url', { url: 'https://revolut.me/techneut92' }); } };
+    $('ethCopy').onclick = async () => {
+      const addr = $('ethAddr').textContent.trim();
+      let ok = false;
+      try { await navigator.clipboard.writeText(addr); ok = true; } catch (e) {
+        // Fallback: select the address so the user can copy manually.
+        try { const r = document.createRange(); r.selectNodeContents($('ethAddr')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); ok = document.execCommand && document.execCommand('copy'); } catch (_) {}
+      }
+      const btn = $('ethCopy'), lbl = $('ethCopyLabel');
+      lbl.textContent = ok ? 'Copied!' : 'Select & copy';
+      btn.classList.toggle('copied', ok);
+      setTimeout(() => { lbl.textContent = 'Copy'; btn.classList.remove('copied'); }, 1600);
+    };
 
     // ───────── About / updates ─────────
     const REPO_URL = 'https://github.com/techneut92/GlobalProtect-openconnect-dw';
