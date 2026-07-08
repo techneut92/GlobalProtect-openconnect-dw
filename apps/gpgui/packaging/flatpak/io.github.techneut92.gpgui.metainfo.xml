@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.2.9" date="2026-07-08">
+      <description>
+        <p>Fixed smart-card reconnects failing with "data not available" on Flatpak (the backend now restarts cleanly between sessions for a fresh card read), and disabled accidental zoom (Ctrl+scroll / pinch) in the fixed-size windows.</p>
+      </description>
+    </release>
     <release version="1.2.8" date="2026-07-07">
       <description>
         <p>Fixed "Start minimized" being ignored at login — with the option off, the app now shows its window when it autostarts instead of always starting hidden in the tray.</p>
