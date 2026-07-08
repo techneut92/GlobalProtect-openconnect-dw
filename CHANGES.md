@@ -444,6 +444,23 @@ and appends `--hidden` to the entry only when it is set (both callers — the
 startup sync and `save_settings` — pass it), so the toggle governs the login
 launch too.
 
+## 2026-07-08 — Backend: D-Bus service exits with the GUI; GUI: no webview zoom
+
+- **`gpservice` D-Bus lifecycle** (`apps/gpservice`): both transports feed the same
+  `VpnTask`, but the exit-on-client-loss policy lived only in the WS wrapper
+  (`exit_on_idle`). The D-Bus wrapper (added for the tun0 teardown) mirrored only
+  the *disconnect* half, so a Flatpak `gpservice` stayed alive after the GUI died
+  and kept its opensc/PKCS#11 module loaded — after the first TLS client-auth the
+  cached smart-card handle went stale and every reconnect failed with "The
+  requested data were not available" until a service restart (`gnutls_pkcs11_reinit`
+  alone didn't clear it). `watch_controller` now disconnects **and** signals a full
+  shutdown (threaded `shutdown_tx` through `dbus_service::run`); D-Bus re-activates a
+  fresh process on the next `Connect`, so each GUI session re-initialises PKCS#11.
+  The explicit `Disconnect()` method stays non-fatal.
+- **GUI zoom disabled** (`apps/gpgui`): the fixed-size, non-resizable windows now
+  swallow Ctrl+wheel / pinch / Ctrl+±/0 (`ui/no-zoom.js`, loaded by all three
+  pages) so accidental zoom can't distort the layout.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.9 - 2026-07-08
+
+- Fixed **smart-card reconnects failing** ("data not available") on the Flatpak
+  build — after the first connect, later connects failed until the backend
+  service was restarted. The backend now restarts cleanly between sessions, so a
+  fresh smart-card read is used each time.
+- **Disabled accidental zoom** in the app windows (Ctrl+scroll / pinch /
+  Ctrl+±), which could distort the fixed-size layout.
+- Added **Revolut** and **Ethereum (ETH)** options alongside Ko-fi on the Support
+  page — each with a scannable QR code (and a copy-address button for ETH).
+
 ## 1.2.8 - 2026-07-07
 
 - Fixed **"Start minimized" being ignored at login**: with the option off, the app
