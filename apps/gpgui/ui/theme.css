@@ -315,6 +315,55 @@ body.settings { background: var(--bg-grad); }
 }
 .kofi-btn:hover { filter: brightness(1.07); }
 
+/* Revolut support card — same layout as the Ko-fi card, Revolut brand blue. */
+.revolut-card {
+  margin-top: 14px;
+  background: linear-gradient(135deg, rgba(6,102,235,.14), rgba(120,86,255,.1));
+  border: 1px solid rgba(6,102,235,.30); border-radius: var(--radius); padding: 20px;
+}
+.revolut-logo {
+  flex: 0 0 auto; width: 46px; height: 46px; border-radius: 13px; background: #06121f;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px -6px rgba(6,102,235,.6);
+}
+.revolut-btn {
+  margin-top: 16px; display: flex; align-items: center; justify-content: center; gap: 9px;
+  text-decoration: none; background: #0666EB; color: #fff; border-radius: 12px; padding: 12px;
+  font-size: 13.5px; font-weight: 700; font-family: inherit; cursor: pointer;
+  box-shadow: 0 12px 26px -10px rgba(6,102,235,.8); transition: filter .12s;
+}
+.revolut-btn:hover { filter: brightness(1.08); }
+.revolut-qr-wrap { margin-top: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.revolut-qr { width: 150px; height: 150px; border-radius: 14px; display: block; }
+.revolut-qr-cap { font-size: 11.5px; color: #9aa1b6; }
+
+/* Ethereum (crypto) support card. */
+.eth-card {
+  margin-top: 14px;
+  background: linear-gradient(135deg, rgba(98,126,234,.14), rgba(60,66,110,.12));
+  border: 1px solid rgba(98,126,234,.32); border-radius: var(--radius); padding: 20px;
+}
+.eth-logo {
+  flex: 0 0 auto; width: 46px; height: 46px; border-radius: 13px; background: #06121f;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 18px -6px rgba(98,126,234,.6);
+}
+.eth-qr-wrap { margin-top: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.eth-qr { width: 150px; height: 150px; border-radius: 14px; display: block; }
+.eth-addr-row { margin-top: 14px; display: flex; align-items: stretch; gap: 8px; }
+.eth-addr {
+  flex: 1 1 auto; min-width: 0; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px; color: #cfd6ea; background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 9px 11px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: all;
+}
+.eth-copy {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 6px; cursor: pointer;
+  background: #627EEA; color: #fff; border: none; border-radius: 10px; padding: 0 14px;
+  font-size: 12.5px; font-weight: 700; font-family: inherit; transition: filter .12s;
+}
+.eth-copy:hover { filter: brightness(1.08); }
+.eth-copy.copied { background: #34d399; color: #06281c; }
+.eth-net { font-size: 11.5px; color: #9aa1b6; margin-top: 10px; text-align: center; }
+
 /* about / updates */
 .about-app { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
 .about-icon { flex: 0 0 auto; width: 48px; height: 48px; border-radius: 13px; display: flex; align-items: center; justify-content: center; background: var(--accent-grad); box-shadow: 0 6px 18px -6px rgba(56,108,246,.7); }

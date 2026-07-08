@@ -8,6 +8,8 @@
   fresh smart-card read is used each time.
 - **Disabled accidental zoom** in the app windows (Ctrl+scroll / pinch /
   Ctrl+±), which could distort the fixed-size layout.
+- Added **Revolut** and **Ethereum (ETH)** options alongside Ko-fi on the Support
+  page — each with a scannable QR code (and a copy-address button for ETH).
 
 ## 1.2.8 - 2026-07-07
 
