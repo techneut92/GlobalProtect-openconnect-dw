@@ -119,7 +119,11 @@ impl GpService {
 /// Claim the bus name, serve the object, and emit `VpnStateChanged` on every
 /// state change. Runs until `vpn_state_rx` closes. Uses the **session** bus when
 /// `GP_DBUS_SESSION` is set (for development), otherwise the **system** bus.
-pub async fn run(ws_req_tx: mpsc::Sender<WsRequest>, mut vpn_state_rx: watch::Receiver<VpnState>) -> anyhow::Result<()> {
+pub async fn run(
+  ws_req_tx: mpsc::Sender<WsRequest>,
+  mut vpn_state_rx: watch::Receiver<VpnState>,
+  shutdown_tx: mpsc::Sender<()>,
+) -> anyhow::Result<()> {
   let controller: Controller = Arc::new(Mutex::new(None));
   let service = GpService {
     ws_req_tx: ws_req_tx.clone(),
@@ -142,14 +146,15 @@ pub async fn run(ws_req_tx: mpsc::Sender<WsRequest>, mut vpn_state_rx: watch::Re
 
   // Watchdog: this service is long-lived, so if the GUI that started the tunnel
   // vanishes from the bus (crash / kill — not a clean Disconnect) the tunnel
-  // would otherwise stay up with no controlling frontend. Drop it when that
-  // happens so tun0 never dangles.
+  // would otherwise stay up with no controlling frontend. Drop it — and then exit
+  // — when that happens, mirroring the WS path's exit-on-client-loss policy.
   {
     let conn = conn.clone();
     let controller = controller.clone();
     let ws_req_tx = ws_req_tx.clone();
+    let shutdown_tx = shutdown_tx.clone();
     tokio::spawn(async move {
-      if let Err(e) = watch_controller(conn, controller, ws_req_tx).await {
+      if let Err(e) = watch_controller(conn, controller, ws_req_tx, shutdown_tx).await {
         warn!("D-Bus controller watchdog stopped: {e}");
       }
     });
@@ -171,12 +176,18 @@ pub async fn run(ws_req_tx: mpsc::Sender<WsRequest>, mut vpn_state_rx: watch::Re
 }
 
 /// Watch the bus for the controlling GUI disappearing. When the tracked unique
-/// name loses its owner (the GUI process died), send a `Disconnect` so the
-/// tunnel is torn down cleanly instead of lingering without a frontend.
+/// name loses its owner (the GUI process died), disconnect the tunnel and then
+/// exit the service — mirroring the WS path's exit-on-client-loss policy. The
+/// D-Bus `.service` re-activates a fresh `gpservice` on the next `Connect`, so
+/// each GUI session gets a freshly-initialised PKCS#11 module, which avoids the
+/// stale smart-card handle that made reconnects fail ("data not available").
+/// An explicit `Disconnect()` call does NOT come through here, so it keeps the
+/// service alive for the next `Connect` as before.
 async fn watch_controller(
   conn: zbus::Connection,
   controller: Controller,
   ws_req_tx: mpsc::Sender<WsRequest>,
+  shutdown_tx: mpsc::Sender<()>,
 ) -> anyhow::Result<()> {
   let dbus = zbus::fdo::DBusProxy::new(&conn).await?;
   let mut changes = dbus.receive_name_owner_changed().await?;
@@ -194,6 +205,16 @@ async fn watch_controller(
       info!("Controlling GUI {gone} left the bus; disconnecting the tunnel");
       let _ = ws_req_tx.send(WsRequest::Disconnect(DisconnectRequest)).await;
       *controller.lock().unwrap() = None;
+      // Brief grace: let the disconnect's openconnect/vpnc teardown run, and let
+      // a fast GUI relaunch re-claim (a new Connect sets `controller` again)
+      // before we exit — same shape as the WS wrapper's post-disconnect grace.
+      tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+      if controller.lock().unwrap().is_some() {
+        continue; // a new GUI reconnected within the grace period
+      }
+      info!("No controlling GUI; shutting the service down");
+      let _ = shutdown_tx.send(()).await;
+      break;
     }
   }
   Ok(())

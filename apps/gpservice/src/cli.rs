@@ -72,8 +72,13 @@ impl Cli {
       let server_token = tokio_util::sync::CancellationToken::new();
 
       let vpn_task_handle = tokio::spawn(async move { vpn_task.start(server_token).await });
+      // The D-Bus service is always externally managed (system-activated for an
+      // external GUI), so like the WS path's `exit_on_idle` it must exit when the
+      // controlling GUI goes away. Give `run` a shutdown sender so its
+      // controller-watchdog can trigger a full shutdown, not just a disconnect.
+      let dbus_shutdown_tx = shutdown_tx.clone();
       let dbus_handle = tokio::spawn(async move {
-        if let Err(err) = crate::dbus_service::run(ws_req_tx, vpn_state_rx).await {
+        if let Err(err) = crate::dbus_service::run(ws_req_tx, vpn_state_rx, dbus_shutdown_tx).await {
           warn!("D-Bus service error: {}", err);
         }
         let _ = shutdown_tx.send(()).await;
