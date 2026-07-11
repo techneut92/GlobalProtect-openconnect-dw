@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.10 - 2026-07-12
 
 - Fixed the **window not coming to the front** when opened from the tray icon or
   the tray menu's "Open GP Client" (and on a second launch): it now reliably
