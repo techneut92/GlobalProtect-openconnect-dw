@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.11 - 2026-07-12
+
+- Fixed an **intermittent crash** (segfault, roughly once a day in long
+  sessions) when the window was revealed from the tray or by a second launch:
+  the window was shown from a background thread, which GTK does not allow. The
+  reveal now runs on the UI thread.
+
 ## 1.2.10 - 2026-07-12
 
 - Fixed the **window not coming to the front** when opened from the tray icon or
