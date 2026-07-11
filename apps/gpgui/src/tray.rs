@@ -26,6 +26,24 @@ use crate::vpn::UiCommand;
 
 pub type TrayHandle = ksni::blocking::Handle<GpTray>;
 
+/// Bring the main window forward and actually give it focus.
+///
+/// `set_focus()` alone is unreliable on Wayland compositors (COSMIC, and Mutter
+/// under certain settings): focus-stealing prevention drops an activation that
+/// arrives without a valid token, so the window shows but stays behind and
+/// unfocused. Briefly toggling `always_on_top` forces the compositor to raise
+/// and activate it, which carries the focus with it. The flag is set back off
+/// immediately so the window doesn't stay pinned above everything else.
+pub fn reveal_window(app: &AppHandle) {
+  if let Some(w) = app.get_webview_window("main") {
+    let _ = w.show();
+    let _ = w.unminimize();
+    let _ = w.set_always_on_top(true);
+    let _ = w.set_focus();
+    let _ = w.set_always_on_top(false);
+  }
+}
+
 pub struct GpTray {
   pub shared: Arc<Mutex<Shared>>,
   pub cfg: Arc<Mutex<Config>>,
@@ -49,11 +67,7 @@ impl GpTray {
 
   /// Reveal (and focus) the main window after a close-to-tray.
   fn show_window(&self) {
-    if let Some(w) = self.app.get_webview_window("main") {
-      let _ = w.show();
-      let _ = w.unminimize();
-      let _ = w.set_focus();
-    }
+    reveal_window(&self.app);
   }
 
   /// Full shutdown: tear down the live tunnel first (so we never leave the VPN
