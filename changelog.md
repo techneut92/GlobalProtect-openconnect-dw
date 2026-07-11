@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.10 - 2026-07-12
+
+- Fixed the **window not coming to the front** when opened from the tray icon or
+  the tray menu's "Open GP Client" (and on a second launch): it now reliably
+  raises and takes focus, including on Wayland compositors like COSMIC where a
+  plain focus request was being ignored.
+
 ## 1.2.9 - 2026-07-08
 
 - Fixed **smart-card reconnects failing** ("data not available") on the Flatpak
