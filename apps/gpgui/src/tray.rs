@@ -34,14 +34,24 @@ pub type TrayHandle = ksni::blocking::Handle<GpTray>;
 /// unfocused. Briefly toggling `always_on_top` forces the compositor to raise
 /// and activate it, which carries the focus with it. The flag is set back off
 /// immediately so the window doesn't stay pinned above everything else.
+///
+/// Both callers run off the main thread (the ksni tray service thread and the
+/// single-instance listener thread), but on Linux these window methods are GTK
+/// calls and GTK is single-threaded — showing the window from a worker thread
+/// intermittently segfaults in `gtk_window_realize` (seen in core dumps as
+/// `g_source_set_name_full` under `start_thread`). Marshal onto the main
+/// thread so the helper is safe from any thread.
 pub fn reveal_window(app: &AppHandle) {
-  if let Some(w) = app.get_webview_window("main") {
-    let _ = w.show();
-    let _ = w.unminimize();
-    let _ = w.set_always_on_top(true);
-    let _ = w.set_focus();
-    let _ = w.set_always_on_top(false);
-  }
+  let app = app.clone();
+  let _ = app.clone().run_on_main_thread(move || {
+    if let Some(w) = app.get_webview_window("main") {
+      let _ = w.show();
+      let _ = w.unminimize();
+      let _ = w.set_always_on_top(true);
+      let _ = w.set_focus();
+      let _ = w.set_always_on_top(false);
+    }
+  });
 }
 
 pub struct GpTray {
