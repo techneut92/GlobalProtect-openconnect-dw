@@ -799,11 +799,7 @@ fn main() {
         let show_handle = handle.clone();
         std::thread::spawn(move || {
           single_instance::serve(listener, move || {
-            if let Some(w) = show_handle.get_webview_window("main") {
-              let _ = w.show();
-              let _ = w.unminimize();
-              let _ = w.set_focus();
-            }
+            tray::reveal_window(&show_handle);
           });
         });
       }

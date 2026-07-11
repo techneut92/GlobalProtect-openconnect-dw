@@ -461,6 +461,18 @@ launch too.
   swallow Ctrl+wheel / pinch / Ctrl+±/0 (`ui/no-zoom.js`, loaded by all three
   pages) so accidental zoom can't distort the layout.
 
+## 2026-07-11 — GUI: reliably focus the window when revealed from the tray
+
+- **Window activation** (`apps/gpgui`): revealing the main window from the tray
+  icon, the tray menu's "Open GP Client", or a second launch called `show()` +
+  `unminimize()` + `set_focus()`, but on Wayland compositors (COSMIC, and Mutter
+  under some settings) focus-stealing prevention silently drops a `set_focus()`
+  that arrives without a valid activation token — the window appeared behind
+  other windows and unfocused. The reveal path is now a single `reveal_window`
+  helper (`tray.rs`, used by both the tray and `main.rs`'s single-instance
+  `serve` callback) that briefly toggles `set_always_on_top(true/false)` around
+  the focus request, forcing the compositor to raise **and** activate it.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of
