@@ -473,6 +473,18 @@ launch too.
   `serve` callback) that briefly toggles `set_always_on_top(true/false)` around
   the focus request, forcing the compositor to raise **and** activate it.
 
+## 2026-07-12 — GUI: reveal the window on the GTK main thread (crash fix)
+
+- **Intermittent SIGSEGV on window reveal** (`apps/gpgui`): `tray::reveal_window`
+  runs Tauri window calls (`show`/`unminimize`/`set_always_on_top`/`set_focus`),
+  which on Linux are GTK calls executed on the *calling* thread — and both
+  callers are worker threads (the ksni tray service thread and the
+  single-instance listener thread). GTK is single-threaded; a core dump showed
+  the crash in `gtk_window_realize` → `g_source_set_name_full` under
+  `start_thread`, typically on the window's **first** show after starting hidden
+  in the tray. The helper now marshals its body onto the main thread via
+  `AppHandle::run_on_main_thread`, making it safe from any caller.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of

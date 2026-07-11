@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.2.11" date="2026-07-12">
+      <description>
+        <p>Fixed an intermittent crash when the window was revealed from the tray or by a second launch — the window was shown from a background thread, which GTK does not allow.</p>
+      </description>
+    </release>
     <release version="1.2.10" date="2026-07-12">
       <description>
         <p>Fixed the window not coming to the front when opened from the tray icon or the tray menu — it now reliably raises and takes focus, including on Wayland compositors like COSMIC where a plain focus request was being ignored.</p>
