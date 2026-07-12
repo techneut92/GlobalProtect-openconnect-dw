@@ -448,6 +448,48 @@ jobs:
       run: |
         cd gh-release/gp/scripts && ./gh-release.sh "$RELEASE_TAG"
 
+  # Bump the OBS package (Ubuntu apt repo) to the new release. Replaces the
+  # manual per-release `osc` dance; the actual Ubuntu build then runs on the
+  # OBS servers. Tag releases only (never the workflow_dispatch snapshot),
+  # after the GitHub release exists — OBS's download_url service fetches the
+  # .offline.tar.gz release asset server-side. Needs the OBS_USERNAME and
+  # OBS_PASSWORD secrets (api.opensuse.org login).
+  obs-publish:
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    needs:
+      - gh-release
+    steps:
+    - name: Checkout GlobalProtect-openconnect
+      uses: actions/checkout@v6
+      with:
+        repository: techneut92/GlobalProtect-openconnect-dw
+        ref: ${{ github.ref }}
+
+    - name: Install osc
+      run: pipx install osc
+
+    - name: Configure osc
+      env:
+        OBS_USERNAME: ${{ secrets.OBS_USERNAME }}
+        OBS_PASSWORD: ${{ secrets.OBS_PASSWORD }}
+      run: |
+        mkdir -p ~/.config/osc
+        cat > ~/.config/osc/oscrc <<EOF
+        [general]
+        apiurl = https://api.opensuse.org
+        [https://api.opensuse.org]
+        user = $OBS_USERNAME
+        pass = $OBS_PASSWORD
+        credentials_mgr_class = osc.credentials.PlaintextConfigFileCredentialsManager
+        EOF
+        chmod 600 ~/.config/osc/oscrc
+
+    - name: Bump the OBS package
+      run: |
+        VERSION="${GITHUB_REF_NAME#v}"
+        ./scripts/obs-publish.sh "$VERSION"
+
   publish-docker-image:
     # Disabled: publishes the multi-arch image manifest to Docker Hub (needs
     # DOCKER_HUB_USERNAME/TOKEN secrets). Re-enable alongside build-docker-image.

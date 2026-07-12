@@ -540,6 +540,16 @@ GlobalProtect, GnuTLS/PKCS#11, or security changes — pin unchanged.
   GTK main thread via `run_on_main_thread` (a tokio oneshot hands the built
   window back to the async flow) — the same treatment the tray reveal got in
   1.2.11. Fixes #24.
+## 2026-07-12 — CI: automated OBS (Ubuntu apt repo) release bump
+
+- New `scripts/obs-publish.sh` + tag-gated `obs-publish` CI job
+  (`.github/workflows/build.yaml`): after the GitHub release is published, CI
+  checks out the `home:Techneut92:gp-client/globalprotect-openconnect-dw` OBS
+  package, points `_service` at the new `.offline.tar.gz` release asset, sets
+  the `.dsc` Version, prepends a `debian.changelog` entry generated from
+  `changelog.md`, and `osc commit`s — the Ubuntu build then runs on the OBS
+  servers as before. Authenticates via the `OBS_USERNAME`/`OBS_PASSWORD`
+  repository secrets.
 
 ### Third-party components
 
