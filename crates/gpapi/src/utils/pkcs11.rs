@@ -308,7 +308,18 @@ pub fn create_pkcs11_client_config(
   let module = module_path()?;
   info!("Loading PKCS#11 module: {module}");
   let pkcs11 = Pkcs11::new(&module).context("failed to load PKCS#11 module")?;
-  pkcs11.initialize(CInitializeArgs::OsThreads).context("PKCS#11 initialize failed")?;
+  // gpservice is long-lived and now runs prelogin repeatedly (once per connect),
+  // and the openconnect tunnel also initialises the same module via GnuTLS —
+  // so C_Initialize is process-global and may already have run. Treat
+  // "already initialized" as success (the module is usable) instead of failing
+  // the second connect with "PKCS#11 initialize failed".
+  match pkcs11.initialize(CInitializeArgs::OsThreads) {
+    Ok(()) => {}
+    Err(cryptoki::error::Error::Pkcs11(cryptoki::error::RvError::CryptokiAlreadyInitialized, _)) => {
+      info!("PKCS#11 module already initialised in this process; reusing it");
+    }
+    Err(e) => return Err(e).context("PKCS#11 initialize failed"),
+  }
 
   // Pick the slot whose token label matches the URI (or the first with a token).
   let slots = pkcs11.get_slots_with_token().context("no PKCS#11 token slots")?;
