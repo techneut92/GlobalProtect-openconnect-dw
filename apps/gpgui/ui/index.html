@@ -207,7 +207,7 @@
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-    const RAW = ['#6b7286', '#fbbf24', '#34d399', '#fb7185'];
+    const RAW = ['#6b7286', '#fbbf24', '#34d399', '#fb7185', '#fbbf24'];
     const AUTH_NAME = { '-1': 'Auto-detect', '0': 'Smart card', '1': 'Certificate file', '2': 'SAML / SSO', '3': 'Username & password' };
     function authIcon(m, size) {
       size = size || 13;
@@ -486,27 +486,30 @@
     function render(s) {
       const kind = s.kind || 0;
       lastKind = kind;
-      if (kind === 2) { if (!liveT0) liveT0 = Date.now(); } else { liveT0 = null; }
+      // kind 4 (reconnecting) keeps the elapsed clock — the session survives.
+      if (kind === 2 || kind === 4) { if (!liveT0) liveT0 = Date.now(); } else { liveT0 = null; }
       $('statusText').textContent = kind === 3 ? 'Error' : s.status;
       const dot = $('dot'); dot.style.background = RAW[kind] || '#6b7286'; dot.style.color = RAW[kind] || '#6b7286';
-      dot.classList.toggle('live', kind === 1 || kind === 2);
+      dot.classList.toggle('live', kind === 1 || kind === 2 || kind === 4);
       const orb = $('orb');
       orb.style.setProperty('--c', RAW[kind] || '#6b7286');
-      orb.classList.toggle('connecting', kind === 1);
+      orb.classList.toggle('connecting', kind === 1 || kind === 4);
       orb.classList.toggle('connected', kind === 2);
       $('orbGlyphInner').setAttribute('d', kind === 2 ? 'M9 12l2 2 4-4' : 'M12 8v4M12 15.5h.01');
-      const titles = ['Not connected', 'Connecting…', 'Protected', 'Connection failed'];
+      const titles = ['Not connected', 'Connecting…', 'Protected', 'Connection failed', 'Reconnecting…'];
       $('statusTitle').textContent = titles[kind] || titles[0];
       let sub = 'Your traffic is not encrypted';
       if (kind === 1) sub = 'Establishing secure tunnel';
       else if (kind === 2) sub = 'Connected · ' + (s.elapsed || elapsedStr());
       else if (kind === 3) sub = 'Check your credentials and retry';
+      else if (kind === 4) sub = 'Re-establishing secure tunnel';
       $('statusSub').textContent = sub;
 
       active = !!s.active;
       // only flip content when vault is unlocked
       if (!$('unlockedView').classList.contains('show')) return;
-      const connected = kind === 2;
+      // Reconnecting keeps the connected details view — the session survives.
+      const connected = kind === 2 || kind === 4;
       $('formContent').hidden = connected;
       $('connContent').hidden = !connected;
 
@@ -517,7 +520,7 @@
 
       const ab = $('actionBtn');
       const has = identities.length > 0;
-      if (kind === 2) { ab.textContent = 'Disconnect'; ab.className = 'btn-action danger'; ab.onclick = disconnect; ab.style.display = ''; }
+      if (kind === 2 || kind === 4) { ab.textContent = 'Disconnect'; ab.className = 'btn-action danger'; ab.onclick = disconnect; ab.style.display = ''; }
       else if (kind === 1) { ab.textContent = 'Cancel'; ab.className = 'btn-action ghost'; ab.onclick = disconnect; ab.style.display = ''; }
       else if (kind === 3) { ab.textContent = 'Try again'; ab.className = 'btn-action'; ab.onclick = connect; ab.style.display = ''; }
       else { ab.textContent = 'Connect'; ab.className = 'btn-action'; ab.onclick = connect; ab.style.display = has ? '' : 'none'; }

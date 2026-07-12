@@ -116,6 +116,12 @@ fn render_snapshot() -> String {
       json(&WsEvent::VpnState(VpnState::Connecting(Box::new(sample_connect_info())))),
     ),
     (
+      "WsEvent::VpnState(Reconnecting)",
+      json(&WsEvent::VpnState(VpnState::Reconnecting(Box::new(
+        sample_connected_info(),
+      )))),
+    ),
+    (
       "WsEvent::VpnState(Disconnected)",
       json(&WsEvent::VpnState(VpnState::Disconnected)),
     ),

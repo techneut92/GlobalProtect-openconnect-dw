@@ -42,6 +42,16 @@ static void print_progress(__attribute__((unused)) void *_vpninfo, int level,
 	}
 }
 
+/* Fired by openconnect each time the tunnel is re-established after an
+ * internal reconnect (DPD failure, or a pause we injected on resume from
+ * sleep). privdata is vpninfo (we don't use new_with_cbdata); route to Rust
+ * with the caller's user_data like the other callbacks. */
+static void reconnected_handler(__attribute__((unused)) void *privdata)
+{
+	INFO("Tunnel re-established");
+	vpn_on_reconnected(g_user_data);
+}
+
 static void setup_tun_handler(void *_vpninfo)
 {
 	int ret;
@@ -206,6 +216,7 @@ int vpn_connect(const vpn_options *options, vpn_connected_callback callback)
 
 	// Essential step
 	openconnect_set_setup_tun_handler(vpninfo, setup_tun_handler);
+	openconnect_set_reconnected_handler(vpninfo, reconnected_handler);
 
 	while (1) {
 		int ret = openconnect_mainloop(vpninfo,
@@ -218,6 +229,24 @@ int vpn_connect(const vpn_options *options, vpn_connected_callback callback)
 		}
 
 		INFO("openconnect_mainloop returned 0, reconnecting");
+	}
+}
+
+/* Force an immediate teardown-and-reconnect of the tunnel, reusing the
+ * existing cookie (no re-auth). OC_CMD_PAUSE makes openconnect_mainloop
+ * return 0, and the vpn_connect loop re-enters it, which reconnects — the
+ * same mechanism as the CLI's SIGUSR2 "user requested reconnect". Used on
+ * resume from sleep, where waiting for DPD to notice the dead peer takes
+ * minutes. */
+void vpn_pause(void)
+{
+	char cmd = OC_CMD_PAUSE;
+
+	INFO("Pausing VPN connection for reconnect: %d", g_cmd_pipe_fd);
+
+	if (write(g_cmd_pipe_fd, &cmd, 1) < 0) {
+		ERROR("Failed to write to command pipe, VPN connection may not "
+		      "be paused");
 	}
 }
 

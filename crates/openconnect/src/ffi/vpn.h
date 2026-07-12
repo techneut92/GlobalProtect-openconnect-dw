@@ -54,8 +54,12 @@ typedef struct vpn_options {
 
 int vpn_connect(const vpn_options *options, vpn_connected_callback callback);
 void vpn_disconnect();
+void vpn_pause(void);
 
 extern void vpn_log(int level, const char *msg);
+/* Implemented in Rust: called (with the vpn_options user_data) each time
+ * openconnect successfully re-establishes the tunnel after a reconnect. */
+extern void vpn_on_reconnected(void *user_data);
 
 static char *format_message(const char *format, va_list args)
 {

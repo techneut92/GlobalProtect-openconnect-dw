@@ -103,7 +103,7 @@ impl GpTray {
       Status::Connected => self.static_set(c.connected),
       // Error reuses the disconnected icon (per design — no separate error art).
       Status::Disconnected | Status::Error(_) => self.static_set(c.disconnected),
-      Status::Connecting | Status::Disconnecting => {
+      Status::Connecting | Status::Reconnecting | Status::Disconnecting => {
         let i = if animate { self.frame.load(Ordering::Relaxed) } else { 0 };
         let frame = c.connecting_frames[i % c.connecting_frames.len()];
         to_icon(frame).into_iter().collect()

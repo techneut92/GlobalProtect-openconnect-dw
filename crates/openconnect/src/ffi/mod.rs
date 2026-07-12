@@ -61,6 +61,9 @@ unsafe extern "C" {
 
   #[link_name = "vpn_disconnect"]
   fn vpn_disconnect();
+
+  #[link_name = "vpn_pause"]
+  fn vpn_pause();
 }
 
 pub(crate) fn connect(options: &ConnectOptions) -> i32 {
@@ -71,10 +74,22 @@ pub(crate) fn disconnect() {
   unsafe { vpn_disconnect() }
 }
 
+pub(crate) fn pause() {
+  unsafe { vpn_pause() }
+}
+
 #[unsafe(no_mangle)]
 extern "C" fn on_vpn_connected(pipe_fd: i32, session_info: *const VpnSessionInfoRaw, vpn: *mut c_void) {
   let vpn = unsafe { &*(vpn as *const Vpn) };
   vpn.on_connected(pipe_fd, crate::vpn::session_info_from_raw(session_info));
+}
+
+// Called from C each time openconnect re-establishes the tunnel after an
+// internal reconnect (see reconnected_handler in vpn.c).
+#[unsafe(no_mangle)]
+extern "C" fn vpn_on_reconnected(vpn: *mut c_void) {
+  let vpn = unsafe { &*(vpn as *const Vpn) };
+  vpn.on_reconnected();
 }
 
 // Logger used in the C code.

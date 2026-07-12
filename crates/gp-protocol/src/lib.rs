@@ -29,14 +29,22 @@
 
 /// Oldest wire-protocol version this build can still speak. Raise this **only**
 /// when intentionally dropping support for an old protocol.
-pub const PROTOCOL_MIN: u32 = 1;
+///
+/// v2 (1.3.0) raised MIN too: `VpnState::Reconnecting` is emitted
+/// unconditionally (there is no speak-down machinery to suppress it for a v1
+/// peer), so claiming v1 support would hand old GUIs an unparseable state.
+/// GUI + backend ship in lockstep in every channel, so a hard break here just
+/// surfaces the designed "update GUI/backend" prompt.
+pub const PROTOCOL_MIN: u32 = 2;
 
 /// Newest (current) wire-protocol version this build speaks. Bump this when the
 /// message types change. Each side advertises its `MIN..=MAX` range and they
 /// negotiate the highest version both support — so a newer peer speaks down to
 /// an older one within range, and a hard "update needed" only happens when the
 /// ranges don't overlap at all.
-pub const PROTOCOL_MAX: u32 = 1;
+///
+/// v2: added `VpnState::Reconnecting(ConnectedInfo)`.
+pub const PROTOCOL_MAX: u32 = 2;
 
 /// The current protocol version — alias for [`PROTOCOL_MAX`].
 pub const PROTOCOL_VERSION: u32 = PROTOCOL_MAX;

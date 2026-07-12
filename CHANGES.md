@@ -550,6 +550,38 @@ GlobalProtect, GnuTLS/PKCS#11, or security changes — pin unchanged.
   `changelog.md`, and `osc commit`s — the Ubuntu build then runs on the OBS
   servers as before. Authenticates via the `OBS_USERNAME`/`OBS_PASSWORD`
   repository secrets.
+## 2026-07-12 — Suspend/resume: immediate reconnect + honest "Reconnecting" state
+
+After a suspend the tunnel's peer state is dead, but openconnect only noticed
+via DPD (minutes) and then retried silently for up to `reconnect_timeout`
+(300 s) — all while the client still reported **Connected** and traffic hung.
+
+- **`gpservice` sleep monitor** (`apps/gpservice/src/sleep_monitor.rs`): watches
+  logind's `PrepareForSleep` on the system bus (zbus, both transports). On
+  resume, if Connected, it forces an immediate teardown-and-reconnect.
+- **openconnect FFI** (`crates/openconnect`): new `vpn_pause()` writes
+  `OC_CMD_PAUSE` to the command pipe — the mainloop returns 0 and the existing
+  `vpn_connect` loop re-enters it, reconnecting with the same cookie (no
+  re-auth; the CLI's SIGUSR2 mechanism). Registered
+  `openconnect_set_reconnected_handler` and exposed it as a repeatable
+  `Vpn::set_on_reconnected` callback (also fires for DPD-triggered internal
+  reconnects). Fixed the crate's unit tests for the tunnel fields added to
+  `VpnSessionInfoRaw` earlier.
+- **Protocol** (`crates/gp-protocol`): new `VpnState::Reconnecting(ConnectedInfo)`
+  variant — a **breaking protocol addition**, so the next release is **1.3.0**
+  (GUI and backend must move together). `PROTOCOL_MIN`/`PROTOCOL_MAX` bumped to
+  **2** (MIN too: there is no speak-down machinery, so claiming v1 support would
+  hand old GUIs an unparseable state — the hard break surfaces the designed
+  "update GUI/backend" prompt instead). Wire snapshot regenerated with the new
+  `Reconnecting` sample.
+- **State plumbing** (`apps/gpservice/src/vpn_task.rs`): the last
+  `ConnectedInfo` is kept; `reconnect()` emits `Reconnecting(info)` and pauses;
+  the reconnected callback re-emits `Connected(info)`. A failed reconnect falls
+  through the existing mainloop-exit path to `Disconnected`.
+- **GUI** (`apps/gpgui`): new `Status::Reconnecting` — amber animated tray icon,
+  "Reconnecting…" labels, webview keeps the connected-details view and the
+  elapsed clock, Disconnect stays available; state `kind` 4 in the webview
+  payload.
 
 ### Third-party components
 
