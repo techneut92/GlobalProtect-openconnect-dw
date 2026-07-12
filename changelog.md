@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.0 - 2026-07-12
 
 - Ported relevant improvements from upstream GlobalProtect-openconnect 2.6.x:
   - **SAML sign-in fix**: the portal is now sent a stable `host-id`, which it
