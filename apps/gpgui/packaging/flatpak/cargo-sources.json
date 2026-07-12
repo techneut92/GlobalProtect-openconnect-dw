@@ -1,5 +1,11 @@
 [
     {
+        "type": "git",
+        "url": "https://github.com/techneut92/gp-protocol",
+        "commit": "13e56dc6a6ec326e3356a1ea2952886a95608652",
+        "dest": "flatpak-cargo/git/gp-protocol-13e56dc"
+    },
+    {
         "type": "archive",
         "archive-type": "tar-gzip",
         "url": "https://static.crates.io/crates/Inflector/Inflector-0.11.4.crate",
@@ -2584,6 +2590,24 @@
         "type": "inline",
         "contents": "{\"package\": \"0850127b514d1c4a4654ead6dedadb18198999985908e6ffe4436f53c785ce44\", \"files\": {}}",
         "dest": "cargo/vendor/gobject-sys-0.18.0",
+        "dest-filename": ".cargo-checksum.json"
+    },
+    {
+        "type": "shell",
+        "commands": [
+            "cp -r --reflink=auto \"flatpak-cargo/git/gp-protocol-13e56dc/.\" \"cargo/vendor/gp-protocol\""
+        ]
+    },
+    {
+        "type": "inline",
+        "contents": "[package]\nname = \"gp-protocol\"\nversion = \"1.0.0\"\nedition = \"2021\"\nrust-version = \"1.85\"\nlicense = \"MIT OR Apache-2.0\"\nauthors = [\"Dylan Westra <dylanwestra@gmail.com>\"]\ndescription = \"Versioned wire protocol between the GP Client GUI and the gpservice backend (GlobalProtect-compatible VPN client).\"\nrepository = \"https://github.com/techneut92/gp-protocol\"\nkeywords = [\"globalprotect\", \"vpn\", \"protocol\"]\ncategories = [\"network-programming\"]\n\n[dependencies]\nserde_json = \"1\"\nchrono = \"0.4\"\nhumantime = \"2\"\n\n[dependencies.serde]\nversion = \"1\"\nfeatures = [\"derive\"]\n\n[dependencies.specta]\nversion = \"2.0.0-rc\"\nfeatures = [\"derive\"]\n",
+        "dest": "cargo/vendor/gp-protocol",
+        "dest-filename": "Cargo.toml"
+    },
+    {
+        "type": "inline",
+        "contents": "{\"package\": null, \"files\": {}}",
+        "dest": "cargo/vendor/gp-protocol",
         "dest-filename": ".cargo-checksum.json"
     },
     {
@@ -9257,7 +9281,7 @@
     },
     {
         "type": "inline",
-        "contents": "[source.vendored-sources]\ndirectory = \"cargo/vendor\"\n\n[source.crates-io]\nreplace-with = \"vendored-sources\"\n",
+        "contents": "[source.vendored-sources]\ndirectory = \"cargo/vendor\"\n\n[source.crates-io]\nreplace-with = \"vendored-sources\"\n\n[source.\"https://github.com/techneut92/gp-protocol\"]\ngit = \"https://github.com/techneut92/gp-protocol\"\nreplace-with = \"vendored-sources\"\ntag = \"v1.0.0\"\n",
         "dest": "cargo",
         "dest-filename": "config"
     }

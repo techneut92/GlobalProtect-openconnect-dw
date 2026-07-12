@@ -583,6 +583,19 @@ via DPD (minutes) and then retried silently for up to `reconnect_timeout`
   elapsed clock, Disconnect stays available; state `kind` 4 in the webview
   payload.
 
+## 2026-07-12 — gp-protocol extracted to its own project
+
+- Removed `crates/gp-protocol` from this tree. The GUI↔backend wire protocol
+  now lives at <https://github.com/techneut92/gp-protocol> — an independent
+  work © 2026 Dylan Westra, licensed MIT OR Apache-2.0, re-authored from the
+  wire shape (field names/value vocabularies are protocol facts; the
+  serialized form is pinned by its `wire_format` snapshot test, carried over
+  and passing unchanged). This GPL work consumes it as a tag-pinned
+  dependency (`gpapi`, `gpservice`, `gpgui` Cargo.toml → workspace
+  dependency), which is license-compatible (MIT/Apache-2.0 → GPL-3.0).
+- CI: the `wire-format-guard` job moved to the gp-protocol repository; the
+  Flatpak `cargo-sources.json` was regenerated to carry the git source.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of

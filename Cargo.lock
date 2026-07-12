@@ -2082,7 +2082,8 @@ dependencies = [
 
 [[package]]
 name = "gp-protocol"
-version = "0.1.0"
+version = "1.0.0"
+source = "git+https://github.com/techneut92/gp-protocol?tag=v1.0.0#13e56dc6a6ec326e3356a1ea2952886a95608652"
 dependencies = [
  "chrono",
  "humantime",
