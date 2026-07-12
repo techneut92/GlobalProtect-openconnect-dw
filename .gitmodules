@@ -3,4 +3,4 @@
 	url = https://gitlab.com/openconnect/openconnect.git
 [submodule "crates/openconnect/deps/libxml2"]
 	path = crates/openconnect/deps/libxml2
-	url = https://gitlab.gnome.org/GNOME/libxml2.git
+	url = https://github.com/GNOME/libxml2.git
