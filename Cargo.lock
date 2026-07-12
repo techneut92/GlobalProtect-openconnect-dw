@@ -2083,7 +2083,8 @@ dependencies = [
 [[package]]
 name = "gp-protocol"
 version = "1.0.0"
-source = "git+https://github.com/techneut92/gp-protocol?tag=v1.0.0#13e56dc6a6ec326e3356a1ea2952886a95608652"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4e7bdcb1d6e12aae24845cc09e47ca7d33ca0265184523fee193bd6f6af5754"
 dependencies = [
  "chrono",
  "humantime",
