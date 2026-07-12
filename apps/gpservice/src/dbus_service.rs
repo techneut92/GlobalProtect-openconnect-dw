@@ -69,6 +69,9 @@ struct GpService {
   ws_req_tx: mpsc::Sender<WsRequest>,
   vpn_state_rx: watch::Receiver<VpnState>,
   controller: Controller,
+  /// zbus runs interface methods on its own executor, which is not a tokio
+  /// runtime — so `reqwest`-based work (prelogin) must be spawned onto tokio.
+  tokio: tokio::runtime::Handle,
 }
 
 #[zbus::interface(name = "io.github.techneut92.GPService1")]
@@ -113,7 +116,13 @@ impl GpService {
   async fn probe(&self, request: String) -> zbus::fdo::Result<String> {
     let req: gpapi::service::request::ProbeRequest = serde_json::from_str(&request)
       .map_err(|e| zbus::fdo::Error::InvalidArgs(format!("invalid ProbeRequest: {e}")))?;
-    let reply = crate::auth_flow::probe(&req).await;
+    // Run the prelogin (reqwest) on the tokio runtime, not the zbus executor —
+    // otherwise the HTTP client panics with "no reactor running".
+    let reply = self
+      .tokio
+      .spawn(async move { crate::auth_flow::probe(&req).await })
+      .await
+      .map_err(|e| zbus::fdo::Error::Failed(format!("probe task failed: {e}")))?;
     serde_json::to_string(&reply).map_err(|e| zbus::fdo::Error::Failed(e.to_string()))
   }
 
@@ -159,6 +168,7 @@ pub async fn run(
     ws_req_tx: ws_req_tx.clone(),
     vpn_state_rx: vpn_state_rx.clone(),
     controller: controller.clone(),
+    tokio: tokio::runtime::Handle::current(),
   };
 
   let session = std::env::var("GP_DBUS_SESSION").is_ok();
