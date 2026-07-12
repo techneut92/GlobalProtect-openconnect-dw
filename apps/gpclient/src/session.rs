@@ -220,6 +220,9 @@ mod tests {
           prior_secs: 1_800,
           message: "Session expires soon".to_string(),
         }),
+        tun_iface: None,
+        ipv4: None,
+        ipv6: None,
       },
       true,
     );
@@ -240,6 +243,9 @@ mod tests {
           prior_secs: 1_800,
           message: "Session expires soon".to_string(),
         }),
+        tun_iface: None,
+        ipv4: None,
+        ipv6: None,
       },
       false,
     );

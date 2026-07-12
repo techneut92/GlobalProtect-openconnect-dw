@@ -429,6 +429,9 @@ mod tests {
       user_expires: 1_776_828_409,
       lifetime_warning_prior: 1_800,
       lifetime_warning_message: message.as_ptr(),
+      tun_name: std::ptr::null(),
+      ipaddr: std::ptr::null(),
+      ipaddr6: std::ptr::null(),
     };
 
     let info = session_info_from_raw(&raw);
@@ -452,6 +455,9 @@ mod tests {
       user_expires: 0,
       lifetime_warning_prior: 0,
       lifetime_warning_message: std::ptr::null(),
+      tun_name: std::ptr::null(),
+      ipaddr: std::ptr::null(),
+      ipaddr6: std::ptr::null(),
     };
 
     let info = session_info_from_raw(&raw);
