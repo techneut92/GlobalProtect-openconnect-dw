@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 // `gp-protocol` crate; re-exported so `gpapi::service::request::*` keeps working.
 // `LaunchGuiRequest` / `UpdateGuiRequest` are not part of the GUI<->service VPN
 // protocol (they drive `gpclient launch-gui` and the GUI updater), so they stay.
-pub use gp_protocol::{ConnectArgs, ConnectRequest, DisconnectRequest, UpdateLogLevelRequest, WsRequest};
+pub use gp_protocol::{
+  AuthCredential, ConnectArgs, ConnectAuthRequest, ConnectRequest, DisconnectRequest, ProbeReply, ProbeRequest,
+  UpdateLogLevelRequest, WsRequest,
+};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct LaunchGuiRequest {

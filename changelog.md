@@ -1,7 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.3.1 - 2026-07-12
 
+- Backend: `gpservice` gained a versioned **authentication handoff** — prelogin
+  (including the smart-card mTLS), SAML, and the gateway login can now run in
+  the backend, driven by a GUI over the wire protocol. This is the foundation
+  for the upcoming independent **GP Client** GUI (which links no GPL code); the
+  current app is unchanged and keeps connecting exactly as before.
 - Internal: the GUI↔backend **wire protocol now lives in its own project**,
   [`gp-protocol`](https://github.com/techneut92/gp-protocol), consumed as a
   version-pinned dependency. No user-visible change; protocol compatibility is

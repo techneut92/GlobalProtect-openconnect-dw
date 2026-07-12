@@ -69,6 +69,9 @@ struct GpService {
   ws_req_tx: mpsc::Sender<WsRequest>,
   vpn_state_rx: watch::Receiver<VpnState>,
   controller: Controller,
+  /// zbus runs interface methods on its own executor, which is not a tokio
+  /// runtime — so `reqwest`-based work (prelogin) must be spawned onto tokio.
+  tokio: tokio::runtime::Handle,
 }
 
 #[zbus::interface(name = "io.github.techneut92.GPService1")]
@@ -107,6 +110,42 @@ impl GpService {
     Ok(())
   }
 
+  /// v3 handoff: run prelogin and return the required auth as a JSON
+  /// `ProbeReply`. Read-only (no tunnel change), so it is not polkit-gated —
+  /// it only tells the caller which credential the server wants.
+  async fn probe(&self, request: String) -> zbus::fdo::Result<String> {
+    let req: gpapi::service::request::ProbeRequest = serde_json::from_str(&request)
+      .map_err(|e| zbus::fdo::Error::InvalidArgs(format!("invalid ProbeRequest: {e}")))?;
+    // Run the prelogin (reqwest) on the tokio runtime, not the zbus executor —
+    // otherwise the HTTP client panics with "no reactor running".
+    let reply = self
+      .tokio
+      .spawn(async move { crate::auth_flow::probe(&req).await })
+      .await
+      .map_err(|e| zbus::fdo::Error::Failed(format!("probe task failed: {e}")))?;
+    serde_json::to_string(&reply).map_err(|e| zbus::fdo::Error::Failed(e.to_string()))
+  }
+
+  /// v3 handoff: authenticate with a captured credential and start the tunnel.
+  /// `request` is the JSON `ConnectAuthRequest`. Progress arrives via
+  /// `VpnStateChanged`, exactly like `connect`.
+  async fn connect_auth(&self, #[zbus(header)] header: Header<'_>, request: String) -> zbus::fdo::Result<()> {
+    if !authorized(&header).await {
+      return Err(zbus::fdo::Error::AccessDenied("not authorised to manage the VPN".into()));
+    }
+    let req: gpapi::service::request::ConnectAuthRequest = serde_json::from_str(&request)
+      .map_err(|e| zbus::fdo::Error::InvalidArgs(format!("invalid ConnectAuthRequest: {e}")))?;
+    if let Some(sender) = header.sender() {
+      *self.controller.lock().unwrap() = Some(sender.to_string());
+    }
+    self
+      .ws_req_tx
+      .send(WsRequest::ConnectAuth(Box::new(req)))
+      .await
+      .map_err(|e| zbus::fdo::Error::Failed(e.to_string()))?;
+    Ok(())
+  }
+
   /// Current VPN state as JSON (mirrors the `VpnStateChanged` payload).
   async fn status(&self) -> String {
     serde_json::to_string(&*self.vpn_state_rx.borrow()).unwrap_or_else(|_| "null".into())
@@ -129,6 +168,7 @@ pub async fn run(
     ws_req_tx: ws_req_tx.clone(),
     vpn_state_rx: vpn_state_rx.clone(),
     controller: controller.clone(),
+    tokio: tokio::runtime::Handle::current(),
   };
 
   let session = std::env::var("GP_DBUS_SESSION").is_ok();

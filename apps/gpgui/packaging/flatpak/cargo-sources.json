@@ -2589,14 +2589,14 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
-        "url": "https://static.crates.io/crates/gp-protocol/gp-protocol-1.0.0.crate",
-        "sha256": "c4e7bdcb1d6e12aae24845cc09e47ca7d33ca0265184523fee193bd6f6af5754",
-        "dest": "cargo/vendor/gp-protocol-1.0.0"
+        "url": "https://static.crates.io/crates/gp-protocol/gp-protocol-1.1.0.crate",
+        "sha256": "0350fa5afaedd22c9b657f635ef7393f1cf841ad8c7480e964df92cbda65e01e",
+        "dest": "cargo/vendor/gp-protocol-1.1.0"
     },
     {
         "type": "inline",
-        "contents": "{\"package\": \"c4e7bdcb1d6e12aae24845cc09e47ca7d33ca0265184523fee193bd6f6af5754\", \"files\": {}}",
-        "dest": "cargo/vendor/gp-protocol-1.0.0",
+        "contents": "{\"package\": \"0350fa5afaedd22c9b657f635ef7393f1cf841ad8c7480e964df92cbda65e01e\", \"files\": {}}",
+        "dest": "cargo/vendor/gp-protocol-1.1.0",
         "dest-filename": ".cargo-checksum.json"
     },
     {
