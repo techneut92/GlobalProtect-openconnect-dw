@@ -596,6 +596,31 @@ via DPD (minutes) and then retried silently for up to `reconnect_timeout`
 - CI: the `wire-format-guard` job moved to the gp-protocol repository; the
   Flatpak `cargo-sources.json` was regenerated to carry the git source.
 
+## 2026-07-12 — Server-side authentication handoff (wire-protocol v3)
+
+Moved GlobalProtect authentication into `gpservice` so an unprivileged,
+GPL-free GUI (the forthcoming GP Client) can connect without linking `gpapi` or
+`auth`. Uses `gp-protocol` 1.1.0 (protocol v3, additive — `MIN` stays 2):
+
+- **`crates/gpapi/src/service/request.rs`** re-exports the new
+  `ProbeRequest`/`ProbeReply`/`AuthCredential`/`ConnectAuthRequest` handoff types.
+- **`apps/gpservice/src/auth_flow.rs`** (new): runs prelogin (including the
+  PKCS#11 smart-card mTLS), builds the gateway credential from the GUI-supplied
+  result (password / SAML cookie / cert), performs the gateway login, and hands
+  a `ConnectRequest` to the existing tunnel path. Mirrors the client-side flow
+  the fork's `apps/gpgui` used, moved into the service.
+- **D-Bus transport** (`apps/gpservice/src/dbus_service.rs`): new `probe`
+  (read-only, not polkit-gated) and `connect_auth` (polkit-gated, like
+  `connect`) methods. The probe runs its HTTP work on the tokio runtime — zbus
+  dispatches interface methods on its own executor, where `reqwest` would panic.
+- **`apps/gpservice/src/vpn_task.rs`**: `WsRequest::ConnectAuth` reuses the
+  connect path (state broadcasting unchanged); `Probe` is answered by the
+  transport layer.
+
+The existing GUI's connect path (a client-built `ConnectRequest`) is untouched
+and unaffected. The WS/loopback transport's `Probe` response routing is a
+follow-up; the D-Bus path (the sandboxed-GUI transport) is complete.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of

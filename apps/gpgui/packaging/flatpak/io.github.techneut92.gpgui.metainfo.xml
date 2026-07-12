@@ -75,6 +75,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.3.1" date="2026-07-12">
+      <description>
+        <p>Backend groundwork for the upcoming independent GP Client GUI: gpservice can now run authentication (prelogin, smart-card mTLS, SAML, and gateway login) itself, driven over the wire protocol. No change to how the current app connects.</p>
+      </description>
+    </release>
     <release version="1.3.0" date="2026-07-12">
       <description>
         <p>The client now reconnects immediately on resume from sleep (reusing the existing session) and shows an honest "Reconnecting…" state, instead of claiming Connected while the tunnel is dead. Fixed the remaining daily SSO crash (the sign-in window was created and revealed off the GTK main thread). Ported upstream 2.6.x improvements: host-id is sent so gateway SAML gets its authentication-override cookie, a portal-cookie cache lets CLI reconnects skip SAML, more robust external-browser sign-in, and Microsoft Defender detection in the HIP report. Note: GUI and backend must both be 1.3.0 or newer.</p>
