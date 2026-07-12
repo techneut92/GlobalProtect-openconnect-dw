@@ -523,6 +523,23 @@ gateway browser-auth mode gating (our browser mode is response-driven), the
 2.6.x packaging/profile restructure, and NixOS/macOS/CI changes. The vendored
 openconnect pin was reviewed against upstream master (23 commits): no
 GlobalProtect, GnuTLS/PKCS#11, or security changes — pin unchanged.
+## 2026-07-12 — SSO webview: build and raise the auth window on the GTK main thread
+
+- **Intermittent SIGSEGV during SSO** (`crates/auth/src/webview/webview_auth.rs`,
+  `crates/gpapi/src/utils/window.rs`): this fork runs SAML SSO **in-process** in
+  the GUI (upstream's separate `gpauth` binary builds its auth window on its own
+  main thread), so `WebviewAuthenticator::authenticate` executes on a Tauri
+  async worker. Two raw-GTK-on-the-calling-thread sites resulted: the
+  `WebviewWindow` builder (GTK window creation), and `WindowExt::raise`'s
+  Wayland branch (`gtk_win.hide()`/`show_all()`), fired by the auth window's
+  10-second raise timer when sign-in needs interaction. GTK is single-threaded;
+  a captured core showed the worker mid-realize-cascade while the main loop
+  crashed in a recursive widget traversal (GitHub #24's original signature —
+  the crash was daily because a valid SSO cookie finishes silently in under
+  10 s and never arms the raise path). Both sites are now marshalled onto the
+  GTK main thread via `run_on_main_thread` (a tokio oneshot hands the built
+  window back to the async flow) — the same treatment the tray reveal got in
+  1.2.11. Fixes #24.
 
 ### Third-party components
 

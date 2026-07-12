@@ -17,6 +17,13 @@
     HEAD probes (link previews) no longer consume the single-use sign-in URL.
   - **HIP report**: Microsoft Defender (mdatp) is now detected on Linux and
     reported in the anti-malware section.
+- Fixed the **remaining intermittent crash** (segfault, roughly daily) during
+  **single sign-on**: the SSO window was created — and, if sign-in took more
+  than 10 seconds, revealed — from a background thread, which GTK does not
+  allow. Both now run on the UI thread. This was the same class of bug as the
+  1.2.11 tray fix and explains why the crash correlated with SSO logins: it
+  only struck when the sign-in cookie had expired and the login needed
+  interaction.
 
 ## 1.2.11 - 2026-07-12
 
