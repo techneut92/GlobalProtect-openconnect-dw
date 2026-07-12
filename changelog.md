@@ -24,6 +24,9 @@
   1.2.11 tray fix and explains why the crash correlated with SSO logins: it
   only struck when the sign-in cookie had expired and the login needed
   interaction.
+- Releases now **update the Ubuntu apt repo automatically**: the OBS package
+  bump that previously required a manual `osc` commit after each release runs
+  as a CI job once the GitHub release is published.
 
 ## 1.2.11 - 2026-07-12
 
