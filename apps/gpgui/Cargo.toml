@@ -16,7 +16,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 # Reuse the suite's auth pipeline + gpservice wire types.
 gpapi = { path = "../../crates/gpapi", features = ["webview-auth"] }
-gp-protocol = { path = "../../crates/gp-protocol" }
+gp-protocol = { workspace = true }
 # The GUI runs SAML SSO in-process (it is already a Tauri + webkit app): the
 # embedded webview (`webview-auth`) and the system-browser flow (`browser-auth`).
 # This is what lets the backend (gpauth/gpclient) drop webkit — see docs/split-plan.md.

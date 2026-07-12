@@ -42,18 +42,10 @@ jobs:
         run: |
           echo 'matrix=[{"runner": "ubuntu-latest", "arch": "amd64"}, {"runner": "ubuntu-24.04-arm", "arch": "ubuntu-24.04-arm"}]' >> $GITHUB_OUTPUT
 
-  # Fails if the GUI<->backend wire format (gp-protocol) changed without a
-  # deliberate snapshot regen — i.e. a silent protocol drift. An intentional
-  # change regenerates the snapshot (and bumps PROTOCOL_MAX); see the test.
-  wire-format-guard:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        submodules: recursive
-    - uses: dtolnay/rust-toolchain@stable
-    - name: Wire-format guard (protocol drift check)
-      run: cargo test -p gp-protocol --test wire_format
+  # The wire-format guard moved with gp-protocol to its own repo
+  # (github.com/techneut92/gp-protocol) — the crate is consumed here as a
+  # tag-pinned git dependency, so the wire format cannot drift inside this
+  # repo; protocol changes happen (and are snapshot-guarded) over there.
 
   tarball:
     runs-on: ubuntu-latest

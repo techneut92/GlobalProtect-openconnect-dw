@@ -2589,6 +2589,19 @@
     {
         "type": "archive",
         "archive-type": "tar-gzip",
+        "url": "https://static.crates.io/crates/gp-protocol/gp-protocol-1.0.0.crate",
+        "sha256": "c4e7bdcb1d6e12aae24845cc09e47ca7d33ca0265184523fee193bd6f6af5754",
+        "dest": "cargo/vendor/gp-protocol-1.0.0"
+    },
+    {
+        "type": "inline",
+        "contents": "{\"package\": \"c4e7bdcb1d6e12aae24845cc09e47ca7d33ca0265184523fee193bd6f6af5754\", \"files\": {}}",
+        "dest": "cargo/vendor/gp-protocol-1.0.0",
+        "dest-filename": ".cargo-checksum.json"
+    },
+    {
+        "type": "archive",
+        "archive-type": "tar-gzip",
         "url": "https://static.crates.io/crates/gtk/gtk-0.18.2.crate",
         "sha256": "fd56fb197bfc42bd5d2751f4f017d44ff59fbb58140c6b49f9b3b2bdab08506a",
         "dest": "cargo/vendor/gtk-0.18.2"

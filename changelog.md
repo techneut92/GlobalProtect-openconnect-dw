@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Internal: the GUI↔backend **wire protocol now lives in its own project**,
+  [`gp-protocol`](https://github.com/techneut92/gp-protocol), consumed as a
+  version-pinned dependency. No user-visible change; protocol compatibility is
+  guarded in that project.
+
 ## 1.3.0 - 2026-07-12
 
 - Ported relevant improvements from upstream GlobalProtect-openconnect 2.6.x:
