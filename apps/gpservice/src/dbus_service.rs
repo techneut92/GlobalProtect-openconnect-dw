@@ -107,6 +107,36 @@ impl GpService {
     Ok(())
   }
 
+  /// v3 handoff: run prelogin and return the required auth as a JSON
+  /// `ProbeReply`. Read-only (no tunnel change), so it is not polkit-gated —
+  /// it only tells the caller which credential the server wants.
+  async fn probe(&self, request: String) -> zbus::fdo::Result<String> {
+    let req: gpapi::service::request::ProbeRequest = serde_json::from_str(&request)
+      .map_err(|e| zbus::fdo::Error::InvalidArgs(format!("invalid ProbeRequest: {e}")))?;
+    let reply = crate::auth_flow::probe(&req).await;
+    serde_json::to_string(&reply).map_err(|e| zbus::fdo::Error::Failed(e.to_string()))
+  }
+
+  /// v3 handoff: authenticate with a captured credential and start the tunnel.
+  /// `request` is the JSON `ConnectAuthRequest`. Progress arrives via
+  /// `VpnStateChanged`, exactly like `connect`.
+  async fn connect_auth(&self, #[zbus(header)] header: Header<'_>, request: String) -> zbus::fdo::Result<()> {
+    if !authorized(&header).await {
+      return Err(zbus::fdo::Error::AccessDenied("not authorised to manage the VPN".into()));
+    }
+    let req: gpapi::service::request::ConnectAuthRequest = serde_json::from_str(&request)
+      .map_err(|e| zbus::fdo::Error::InvalidArgs(format!("invalid ConnectAuthRequest: {e}")))?;
+    if let Some(sender) = header.sender() {
+      *self.controller.lock().unwrap() = Some(sender.to_string());
+    }
+    self
+      .ws_req_tx
+      .send(WsRequest::ConnectAuth(Box::new(req)))
+      .await
+      .map_err(|e| zbus::fdo::Error::Failed(e.to_string()))?;
+    Ok(())
+  }
+
   /// Current VPN state as JSON (mirrors the `VpnStateChanged` payload).
   async fn status(&self) -> String {
     serde_json::to_string(&*self.vpn_state_rx.borrow()).unwrap_or_else(|_| "null".into())
