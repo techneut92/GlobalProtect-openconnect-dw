@@ -152,6 +152,12 @@ impl VpnTaskContext {
     }
   }
 
+  /// Return to Disconnected after a failed connect attempt (e.g. the v3
+  /// ConnectAuth auth step failed before a tunnel existed).
+  pub fn fail_connect(&self) {
+    self.vpn_state_tx.send(VpnState::Disconnected).ok();
+  }
+
   pub async fn disconnect(&self) -> bool {
     if let Some(disconnect_rx) = self.disconnect_rx.write().await.take() {
       info!("Disconnecting VPN...");
@@ -236,6 +242,26 @@ async fn process_ws_req(req: WsRequest, ctx: Arc<VpnTaskContext>) {
       if let Err(err) = logger::set_max_level(level) {
         warn!("Failed to update log level: {}", err);
       }
+    }
+    WsRequest::ConnectAuth(req) => {
+      // v3 handoff: the backend authenticates (prelogin + gateway login) and
+      // then starts the tunnel via the normal connect path, so state
+      // broadcasting is unchanged.
+      match crate::auth_flow::build_connect_request(&req).await {
+        Ok(request) => ctx.connect(request).await,
+        Err(err) => {
+          warn!("ConnectAuth failed: {:#}", err);
+          // Surface the failure as a return to Disconnected (the GUI shows the
+          // error via its own probe/labels; a dedicated error channel is TODO).
+          ctx.fail_connect();
+        }
+      }
+    }
+    WsRequest::Probe(_) => {
+      // Probe returns a ProbeReply to the *requesting* GUI, which needs
+      // per-transport response routing (D-Bus method reply / WS event). Handled
+      // in the transport layer, not here. TODO: wire ws_server + dbus_service.
+      warn!("Probe reached the VPN task; it must be answered by the transport layer");
     }
   }
 }

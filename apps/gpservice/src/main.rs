@@ -1,3 +1,4 @@
+mod auth_flow;
 mod cli;
 mod dbus_service;
 mod handlers;
