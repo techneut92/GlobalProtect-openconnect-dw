@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+- Ported relevant improvements from upstream GlobalProtect-openconnect 2.6.x:
+  - **SAML sign-in fix**: the portal is now sent a stable `host-id`, which it
+    requires to issue the authentication-override cookie — without it, gateway
+    SAML sign-in could fail with "saml-auth-status=-1".
+  - **Faster CLI reconnects**: `gpclient connect` now caches the portal cookie
+    (`~/.config/gpclient/cookie.json`, private file permissions) and reconnects
+    straight to the last gateway without re-running SAML. Opt out with
+    `--no-cookie-cache`; the cache clears itself when the gateway rejects it.
+  - **Browser sign-in is more robust**: `--browser` without a value now
+    auto-selects Chrome or Firefox before falling back to the system default;
+    sign-in launched from a root context (e.g. `sudo gpclient connect`)
+    recovers the desktop session environment so the browser can open; and
+    HEAD probes (link previews) no longer consume the single-use sign-in URL.
+  - **HIP report**: Microsoft Defender (mdatp) is now detected on Linux and
+    reported in the anti-malware section.
+
 ## 1.2.11 - 2026-07-12
 
 - Fixed an **intermittent crash** (segfault, roughly once a day in long

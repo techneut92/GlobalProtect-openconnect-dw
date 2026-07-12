@@ -180,7 +180,10 @@ pub async fn build_connect_request(p: &AuthParams, app_handle: &AppHandle) -> Re
         // no longer spawn the external `gpauth` binary (that's what let the backend
         // drop webkit). Embedded webview by default; system browser if requested.
         let auth_data = if p.use_browser {
-          BrowserAuthenticator::new(saml.saml_request(), "default")
+          // "auto" prefers Chrome/Firefox and falls back to the system default
+          // (inside the Flatpak sandbox `which` finds no host browsers, so this
+          // always takes the default-browser portal path there).
+          BrowserAuthenticator::new(saml.saml_request(), "auto")
             .authenticate()
             .await
             .context("single sign-on (browser) was cancelled or failed")?

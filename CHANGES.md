@@ -485,6 +485,45 @@ launch too.
   in the tray. The helper now marshals its body onto the main thread via
   `AppHandle::run_on_main_thread`, making it safe from any caller.
 
+## 2026-07-12 — Ported upstream 2.6.x improvements
+
+Selectively ported from upstream (`yuezk/GlobalProtect-openconnect` 2.6.0–2.6.4);
+adapted to this fork's layout rather than merged:
+
+- **`host-id` prelogin/login param** (`crates/gpapi/src/gp_params.rs`, upstream
+  f98e033): `GpParams` now carries a stable per-machine UUID (same derivation as
+  the HIP report) sent as `host-id`. PAN-OS binds the portal's
+  authentication-override cookie to this value; without it the portal returns an
+  empty cookie and gateway SAML fails with `saml-auth-status=-1`. Our
+  `prelogin.rs` already listed `host-id` in its required-params filter but the
+  value was never set.
+- **Portal-cookie cache** (`crates/gpapi/src/cookie_store.rs` new,
+  `apps/gpclient/src/connect.rs`, upstream 7a571f9): `gpclient connect` saves the
+  portal auth cookie (0600, atomic write, versioned, server-bound) and on the
+  next run logs in straight to the last gateway, skipping prelogin + SAML. New
+  flags `--cookie-file` and `--no-cookie-cache`; the cache is cleared when the
+  gateway rejects it.
+- **External-browser auth robustness** (upstream ecc9c9f, a7a5d9b):
+  `Browser::Auto` ("`--browser`" with no value) prefers Chrome/Firefox and falls
+  back to the system default (`crates/auth/src/browser/browser_auth.rs`); the
+  GUI's browser SSO uses "auto" too. New
+  `crates/gpapi/src/process/desktop_session_env.rs` recovers the user's session
+  env (DISPLAY, DBUS_SESSION_BUS_ADDRESS, XDG_*) in `into_non_root`, so browser
+  auth launched from a root context reaches the graphical session. The auth
+  callback server answers HEAD probes without consuming the single-use URL
+  (`crates/auth/src/browser/auth_server.rs`).
+- **Microsoft Defender HIP entry** (`apps/gpclient/src/hip.rs`,
+  `templates/hip_report.xml`, upstream 67de920): if `mdatp health` reports
+  Defender on Linux, the HIP report's anti-malware section includes it (version,
+  definitions, real-time protection).
+
+Evaluated and **not** ported (bug absent or diverged by design): OTP-on-MFA-retry
+duplicate-`passwd` fix (our `HashMap` param builder can't duplicate keys), direct
+gateway browser-auth mode gating (our browser mode is response-driven), the
+2.6.x packaging/profile restructure, and NixOS/macOS/CI changes. The vendored
+openconnect pin was reviewed against upstream master (23 commits): no
+GlobalProtect, GnuTLS/PKCS#11, or security changes — pin unchanged.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of
