@@ -10,6 +10,9 @@ use crate::ffi;
 use crate::vpn_utils::{check_executable, find_csd_wrapper, find_vpnc_script};
 
 type OnConnectedCallback = Arc<RwLock<Option<Box<dyn FnOnce(VpnSessionInfo) + 'static + Send + Sync>>>>;
+/// Unlike the connected callback this can fire many times (once per successful
+/// internal reconnect), so it is `Fn` and never taken.
+type OnReconnectedCallback = Arc<RwLock<Option<Box<dyn Fn() + 'static + Send + Sync>>>>;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct VpnSessionInfo {
@@ -94,6 +97,7 @@ pub struct Vpn {
   no_xmlpost: bool,
 
   callback: OnConnectedCallback,
+  reconnected_callback: OnReconnectedCallback,
 }
 
 impl Vpn {
@@ -108,6 +112,16 @@ impl Vpn {
     ffi::connect(&options)
   }
 
+  /// Register a callback fired each time openconnect re-establishes the tunnel
+  /// after an internal reconnect (DPD failure, or a [`pause`](Self::pause)).
+  pub fn set_on_reconnected(&self, on_reconnected: impl Fn() + 'static + Send + Sync) {
+    self
+      .reconnected_callback
+      .write()
+      .unwrap()
+      .replace(Box::new(on_reconnected));
+  }
+
   pub(crate) fn on_connected(&self, pipe_fd: i32, session_info: VpnSessionInfo) {
     info!("Connected to VPN, pipe_fd: {}", pipe_fd);
 
@@ -116,8 +130,23 @@ impl Vpn {
     }
   }
 
+  pub(crate) fn on_reconnected(&self) {
+    info!("VPN tunnel re-established");
+
+    if let Some(callback) = self.reconnected_callback.read().unwrap().as_ref() {
+      callback();
+    }
+  }
+
   pub fn disconnect(&self) {
     ffi::disconnect();
+  }
+
+  /// Force an immediate teardown-and-reconnect of the tunnel, reusing the
+  /// existing cookie (no re-auth). Used on resume from sleep, where waiting
+  /// for DPD to notice the dead peer takes minutes.
+  pub fn pause(&self) {
+    ffi::pause();
   }
 
   fn build_connect_options(&self) -> ffi::ConnectOptions {
@@ -407,6 +436,7 @@ impl VpnBuilder {
       no_xmlpost: self.no_xmlpost,
 
       callback: Default::default(),
+      reconnected_callback: Default::default(),
     })
   }
 

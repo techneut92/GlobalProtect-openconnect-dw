@@ -17,6 +17,10 @@ pub(crate) struct VpnTaskContext {
   vpn_handle: Arc<RwLock<Option<Vpn>>>,
   vpn_state_tx: Arc<watch::Sender<VpnState>>,
   disconnect_rx: RwLock<Option<oneshot::Receiver<()>>>,
+  /// Last `ConnectedInfo` sent, kept so the Reconnecting/re-Connected
+  /// transitions can carry the same gateway/session details. Std mutex: it is
+  /// touched from openconnect's callback thread, never held across awaits.
+  connected_info: Arc<std::sync::Mutex<Option<Box<ConnectedInfo>>>>,
 }
 
 impl VpnTaskContext {
@@ -25,6 +29,7 @@ impl VpnTaskContext {
       vpn_handle: Default::default(),
       vpn_state_tx: Arc::new(vpn_state_tx),
       disconnect_rx: Default::default(),
+      connected_info: Default::default(),
     }
   }
 
@@ -69,6 +74,20 @@ impl VpnTaskContext {
       }
     };
 
+    // Each successful internal reconnect (a resume-from-sleep pause, or a DPD
+    // failure openconnect recovered from on its own) flips the state back to
+    // Connected with the details captured at connect time.
+    let connected_info = Arc::clone(&self.connected_info);
+    {
+      let vpn_state_tx = vpn_state_tx.clone();
+      let connected_info = Arc::clone(&connected_info);
+      vpn.set_on_reconnected(move || {
+        if let Some(info) = connected_info.lock().unwrap().clone() {
+          vpn_state_tx.send(VpnState::Connected(info)).ok();
+        }
+      });
+    }
+
     // Save the VPN handle
     vpn_handle.write().await.replace(vpn);
     let connect_info = Box::new(info.clone());
@@ -81,6 +100,7 @@ impl VpnTaskContext {
     // Otherwise, it will block the tokio runtime and cannot send the VPN state to the channel
     thread::spawn(move || {
       let vpn_state_tx_clone = vpn_state_tx.clone();
+      let connected_info_clone = Arc::clone(&connected_info);
 
       vpn_handle.blocking_read().as_ref().map(|vpn| {
         vpn.connect(move |vpn_session_info| {
@@ -100,17 +120,36 @@ impl VpnTaskContext {
           info!("Tunnel: iface={:?} ipv4={:?} ipv6={:?}", tun_iface, ipv4, ipv6);
           let connected_info =
             Box::new(ConnectedInfo::new(info.clone(), Some(session_info)).with_tunnel(tun_iface, ipv4, ipv6));
+          // Keep a copy for the Reconnecting/re-Connected transitions.
+          *connected_info_clone.lock().unwrap() = Some(connected_info.clone());
           vpn_state_tx.send(VpnState::Connected(connected_info)).ok();
         })
       });
 
       // Notify the VPN is disconnected
+      connected_info.lock().unwrap().take();
       vpn_state_tx_clone.send(VpnState::Disconnected).ok();
       // Remove the VPN handle
       vpn_handle.blocking_write().take();
 
       disconnect_tx.send(()).ok();
     });
+  }
+
+  /// Force an immediate teardown-and-reconnect of the live tunnel, reusing the
+  /// existing cookie (no re-auth). Called on resume from sleep, where the peer
+  /// is dead but DPD would take minutes to notice. No-op unless Connected.
+  pub async fn reconnect(&self) {
+    let state = self.vpn_state_tx.borrow().clone();
+    let VpnState::Connected(info) = state else {
+      info!("VPN is not connected, skip reconnect");
+      return;
+    };
+    if let Some(vpn) = self.vpn_handle.read().await.as_ref() {
+      info!("Forcing tunnel reconnect");
+      self.vpn_state_tx.send(VpnState::Reconnecting(info)).ok();
+      vpn.pause();
+    }
   }
 
   pub async fn disconnect(&self) -> bool {

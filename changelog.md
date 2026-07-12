@@ -27,6 +27,13 @@
 - Releases now **update the Ubuntu apt repo automatically**: the OBS package
   bump that previously required a manual `osc` commit after each release runs
   as a CI job once the GitHub release is published.
+- The client now **notices a dead tunnel right after resume from sleep**:
+  instead of claiming "Connected" for minutes while traffic times out, it
+  immediately re-establishes the tunnel when the system wakes (no re-login
+  needed — the existing session is reused) and shows an honest
+  **"Reconnecting…"** state (amber tray animation) while doing so. If the
+  session expired during sleep, it goes to Disconnected promptly instead of
+  hanging. *(Protocol change: GUI and backend must both be ≥ 1.3.0.)*
 
 ## 1.2.11 - 2026-07-12
 

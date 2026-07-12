@@ -91,6 +91,7 @@ impl VpnState {
       VpnState::Disconnected => "Disconnected",
       VpnState::Connecting(_) => "Connecting…",
       VpnState::Connected(_) => "Connected",
+      VpnState::Reconnecting(_) => "Reconnecting…",
       VpnState::Disconnecting => "Disconnecting…",
     }
   }
@@ -102,6 +103,11 @@ pub enum VpnState {
   Disconnected,
   Connecting(Box<ConnectInfo>),
   Connected(Box<ConnectedInfo>),
+  /// The tunnel dropped (resume from sleep, network change, DPD failure) and
+  /// openconnect is re-establishing it with the existing cookie. Carries the
+  /// last `ConnectedInfo` so the UI keeps showing the gateway/session details.
+  /// Protocol addition in 1.3.0.
+  Reconnecting(Box<ConnectedInfo>),
   Disconnecting,
 }
 

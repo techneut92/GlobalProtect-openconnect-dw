@@ -6,6 +6,9 @@ pub enum Status {
   Disconnected,
   Connecting,
   Connected,
+  /// The tunnel dropped (resume from sleep, network change) and gpservice is
+  /// re-establishing it with the existing session — no re-auth needed.
+  Reconnecting,
   Disconnecting,
   Error(String),
 }
@@ -16,6 +19,7 @@ impl Status {
       Status::Disconnected => "Disconnected".into(),
       Status::Connecting => "Connecting…".into(),
       Status::Connected => "Connected".into(),
+      Status::Reconnecting => "Reconnecting…".into(),
       Status::Disconnecting => "Disconnecting…".into(),
       Status::Error(e) => format!("Error: {e}"),
     }
@@ -28,6 +32,7 @@ impl Status {
       Status::Disconnected => "Disconnected",
       Status::Connecting => "Connecting…",
       Status::Connected => "Connected",
+      Status::Reconnecting => "Reconnecting…",
       Status::Disconnecting => "Disconnecting…",
       Status::Error(_) => "Error",
     }
@@ -35,7 +40,10 @@ impl Status {
 
   /// True while a connection exists or is being set up/torn down.
   pub fn is_active(&self) -> bool {
-    matches!(self, Status::Connecting | Status::Connected | Status::Disconnecting)
+    matches!(
+      self,
+      Status::Connecting | Status::Connected | Status::Reconnecting | Status::Disconnecting
+    )
   }
 }
 

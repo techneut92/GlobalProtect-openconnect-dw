@@ -128,6 +128,7 @@ fn status_kind(status: &Status) -> i32 {
     Status::Connecting | Status::Disconnecting => 1,
     Status::Connected => 2,
     Status::Error(_) => 3,
+    Status::Reconnecting => 4,
   }
 }
 
@@ -864,7 +865,7 @@ fn main() {
             std::thread::sleep(Duration::from_millis(80));
             let connecting = matches!(
               shared.lock().unwrap().status,
-              Status::Connecting | Status::Disconnecting
+              Status::Connecting | Status::Reconnecting | Status::Disconnecting
             );
             if connecting {
               frame.fetch_add(1, Ordering::Relaxed);

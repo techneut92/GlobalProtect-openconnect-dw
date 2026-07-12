@@ -63,6 +63,10 @@ impl Cli {
 
     let mut vpn_task = VpnTask::new(ws_req_rx, vpn_state_tx);
 
+    // Resume-from-sleep watcher (both transports): force an immediate tunnel
+    // reconnect after suspend instead of waiting minutes for DPD.
+    tokio::spawn(crate::sleep_monitor::run(vpn_task.context()));
+
     // D-Bus system-service front-end (Flatpak transport). Feeds the same
     // VpnTask channels as the WS server; no lock file / loopback port.
     if self.dbus {
@@ -90,7 +94,12 @@ impl Cli {
       }
 
       vpn_task_cancel_token.cancel();
-      let _ = tokio::join!(vpn_task_handle, dbus_handle);
+      let _ = vpn_task_handle.await;
+      // Don't join the D-Bus task: its state-broadcast loop only ends when the
+      // vpn-state sender drops, and the sleep monitor holds the VpnTask context
+      // (and with it the sender) for the life of the process — joining would
+      // hang the shutdown forever. The process is exiting; abort it.
+      dbus_handle.abort();
       info!("gpservice stopped");
       return Ok(());
     }

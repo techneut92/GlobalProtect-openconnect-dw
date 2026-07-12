@@ -274,6 +274,8 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
           }
         }
         VpnState::Connecting(_) => n.set_status(generation, Status::Connecting),
+        // Keep the connection details — the session survives the reconnect.
+        VpnState::Reconnecting(_) => n.set_status(generation, Status::Reconnecting),
         VpnState::Disconnecting => n.set_status(generation, Status::Disconnecting),
         VpnState::Disconnected => {
           n.set_conn(generation, Default::default());
