@@ -35,15 +35,25 @@ mod unix {
     let is_wayland = std::env::var("XDG_SESSION_TYPE").unwrap_or_default() == "wayland";
 
     if is_wayland {
-      let gtk_win = win.gtk_window()?;
-      if let Some(header) = gtk_win.titlebar() {
-        let _ = header.downcast::<EventBox>().map(|event_box| {
-          event_box.set_above_child(false);
-        });
-      }
+      // GTK is single-threaded and this can be called from any thread (the auth
+      // flow runs on an async worker), so marshal the raw widget calls onto the
+      // GTK main thread — off-main GTK corrupts state and segfaults
+      // non-deterministically (same class of bug as the tray reveal fix).
+      let win_clone = win.clone();
+      win.run_on_main_thread(move || {
+        let Ok(gtk_win) = win_clone.gtk_window() else {
+          info!("No GTK window to raise");
+          return;
+        };
+        if let Some(header) = gtk_win.titlebar() {
+          let _ = header.downcast::<EventBox>().map(|event_box| {
+            event_box.set_above_child(false);
+          });
+        }
 
-      gtk_win.hide();
-      gtk_win.show_all();
+        gtk_win.hide();
+        gtk_win.show_all();
+      })?;
     } else {
       if !win.is_visible()? {
         win.show()?;

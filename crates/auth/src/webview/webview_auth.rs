@@ -98,15 +98,31 @@ impl<'a> WebviewAuthenticator<'a> {
 
     let title_bar_height = if cfg!(target_os = "macos") { 28.0 } else { 0.0 };
 
-    let auth_window = WebviewWindow::builder(app_handle, "auth_window", WebviewUrl::default())
-      .on_page_load(on_page_load)
-      .title("GP Client")
-      .inner_size(900.0, 650.0 + title_bar_height)
-      .focused(true)
-      // when clean is true, the window is expected to be shown because the cookies are cleared
-      .visible(self.clean)
-      .center()
-      .build()?;
+    // Build the window on the main thread. On Linux the builder performs raw
+    // GTK widget creation on the *calling* thread, and this method runs on an
+    // async worker (gpgui invokes it from a Tauri command) — GTK is
+    // single-threaded, and off-main widget work corrupts GTK state and
+    // segfaults non-deterministically (same class of bug as the tray
+    // reveal fix; see issue #24).
+    let (window_tx, window_rx) = oneshot::channel();
+    let app_handle_clone = app_handle.clone();
+    let visible = self.clean;
+    app_handle.run_on_main_thread(move || {
+      let window = WebviewWindow::builder(&app_handle_clone, "auth_window", WebviewUrl::default())
+        .on_page_load(on_page_load)
+        .title("GP Client")
+        .inner_size(900.0, 650.0 + title_bar_height)
+        .focused(true)
+        // when clean is true, the window is expected to be shown because the cookies are cleared
+        .visible(visible)
+        .center()
+        .build();
+
+      if window_tx.send(window).is_err() {
+        warn!("Failed to send the auth window back to the caller");
+      }
+    })?;
+    let auth_window = window_rx.await??;
 
     self
       .setup_auth_window(&auth_window, Arc::clone(&auth_messenger))
