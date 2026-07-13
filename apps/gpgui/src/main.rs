@@ -22,10 +22,8 @@
 //! D-Bus system-service transport slots in — nothing above it changes.
 
 mod autostart;
-mod client;
 mod config;
 mod connect;
-mod crypto;
 mod dbus_client;
 mod pkcs11;
 mod secrets;
@@ -287,6 +285,30 @@ struct UpdateInfo {
   backend_update: bool,
   url: String,
   error: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SuccessorInfo {
+  version: String,
+  url: String,
+}
+
+/// If the successor app (gp-client) has a public release, gpgui is retired: return
+/// its info so the UI can show the "moved to a new app" banner. Also takes a
+/// one-time safety backup of the identity vault before the user migrates.
+#[tauri::command]
+async fn successor() -> Option<SuccessorInfo> {
+  let rel = system::successor_release().await?;
+  system::backup_identities();
+  Some(SuccessorInfo {
+    version: rel.version,
+    url: if rel.url.is_empty() {
+      "https://github.com/techneut92/gp-client/releases".into()
+    } else {
+      rel.url
+    },
+  })
 }
 
 /// Check the GitHub Releases API for a newer fork version (covers both the GUI
@@ -775,6 +797,7 @@ fn main() {
       keyring_available,
       set_remember_unlock,
       check_update,
+      successor,
       run_update,
       restart_app,
       reboot_host,

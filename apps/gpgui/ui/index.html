@@ -322,6 +322,16 @@
     }
     async function refreshBanners() {
       if (!hasTauri) return;
+      // gpgui is retired once gp-client (the successor) has a public release —
+      // point users there in a red banner instead of offering a gpgui self-update.
+      let s = null;
+      try { s = await invoke('successor'); } catch (e) {}
+      if (s) {
+        markUpdate(true);
+        setBanner('<span>GP Client has moved to a new app — update to keep getting fixes.</span><button class="banner-btn">Get the new app</button>', 'danger',
+          () => { if (hasTauri) invoke('open_url', { url: s.url }); });
+        return;
+      }
       // Check for a newer release on startup. This drives the up-arrow badge on
       // the settings gear, independent of the compatibility banner below.
       let u = null;

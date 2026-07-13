@@ -242,11 +242,8 @@ async fn connect(p: &ConnectParams, notifier: &Notifier, generation: u64, app_ha
   notifier.log("Authenticating (prelogin + SSO)…");
   let request = build_connect_request(&auth, app_handle).await?;
 
-  // Shared loopback secret (used only by the loopback transport).
-  let key = crate::config::load_or_create_api_key();
-
   notifier.log("Connecting to gpservice…");
-  let (transport, mut events) = transport::open(&key).await?;
+  let (transport, mut events) = transport::open().await?;
 
   transport
     .send_connect(request)

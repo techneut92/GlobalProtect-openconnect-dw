@@ -212,6 +212,11 @@
         <h2>About</h2>
         <p class="desc">Version, updates and system status.</p>
 
+        <div class="moved-banner" id="movedBanner" hidden>
+          <span>GP Client has moved to a new app. Update to keep getting fixes — your identities carry over automatically.</span>
+          <button id="movedBtn">Get the new app</button>
+        </div>
+
         <div class="about-app">
           <div class="about-icon">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.4-3 7.4-7 9-4-1.6-7-4.6-7-9V6l7-3z"/></svg>
@@ -317,6 +322,12 @@
     $('upstreamLink').onclick = (e) => { e.preventDefault(); openExt(UPSTREAM_URL); };
     async function loadAbout() {
       if (!hasTauri) { $('aboutVer').textContent = 'dev build'; return; }
+      // gpgui is retired once gp-client has a public release — surface the red
+      // "moved to a new app" banner (and the backend takes a one-time vault backup).
+      try {
+        const suc = await invoke('successor');
+        if (suc) { $('movedBanner').hidden = false; $('movedBtn').onclick = () => openExt(suc.url); }
+      } catch (e) {}
       try {
         const s = await invoke('system_info');
         $('aboutVer').textContent = 'v' + s.guiVersion;

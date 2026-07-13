@@ -17,8 +17,25 @@
 //! the crash is structurally impossible.
 
 use std::io::{Read, Write};
+use std::os::fd::AsRawFd;
 use std::os::linux::net::SocketAddrExt;
 use std::os::unix::net::{SocketAddr, UnixListener, UnixStream};
+
+/// The connecting peer's uid via SO_PEERCRED (std's `peer_cred` is nightly-only).
+fn peer_uid(stream: &UnixStream) -> Option<u32> {
+  let mut cred = libc::ucred { pid: 0, uid: 0, gid: 0 };
+  let mut len = std::mem::size_of::<libc::ucred>() as libc::socklen_t;
+  let ret = unsafe {
+    libc::getsockopt(
+      stream.as_raw_fd(),
+      libc::SOL_SOCKET,
+      libc::SO_PEERCRED,
+      &mut cred as *mut libc::ucred as *mut libc::c_void,
+      &mut len,
+    )
+  };
+  (ret == 0).then_some(cred.uid)
+}
 
 /// Abstract socket name (no leading NUL — `from_abstract_name` adds it). Tied to
 /// the app-id so it never collides with another program.
@@ -58,9 +75,16 @@ pub fn acquire_or_signal() -> Option<UnixListener> {
 /// Service "show" pings on the primary's listener. Blocks, so run it on its own
 /// thread. `on_show` is called for each relaunch attempt (reveal the window).
 pub fn serve(listener: UnixListener, on_show: impl Fn() + Send + 'static) {
+  // The abstract socket is shared across the whole network namespace regardless
+  // of user, so only trust peers running as us — otherwise another local user
+  // could pop our window.
+  let our_uid = unsafe { libc::getuid() };
   for stream in listener.incoming() {
     match stream {
       Ok(mut stream) => {
+        if peer_uid(&stream) != Some(our_uid) {
+          continue;
+        }
         // Best-effort read; any contact means "a relaunch happened, surface".
         let mut buf = [0u8; 8];
         let _ = stream.read(&mut buf);

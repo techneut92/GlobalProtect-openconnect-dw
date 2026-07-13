@@ -291,10 +291,39 @@ pub struct Release {
   pub notes: String,
 }
 
-/// Fetch the latest GitHub release. Errors are surfaced as a message so the UI
-/// can show "couldn't check" rather than silently failing.
+/// The successor app (gp-client). A public release here means gpgui is retired
+/// and users should migrate.
+const SUCCESSOR_REPO: &str = "techneut92/gp-client";
+
+/// Fetch the latest GitHub release of our repo. Errors are surfaced as a message
+/// so the UI can show "couldn't check" rather than silently failing.
 pub async fn latest_release() -> Result<Release, String> {
-  let url = format!("https://api.github.com/repos/{REPO}/releases/latest");
+  latest_release_of(REPO).await
+}
+
+/// The successor's latest public release, or `None` if the repo is still private
+/// or has no release yet — so the "moved" banner only appears once gp-client is
+/// actually available.
+pub async fn successor_release() -> Option<Release> {
+  latest_release_of(SUCCESSOR_REPO).await.ok()
+}
+
+/// One-time, best-effort safety backup of the identity vault (`identities.enc.bak`
+/// alongside it), taken before the user migrates to the successor app.
+pub fn backup_identities() {
+  let Some(vault) = crate::config::vault_path() else { return };
+  if !vault.exists() {
+    return;
+  }
+  let backup = vault.with_file_name("identities.enc.bak");
+  if backup.exists() {
+    return;
+  }
+  let _ = std::fs::copy(&vault, &backup);
+}
+
+async fn latest_release_of(repo: &str) -> Result<Release, String> {
+  let url = format!("https://api.github.com/repos/{repo}/releases/latest");
   let client = reqwest::Client::builder()
     .user_agent(format!("gpgui/{GUI_VERSION}"))
     .build()
@@ -409,10 +438,23 @@ pub fn kind_from_str(s: &str) -> InstallKind {
   }
 }
 
+/// A version string is only ever a release tag we put into a URL and a shell
+/// command; restrict it to characters that can't break out of shell quoting or a
+/// URL path so a tampered/hostile `tag_name` can't inject commands (these scripts
+/// run as root via pkexec).
+pub fn safe_version(v: &str) -> bool {
+  !v.is_empty()
+    && v.len() <= 64
+    && v.bytes().all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'+' | b'~' | b'_'))
+}
+
 /// Root shell script for the one-click Install button — mirrors `install_options`
 /// but runs as root via pkexec (no `sudo`, reboot left to the user). dnf/pacman/
 /// zypper install straight from the asset URL; the rest download first.
 pub fn backend_install_script(kind: InstallKind, version: &str) -> Option<String> {
+  if !safe_version(version) {
+    return None;
+  }
   // The target release to install — the latest during an update, or this GUI's
   // version on a first-run install. NOT `GUI_VERSION` directly: during an update
   // the running GUI is still the old version, so that would pin the backend to it.
@@ -474,6 +516,9 @@ pub fn run_root_script_wait(script: &str) -> Result<(), String> {
 /// on the host. `--reinstall` replaces any existing install (any origin) and
 /// keeps user data; `--user` needs no root, so there's no password prompt.
 pub fn flatpak_self_update(version: &str) -> Result<(), String> {
+  if !safe_version(version) {
+    return Err("refusing to update: unexpected version string".into());
+  }
   let url = format!("https://github.com/{REPO}/releases/download/v{version}/{FLATPAK_ID}.flatpak");
   let script = format!(
     "f=$(mktemp --suffix=.flatpak) && curl -fL -o \"$f\" '{url}' && \

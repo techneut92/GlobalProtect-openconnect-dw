@@ -1,18 +1,43 @@
 //! Persisted options. Everything here is cached to `~/.config/gpgui-ng/config.json`
 //! — note there is intentionally **no PIN field**, so the PIN is never written to disk.
 
-use std::os::unix::fs::PermissionsExt;
-use std::path::PathBuf;
+use std::os::unix::fs::OpenOptionsExt;
+use std::path::{Path, PathBuf};
 
-use base64::Engine;
-use chacha20poly1305::{ChaCha20Poly1305, KeyInit, aead::OsRng};
 use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_MODULE: &str = "/usr/lib64/opensc-pkcs11.so";
-/// Installed location; a dev build falls back to the workspace target dir.
+/// Installed location of the backend.
 pub const INSTALLED_GPSERVICE: &str = "/usr/bin/gpservice";
-pub const DEV_GPSERVICE: &str =
-  "/home/dylan/Projects/GlobalProtect-openconnect-pkcs11/target/debug/gpservice";
+
+/// Atomically write `data` to `path` with mode 0600: write a sibling temp with
+/// the mode set at creation, fsync, then rename over the target. Avoids both the
+/// "default umask, then chmod" window and a torn file on crash mid-write.
+fn write_private(path: &Path, data: &[u8]) -> std::io::Result<()> {
+  use std::io::Write;
+  let dir = path.parent().unwrap_or_else(|| Path::new("."));
+  std::fs::create_dir_all(dir)?;
+  let tmp = dir.join(format!(
+    ".{}.tmp",
+    path.file_name().and_then(|s| s.to_str()).unwrap_or("f")
+  ));
+  {
+    let mut f = std::fs::OpenOptions::new()
+      .write(true)
+      .create(true)
+      .truncate(true)
+      .mode(0o600)
+      .open(&tmp)?;
+    f.write_all(data)?;
+    f.sync_all()?;
+  }
+  std::fs::rename(&tmp, path)
+}
+
+/// Atomic private write, exposed for the vault and other secret files.
+pub fn write_secret_file(path: &Path, data: &[u8]) -> std::io::Result<()> {
+  write_private(path, data)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -99,43 +124,14 @@ pub fn vault_path() -> Option<PathBuf> {
   directories::ProjectDirs::from("", "", "gpgui-ng").map(|d| d.config_dir().join("identities.enc"))
 }
 
-/// Resolve the gpservice binary: the installed path if present, else the dev
-/// build. The polkit passwordless rule matches the installed path exactly.
+/// Resolve the gpservice binary. Normally the installed path (which the polkit
+/// rule matches exactly); a dev build can point at an uninstalled binary via
+/// `GP_GPSERVICE_BIN` so no personal path is baked into the release.
 pub fn gpservice_binary() -> String {
-  if std::path::Path::new(INSTALLED_GPSERVICE).exists() {
-    INSTALLED_GPSERVICE.to_string()
-  } else {
-    DEV_GPSERVICE.to_string()
+  match std::env::var("GP_GPSERVICE_BIN") {
+    Ok(p) if !p.is_empty() => p,
+    _ => INSTALLED_GPSERVICE.to_string(),
   }
-}
-
-/// Load the persisted gpservice API key, or generate and persist a fresh 32-byte
-/// key. This is the shared secret for the loopback WS, stored `0600` in the
-/// config dir so only this user can drive the (root) service.
-pub fn load_or_create_api_key() -> Vec<u8> {
-  let path = config_path().map(|p| p.with_file_name("api_key"));
-
-  if let Some(path) = &path {
-    if let Ok(b64) = std::fs::read_to_string(path) {
-      if let Ok(key) = base64::engine::general_purpose::STANDARD.decode(b64.trim()) {
-        if key.len() == 32 {
-          return key;
-        }
-      }
-    }
-  }
-
-  let key = ChaCha20Poly1305::generate_key(&mut OsRng).to_vec();
-  if let Some(path) = path {
-    if let Some(dir) = path.parent() {
-      let _ = std::fs::create_dir_all(dir);
-    }
-    let b64 = base64::engine::general_purpose::STANDARD.encode(&key);
-    if std::fs::write(&path, b64).is_ok() {
-      let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-    }
-  }
-  key
 }
 
 impl Config {
@@ -148,11 +144,8 @@ impl Config {
 
   pub fn save(&self) {
     let Some(path) = config_path() else { return };
-    if let Some(dir) = path.parent() {
-      let _ = std::fs::create_dir_all(dir);
-    }
     if let Ok(json) = serde_json::to_string_pretty(self) {
-      let _ = std::fs::write(path, json);
+      let _ = write_private(&path, json.as_bytes());
     }
   }
 }
