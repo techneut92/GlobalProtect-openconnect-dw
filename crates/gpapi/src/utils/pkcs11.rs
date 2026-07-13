@@ -6,7 +6,7 @@
 //! `ClientConfig` whose client-cert resolver signs on the token via `cryptoki`,
 //! and feed it to reqwest via `ClientBuilder::use_preconfigured_tls`.
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use anyhow::{anyhow, bail, Context, Result};
 use cryptoki::{
@@ -286,6 +286,40 @@ impl ServerCertVerifier for NoVerifier {
   }
 }
 
+/// A **process-global** cryptoki context, initialised once and never finalised.
+///
+/// gpservice is long-lived and, since the auth handoff, runs prelogin (via
+/// cryptoki) repeatedly — while the openconnect tunnel drives the *same* token
+/// module via GnuTLS. `C_Initialize`/`C_Finalize` are process-global per
+/// module, so a per-call cryptoki context would call `C_Finalize` on drop and
+/// tear the module out from under GnuTLS (→ "the requested data were not
+/// available" on the next connect). Keeping one context alive for the whole
+/// process means cryptoki never finalises the module; each prelogin just opens
+/// and closes its own session on it. GnuTLS's own re-init on the tunnel side is
+/// then always against a live module.
+fn pkcs11_context() -> Result<&'static Pkcs11> {
+  static CTX: OnceLock<std::result::Result<Pkcs11, String>> = OnceLock::new();
+  match CTX.get_or_init(build_pkcs11_context) {
+    Ok(pkcs11) => Ok(pkcs11),
+    Err(e) => bail!("{e}"),
+  }
+}
+
+fn build_pkcs11_context() -> std::result::Result<Pkcs11, String> {
+  let module = module_path().map_err(|e| e.to_string())?;
+  info!("Loading PKCS#11 module: {module}");
+  let pkcs11 = Pkcs11::new(&module).map_err(|e| format!("failed to load PKCS#11 module: {e}"))?;
+  match pkcs11.initialize(CInitializeArgs::OsThreads) {
+    Ok(()) => {}
+    // GnuTLS/openconnect may have initialised the same module already.
+    Err(cryptoki::error::Error::Pkcs11(cryptoki::error::RvError::CryptokiAlreadyInitialized, _)) => {
+      info!("PKCS#11 module already initialised in this process; reusing it");
+    }
+    Err(e) => return Err(format!("PKCS#11 initialize failed: {e}")),
+  }
+  Ok(pkcs11)
+}
+
 /// Build a rustls `ClientConfig` that authenticates with a PKCS#11 client cert.
 /// `cert_uri` / `key_uri` are `pkcs11:` URIs; `pin` overrides any `pin-value`.
 pub fn create_pkcs11_client_config(
@@ -305,10 +339,7 @@ pub fn create_pkcs11_client_config(
     .or(key_u.pin.clone())
     .ok_or_else(|| anyhow!("a PIN is required for the PKCS#11 token (use --cert-pin or pin-value=… in the URI)"))?;
 
-  let module = module_path()?;
-  info!("Loading PKCS#11 module: {module}");
-  let pkcs11 = Pkcs11::new(&module).context("failed to load PKCS#11 module")?;
-  pkcs11.initialize(CInitializeArgs::OsThreads).context("PKCS#11 initialize failed")?;
+  let pkcs11 = pkcs11_context()?;
 
   // Pick the slot whose token label matches the URI (or the first with a token).
   let slots = pkcs11.get_slots_with_token().context("no PKCS#11 token slots")?;
