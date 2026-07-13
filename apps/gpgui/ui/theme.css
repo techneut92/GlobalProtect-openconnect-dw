@@ -381,7 +381,12 @@ body.settings { background: var(--bg-grad); }
 .topbanner { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0 0; padding: 9px 13px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1.45; }
 .topbanner.info { background: rgba(84,168,255,.1); border: 1px solid rgba(84,168,255,.28); color: #cfe4ff; }
 .topbanner.warn { background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.3); color: #f4d58a; }
+.topbanner.danger { background: rgba(239,68,68,.14); border: 1px solid rgba(239,68,68,.45); color: #fca5a5; font-weight: 600; }
 .banner-btn { flex: 0 0 auto; background: var(--accent-grad); color: #06121f; border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 650; font-family: inherit; cursor: pointer; }
+.topbanner.danger .banner-btn { background: #ef4444; color: #fff; }
+/* "moved to a new app" banner on the About page */
+.moved-banner { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; padding: 11px 14px; border-radius: var(--radius-sm); font-size: 12.5px; line-height: 1.45; background: rgba(239,68,68,.14); border: 1px solid rgba(239,68,68,.45); color: #fca5a5; font-weight: 600; }
+.moved-banner button { flex: 0 0 auto; background: #ef4444; color: #fff; border: none; border-radius: 8px; padding: 7px 13px; font-size: 12px; font-weight: 650; font-family: inherit; cursor: pointer; }
 /* backend-missing screen */
 .vault-badge.warn { color: var(--yellow); }
 /* ───────── backend-required view (install steps) ───────── */

@@ -291,10 +291,39 @@ pub struct Release {
   pub notes: String,
 }
 
-/// Fetch the latest GitHub release. Errors are surfaced as a message so the UI
-/// can show "couldn't check" rather than silently failing.
+/// The successor app (gp-client). A public release here means gpgui is retired
+/// and users should migrate.
+const SUCCESSOR_REPO: &str = "techneut92/gp-client";
+
+/// Fetch the latest GitHub release of our repo. Errors are surfaced as a message
+/// so the UI can show "couldn't check" rather than silently failing.
 pub async fn latest_release() -> Result<Release, String> {
-  let url = format!("https://api.github.com/repos/{REPO}/releases/latest");
+  latest_release_of(REPO).await
+}
+
+/// The successor's latest public release, or `None` if the repo is still private
+/// or has no release yet — so the "moved" banner only appears once gp-client is
+/// actually available.
+pub async fn successor_release() -> Option<Release> {
+  latest_release_of(SUCCESSOR_REPO).await.ok()
+}
+
+/// One-time, best-effort safety backup of the identity vault (`identities.enc.bak`
+/// alongside it), taken before the user migrates to the successor app.
+pub fn backup_identities() {
+  let Some(vault) = crate::config::vault_path() else { return };
+  if !vault.exists() {
+    return;
+  }
+  let backup = vault.with_file_name("identities.enc.bak");
+  if backup.exists() {
+    return;
+  }
+  let _ = std::fs::copy(&vault, &backup);
+}
+
+async fn latest_release_of(repo: &str) -> Result<Release, String> {
+  let url = format!("https://api.github.com/repos/{repo}/releases/latest");
   let client = reqwest::Client::builder()
     .user_agent(format!("gpgui/{GUI_VERSION}"))
     .build()
