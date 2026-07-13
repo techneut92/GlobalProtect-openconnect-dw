@@ -49,7 +49,21 @@ pub struct Vault {
   pub unlocked: bool,
 }
 
+/// Current key derivation: Argon2id, stronger than the default (19 MiB / t=2) to
+/// slow offline brute-force of a short master PIN if identities.enc is stolen.
 fn derive_key(pin: &str, salt: &[u8]) -> Result<[u8; 32]> {
+  let mut key = [0u8; 32];
+  let params = argon2::Params::new(64 * 1024, 3, 1, Some(32)).map_err(|e| anyhow!("argon2 params: {e}"))?;
+  argon2::Argon2::new(argon2::Algorithm::Argon2id, argon2::Version::V0x13, params)
+    .hash_password_into(pin.as_bytes(), salt, &mut key)
+    .map_err(|e| anyhow!("key derivation failed: {e}"))?;
+  Ok(key)
+}
+
+/// Legacy key derivation (Argon2 default) for vaults created before the params
+/// bump. Only an unlock fallback — such vaults are transparently re-encrypted
+/// with the current params on unlock, so no one loses their identities.
+fn derive_key_legacy(pin: &str, salt: &[u8]) -> Result<[u8; 32]> {
   let mut key = [0u8; 32];
   argon2::Argon2::default()
     .hash_password_into(pin.as_bytes(), salt, &mut key)
@@ -96,16 +110,34 @@ impl Vault {
     if bytes.len() <= SALT_LEN + NONCE_LEN {
       bail!("vault file is corrupt");
     }
-    let key = derive_key(pin, &self.salt)?;
-    let cipher = ChaCha20Poly1305::new(Key::from_slice(&key));
     let nonce = &bytes[SALT_LEN..SALT_LEN + NONCE_LEN];
     let ciphertext = &bytes[SALT_LEN + NONCE_LEN..];
-    let plaintext = cipher
-      .decrypt(nonce.into(), ciphertext)
-      .map_err(|_| anyhow!("wrong master PIN"))?;
+    let decrypt = |key: &[u8; 32]| {
+      ChaCha20Poly1305::new(Key::from_slice(key)).decrypt(nonce.into(), ciphertext).ok()
+    };
+
+    // Current params first, then the legacy Argon2 default so vaults created
+    // before the params bump still open.
+    let key = derive_key(pin, &self.salt)?;
+    if let Some(plaintext) = decrypt(&key) {
+      self.identities = serde_json::from_slice(&plaintext).unwrap_or_default();
+      self.key = Some(key);
+      self.unlocked = true;
+      return Ok(());
+    }
+
+    let legacy = derive_key_legacy(pin, &self.salt)?;
+    let Some(plaintext) = decrypt(&legacy) else {
+      bail!("wrong master PIN");
+    };
+    // Same PIN, legacy vault: load the identities and transparently re-encrypt
+    // with the current (stronger) params so the legacy KDF is never needed again.
+    // The re-save is best-effort — unlock still succeeds if it fails (it'll retry
+    // next time), so a write hiccup never looks like a wrong PIN.
     self.identities = serde_json::from_slice(&plaintext).unwrap_or_default();
     self.key = Some(key);
     self.unlocked = true;
+    let _ = self.save();
     Ok(())
   }
 
@@ -156,12 +188,56 @@ impl Vault {
     out.extend_from_slice(&self.salt);
     out.extend_from_slice(&nonce);
     out.extend_from_slice(&ciphertext);
-    std::fs::write(&self.path, out)?;
-    #[cfg(unix)]
-    {
-      use std::os::unix::fs::PermissionsExt;
-      let _ = std::fs::set_permissions(&self.path, std::fs::Permissions::from_mode(0o600));
-    }
-    Ok(())
+    // Atomic + 0600 (temp in the same dir, then rename) so a crash mid-write can't
+    // corrupt the vault and lose every saved identity.
+    crate::config::write_secret_file(&self.path, &out).map_err(|e| anyhow!("writing vault: {e}"))
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  /// A vault written with the legacy Argon2 default params must still unlock with
+  /// the current code (recovering every identity) and be transparently
+  /// re-encrypted with the current params — nobody loses their identities.
+  #[test]
+  fn legacy_vault_migrates_on_unlock() {
+    let dir = std::env::temp_dir().join(format!("gpgui-vault-test-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("identities.enc");
+    let pin = "1234";
+
+    // Write a legacy (Argon2-default) vault by hand.
+    let mut salt = [0u8; SALT_LEN];
+    OsRng.fill_bytes(&mut salt);
+    let ids = vec![Identity { name: "work".into(), portal: "gp.example.com".into(), ..Default::default() }];
+    let legacy_key = derive_key_legacy(pin, &salt).unwrap();
+    let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
+    let ct = ChaCha20Poly1305::new(Key::from_slice(&legacy_key))
+      .encrypt(&nonce, serde_json::to_vec(&ids).unwrap().as_ref())
+      .unwrap();
+    let mut out = Vec::new();
+    out.extend_from_slice(&salt);
+    out.extend_from_slice(&nonce);
+    out.extend_from_slice(&ct);
+    std::fs::write(&path, &out).unwrap();
+
+    // Unlock with the current code — must recover the identity via the fallback.
+    let mut v = Vault::load(path.clone());
+    v.unlock(pin).unwrap();
+    assert_eq!(v.identities.len(), 1);
+    assert_eq!(v.identities[0].name, "work");
+    assert_eq!(v.identities[0].portal, "gp.example.com");
+
+    // The file was re-encrypted with the current params: it now decrypts directly
+    // with the current KDF (no legacy fallback needed).
+    let bytes = std::fs::read(&path).unwrap();
+    let cur = derive_key(pin, &bytes[..SALT_LEN]).unwrap();
+    let n = &bytes[SALT_LEN..SALT_LEN + NONCE_LEN];
+    let dec = ChaCha20Poly1305::new(Key::from_slice(&cur)).decrypt(n.into(), &bytes[SALT_LEN + NONCE_LEN..]);
+    assert!(dec.is_ok(), "vault should decrypt with current params after migration");
+
+    std::fs::remove_dir_all(&dir).ok();
   }
 }
