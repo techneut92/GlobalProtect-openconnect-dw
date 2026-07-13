@@ -1,11 +1,8 @@
 //! Persisted options. Everything here is cached to `~/.config/gpgui-ng/config.json`
 //! — note there is intentionally **no PIN field**, so the PIN is never written to disk.
 
-use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
-use base64::Engine;
-use chacha20poly1305::{ChaCha20Poly1305, KeyInit, aead::OsRng};
 use serde::{Deserialize, Serialize};
 
 pub const DEFAULT_MODULE: &str = "/usr/lib64/opensc-pkcs11.so";
@@ -107,35 +104,6 @@ pub fn gpservice_binary() -> String {
   } else {
     DEV_GPSERVICE.to_string()
   }
-}
-
-/// Load the persisted gpservice API key, or generate and persist a fresh 32-byte
-/// key. This is the shared secret for the loopback WS, stored `0600` in the
-/// config dir so only this user can drive the (root) service.
-pub fn load_or_create_api_key() -> Vec<u8> {
-  let path = config_path().map(|p| p.with_file_name("api_key"));
-
-  if let Some(path) = &path {
-    if let Ok(b64) = std::fs::read_to_string(path) {
-      if let Ok(key) = base64::engine::general_purpose::STANDARD.decode(b64.trim()) {
-        if key.len() == 32 {
-          return key;
-        }
-      }
-    }
-  }
-
-  let key = ChaCha20Poly1305::generate_key(&mut OsRng).to_vec();
-  if let Some(path) = path {
-    if let Some(dir) = path.parent() {
-      let _ = std::fs::create_dir_all(dir);
-    }
-    let b64 = base64::engine::general_purpose::STANDARD.encode(&key);
-    if std::fs::write(&path, b64).is_ok() {
-      let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-    }
-  }
-  key
 }
 
 impl Config {
