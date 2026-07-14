@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.4.0 - 2026-07-14
+
+- **D-Bus only transport.** The GUI (gpgui) now reaches the `gpservice` backend
+  exclusively over the polkit-gated D-Bus system service — native and Flatpak
+  alike. The loopback WebSocket server, its shared api-key, and the pkexec
+  GUI-launch path are gone. An active local user connects without a password
+  prompt; nothing else can drive the root service.
+- **Reliable, fast reconnect after resume from sleep.** On resume the backend
+  waits for the NIC to come back, re-pins the gateway's host route to the physical
+  NIC, and only then triggers an in-place reconnect. A NIC flap on resume drops
+  that route, so openconnect's own reconnect/logout sockets would otherwise fall
+  back to the still-present-but-dead `tun0` default route and hang for the full TCP
+  timeout (~2 min) even though the physical network is already back; re-pinning
+  lets them reach the portal immediately. Because the resume signal arrives before
+  the NIC has carrier, the re-pin is retried until it succeeds before reconnecting.
+  The tunnel is never torn down, so no traffic can leak during the reconnect
+  (everything but the pinned gateway stays bound to the dead tunnel). A tunnel that
+  dies unexpectedly is still re-established (bounded retries) rather than dropping
+  to Disconnected.
+- **Smart card:** tolerate an already-initialized PKCS#11 (cryptoki) module on
+  repeat connects — the module is kept initialized process-wide, so back-to-back
+  smart-card connects no longer fail.
+- **Security & reliability hardening:** update versions are validated before they
+  reach the root install script; the single-instance socket only trusts same-user
+  peers; the vault and config are written atomically (0600) with a stronger
+  Argon2id key (existing vaults auto-migrate — no lost identities); no personal
+  paths are baked into the release.
+- **Moving to GP Client.** This app is being superseded by **GP Client**, a new
+  independent GUI. Once it has a public release, gpgui shows a notice linking to
+  it and backs up your identities; GP Client imports your settings on first run.
+
 ## 1.3.1 - 2026-07-12
 
 - Backend: `gpservice` gained a versioned **authentication handoff** — prelogin

@@ -228,7 +228,17 @@ int vpn_connect(const vpn_options *options, vpn_connected_callback callback)
 			return ret;
 		}
 
+		/* ret == 0 means the caller paused us (the resume-from-sleep
+		 * reconnect). openconnect re-establishes the tunnel on the next
+		 * mainloop entry, but via the fresh-connect path -- which, unlike its
+		 * internal ssl_reconnect(), does NOT fire the reconnected handler, and
+		 * skips setup_tun because the tun stays up. So neither callback runs and
+		 * the VPN state would be stuck on "Reconnecting". Notify Rust ourselves
+		 * so it can flip back to Connected. If the re-entry ultimately fails,
+		 * the mainloop returns non-zero above and the Rust side re-establishes
+		 * from scratch. */
 		INFO("openconnect_mainloop returned 0, reconnecting");
+		vpn_on_reconnected(g_user_data);
 	}
 }
 

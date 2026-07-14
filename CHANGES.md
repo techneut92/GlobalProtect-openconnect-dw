@@ -618,8 +618,41 @@ GPL-free GUI (the forthcoming GP Client) can connect without linking `gpapi` or
   transport layer.
 
 The existing GUI's connect path (a client-built `ConnectRequest`) is untouched
-and unaffected. The WS/loopback transport's `Probe` response routing is a
-follow-up; the D-Bus path (the sandboxed-GUI transport) is complete.
+and unaffected. The D-Bus path (the sandboxed-GUI transport) is complete; the
+loopback WS transport (whose `Probe` routing was still a follow-up here) was
+removed entirely on 2026-07-14 rather than finished — see below.
+
+## 2026-07-14 — D-Bus-only transport, resume recovery, GUI sunset
+
+- **Removed the loopback WebSocket transport** from `gpservice` and `gpgui`: the
+  WS server, connection, routes and handlers, the shared api-key (and stdin key),
+  and the pkexec GUI-launch path are deleted. Both now reach the backend only over
+  the polkit-gated D-Bus system service (native and Flatpak). `gpservice` always
+  runs D-Bus (`--dbus` is accepted for the activation file, and implied).
+- **Reliable, fast reconnect after resume from sleep** (`apps/gpservice/src/{vpn_task,gateway_pin}.rs`):
+  on resume, re-pin the gateway's host route to the physical NIC (`gateway_pin`)
+  and trigger an in-place reconnect (`vpn.pause()`), keeping tun0 up. A NIC flap on
+  resume drops openconnect's gateway host route, so its reconnect/logout sockets
+  fall back to the dead `tun0` default and hang for the full TCP timeout (~2 min);
+  re-pinning restores the physical path so they reconnect in ~1 s. tun0 stays up
+  throughout, so nothing can leak — everything but the pinned gateway remains bound
+  to the dead tunnel (fail-closed). The gateway route is captured at connect time
+  (resolved once while the network is healthy). A tunnel that exits unexpectedly is
+  still re-established (bounded retries) instead of dropping to Disconnected.
+  Also fixes the VPN state getting stuck on "Reconnecting" after a pause-driven
+  resume reconnect: openconnect re-establishes via its fresh-connect path (not the
+  internal `ssl_reconnect()`), so neither the reconnected handler nor `setup_tun`
+  fires; the C wrapper (`crates/openconnect/src/ffi/vpn.c`) now emits the
+  reconnected notification itself when the mainloop returns from a pause, so the
+  state flips back to Connected.
+- **Smart card:** keep the PKCS#11 (cryptoki) context initialized process-wide so
+  repeat connects tolerate an already-initialized module.
+- **GUI security/reliability hardening** (`apps/gpgui`): validate update versions
+  before the root install script; SO_PEERCRED same-user check on the
+  single-instance socket; atomic 0600 vault/config writes; stronger Argon2id vault
+  key with transparent migration of existing vaults; drop the hardcoded dev path.
+- **Sunset toward GP Client:** `gpgui` shows a "moved to a new app" notice and
+  backs up identities once the successor `gp-client` has a public release.
 
 ### Third-party components
 

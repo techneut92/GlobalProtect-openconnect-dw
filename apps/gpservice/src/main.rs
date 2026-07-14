@@ -1,6 +1,7 @@
 mod auth_flow;
 mod cli;
 mod dbus_service;
+mod gateway_pin;
 mod handlers;
 mod routes;
 mod sleep_monitor;
