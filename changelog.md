@@ -2,6 +2,14 @@
 
 ## 1.5.0 - Unreleased
 
+- **Portal mode (experimental).** The auth handoff can now run the portal flow,
+  not just direct-gateway: when the connect/probe request sets `as_gateway =
+  false` (protocol v5 / gp-protocol 1.3), the backend runs the portal prelogin,
+  retrieves the gateway list, picks the region-preferred gateway, and logs into
+  it with the portal cookie — reusing the same gpapi code the `gpclient` CLI
+  uses. Direct-gateway remains the default and is unchanged. Interactive
+  MFA/token challenges during portal auth are not handled yet (they still error
+  out). Portal mode is untested against a live portal — see GPS-6.
 - **DNS is always restored when a session ends.** gpservice now drops the
   per-link systemd-resolved configuration on the tunnel interface
   (`resolvectl revert` + cache flush) on *every* session end — clean disconnect,

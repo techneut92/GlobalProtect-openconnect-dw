@@ -654,6 +654,17 @@ removed entirely on 2026-07-14 rather than finished — see below.
 - **Sunset toward GP Client:** `gpgui` shows a "moved to a new app" notice and
   backs up identities once the successor `gp-client` has a public release.
 
+## 2026-07-18 — Portal-mode auth handoff (wire-protocol v5)
+
+- **Portal flow in the GUI auth handoff** (`apps/gpservice/src/auth_flow.rs`):
+  `ProbeRequest`/`ConnectAuthRequest` gained `as_gateway` (gp-protocol 1.3,
+  serde-default true). When false, `build_connect_request` runs the portal path
+  — `retrieve_config` for the gateway list, region-preferred gateway selection,
+  then `gateway_login` with the portal cookie — instead of treating the server
+  as a gateway. This reuses the gpapi portal code that already backs the
+  `gpclient` CLI; the direct-gateway path is unchanged. Interactive MFA/token
+  challenges during portal auth remain unimplemented (an explicit error).
+
 ## 2026-07-18 — Guaranteed DNS restore + scoped-DNS opt-in (wire-protocol v4)
 
 - **DNS restore on every session end** (`apps/gpservice/src/vpn_task.rs`): the

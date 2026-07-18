@@ -14,14 +14,16 @@ use gpapi::{
   credential::{Credential, PasswordCredential},
   gateway::{gateway_login, GatewayLogin},
   gp_params::{ClientOs, GpParams},
-  portal::{prelogin, Prelogin},
+  portal::{prelogin, retrieve_config, Prelogin},
   service::request::{AuthCredential, ConnectAuthRequest, ConnectRequest, ProbeReply, ProbeRequest},
 };
 use gpapi::service::vpn_state::ConnectInfo;
 use gp_protocol::Gateway;
 use log::info;
 
-/// Rebuild the `GpParams` the portal HTTP needs from a probe/connect request.
+/// Rebuild the `GpParams` the portal HTTP needs. `is_gateway` selects the
+/// prelogin/config endpoint family: the direct-gateway flow (`true`) or the
+/// portal flow (`false`).
 fn gp_params(
   certificate: Option<String>,
   sslkey: Option<String>,
@@ -30,6 +32,7 @@ fn gp_params(
   os: Option<ClientOs>,
   os_version: Option<String>,
   user_agent: Option<String>,
+  is_gateway: bool,
 ) -> GpParams {
   let mut builder = GpParams::builder();
   if let Some(ua) = user_agent.as_deref() {
@@ -48,9 +51,22 @@ fn gp_params(
     .key_password(key_password);
 
   let mut params = builder.build();
-  // Direct-gateway flow: the server is treated as the gateway.
-  params.set_is_gateway(true);
+  params.set_is_gateway(is_gateway);
   params
+}
+
+/// `GpParams` built from a [`ConnectAuthRequest`]'s prelogin/mTLS context.
+fn gp_params_from(req: &ConnectAuthRequest, is_gateway: bool) -> GpParams {
+  gp_params(
+    req.certificate.clone(),
+    req.sslkey.clone(),
+    req.key_password.clone(),
+    req.ignore_tls_errors,
+    req.os.clone(),
+    req.os_version.clone(),
+    req.user_agent.clone(),
+    is_gateway,
+  )
 }
 
 /// Run prelogin and report which authentication the server wants. The mTLS
@@ -65,6 +81,7 @@ pub async fn probe(req: &ProbeRequest) -> ProbeReply {
     req.os.clone(),
     req.os_version.clone(),
     req.user_agent.clone(),
+    req.as_gateway,
   );
 
   match prelogin(&req.server, &params).await {
@@ -127,30 +144,17 @@ async fn resolve_credential(req: &ConnectAuthRequest, params: &GpParams) -> anyh
 /// to the existing tunnel path (`VpnTaskContext::connect`), so all state
 /// broadcasting is unchanged.
 pub async fn build_connect_request(req: &ConnectAuthRequest) -> anyhow::Result<ConnectRequest> {
-  let params = gp_params(
-    req.certificate.clone(),
-    req.sslkey.clone(),
-    req.key_password.clone(),
-    req.ignore_tls_errors,
-    req.os.clone(),
-    req.os_version.clone(),
-    req.user_agent.clone(),
-  );
-
+  // Prelogin/mTLS + credential resolution use the endpoint family the server
+  // is (gateway or portal); `resolve_credential`'s CertOnly prelogin must hit
+  // the same one.
+  let params = gp_params_from(req, req.as_gateway);
   let cred = resolve_credential(req, &params).await?;
 
-  info!("Performing gateway login for {}", req.server);
-  let cookie = match gateway_login(&req.server, &cred, &params)
-    .await
-    .context("gateway login failed")?
-  {
-    GatewayLogin::Cookie(cookie) => cookie,
-    GatewayLogin::Mfa(..) => bail!("This gateway requires an MFA prompt, which is not supported yet"),
+  let (info, cookie) = if req.as_gateway {
+    connect_via_gateway(req, &cred, &params).await?
+  } else {
+    connect_via_portal(req, &cred, &params).await?
   };
-
-  // Gateway mode: the server is its own only gateway.
-  let gateway = Gateway::new(req.server.clone(), req.server.clone());
-  let info = ConnectInfo::new(req.server.clone(), gateway.clone(), vec![gateway]);
 
   // The GUI's `args` carry the tunnel options; the cookie is filled in here.
   let a = &req.args;
@@ -184,4 +188,74 @@ pub async fn build_connect_request(req: &ConnectAuthRequest) -> anyhow::Result<C
   }
 
   Ok(request)
+}
+
+/// Direct-gateway login: the server is its own only gateway.
+async fn connect_via_gateway(
+  req: &ConnectAuthRequest,
+  cred: &Credential,
+  params: &GpParams,
+) -> anyhow::Result<(ConnectInfo, String)> {
+  info!("Performing gateway login for {}", req.server);
+  let cookie = match gateway_login(&req.server, cred, params)
+    .await
+    .context("gateway login failed")?
+  {
+    GatewayLogin::Cookie(cookie) => cookie,
+    GatewayLogin::Mfa(..) => bail!("This gateway requires an MFA prompt, which is not supported yet"),
+  };
+
+  let gateway = Gateway::new(req.server.clone(), req.server.clone());
+  let info = ConnectInfo::new(req.server.clone(), gateway.clone(), vec![gateway]);
+  Ok((info, cookie))
+}
+
+/// Portal login: retrieve the gateway list with the portal credential, pick a
+/// gateway, and log into it with the portal cookie (no second interactive
+/// auth). `portal_params` must have `is_gateway = false`.
+async fn connect_via_portal(
+  req: &ConnectAuthRequest,
+  cred: &Credential,
+  portal_params: &GpParams,
+) -> anyhow::Result<(ConnectInfo, String)> {
+  info!("Retrieving portal config for {}", req.server);
+
+  // Region drives gateway preference; best-effort (an empty region falls back
+  // to the lowest-priority gateway).
+  let region = prelogin(&req.server, portal_params)
+    .await
+    .ok()
+    .map(|p| p.region().to_string())
+    .unwrap_or_default();
+
+  let mut portal_config = retrieve_config(&req.server, cred, portal_params)
+    .await
+    .context("failed to retrieve the portal configuration")?;
+
+  if portal_config.gateways().is_empty() {
+    bail!("the portal returned no gateways");
+  }
+  portal_config.sort_gateways(&region);
+
+  // Clone out of the borrow so the async gateway login below doesn't hold it.
+  let selected = portal_config.find_preferred_gateway(&region).clone();
+  let all_gateways: Vec<Gateway> = portal_config.gateways().into_iter().cloned().collect();
+  info!("Portal selected gateway: {} ({})", selected.name(), selected.server());
+
+  // The gateway login authenticates with the portal's auth cookie, over the
+  // gateway endpoint family.
+  let gateway_params = gp_params_from(req, true);
+  let gw_cred: Credential = portal_config.auth_cookie().into();
+  let cookie = match gateway_login(selected.server(), &gw_cred, &gateway_params)
+    .await
+    .context("gateway login failed")?
+  {
+    GatewayLogin::Cookie(cookie) => cookie,
+    GatewayLogin::Mfa(..) => bail!(
+      "This portal's gateway requires an MFA prompt, which is not supported yet"
+    ),
+  };
+
+  let info = ConnectInfo::new(req.server.clone(), selected, all_gateways);
+  Ok((info, cookie))
 }
