@@ -78,6 +78,9 @@ struct GpService {
   ws_req_tx: mpsc::Sender<WsRequest>,
   vpn_state_rx: watch::Receiver<VpnState>,
   controller: Controller,
+  /// The parked interactive-MFA oneshot the connect pipeline is waiting on;
+  /// `submit_mfa` resolves it with the entered code.
+  mfa_slot: crate::auth_flow::MfaSlot,
   /// zbus runs interface methods on its own executor, which is not a tokio
   /// runtime — so `reqwest`-based work (prelogin) must be spawned onto tokio.
   tokio: tokio::runtime::Handle,
@@ -155,6 +158,29 @@ impl GpService {
     Ok(())
   }
 
+  /// Answer an interactive MFA challenge with the one-time code. Resolves the
+  /// oneshot the connect pipeline parked while emitting `MfaChallenge`; the
+  /// backend then resubmits the gateway login with the code.
+  async fn submit_mfa(&self, #[zbus(header)] header: Header<'_>, code: String) -> zbus::fdo::Result<()> {
+    if !authorized(&header).await {
+      return Err(zbus::fdo::Error::AccessDenied("not authorised to manage the VPN".into()));
+    }
+    if let Some(tx) = self.mfa_slot.lock().unwrap().take() {
+      let _ = tx.send(Some(code));
+    }
+    Ok(())
+  }
+
+  /// Re-request the MFA challenge. GP code challenges come from the user's
+  /// authenticator, so there is nothing to re-send server-side yet — this is a
+  /// no-op placeholder so the GUI's "resend" affordance has an endpoint.
+  async fn resend_mfa(&self, #[zbus(header)] header: Header<'_>) -> zbus::fdo::Result<()> {
+    if !authorized(&header).await {
+      return Err(zbus::fdo::Error::AccessDenied("not authorised to manage the VPN".into()));
+    }
+    Ok(())
+  }
+
   /// Current VPN state as JSON (mirrors the `VpnStateChanged` payload).
   async fn status(&self) -> String {
     serde_json::to_string(&*self.vpn_state_rx.borrow()).unwrap_or_else(|_| "null".into())
@@ -171,12 +197,14 @@ pub async fn run(
   ws_req_tx: mpsc::Sender<WsRequest>,
   mut vpn_state_rx: watch::Receiver<VpnState>,
   shutdown_tx: mpsc::Sender<()>,
+  mfa_slot: crate::auth_flow::MfaSlot,
 ) -> anyhow::Result<()> {
   let controller: Controller = Arc::new(Mutex::new(None));
   let service = GpService {
     ws_req_tx: ws_req_tx.clone(),
     vpn_state_rx: vpn_state_rx.clone(),
     controller: controller.clone(),
+    mfa_slot,
     tokio: tokio::runtime::Handle::current(),
   };
 

@@ -17,9 +17,65 @@ use gpapi::{
   portal::{prelogin, retrieve_config, Prelogin},
   service::request::{AuthCredential, ConnectAuthRequest, ConnectRequest, ProbeReply, ProbeRequest},
 };
-use gpapi::service::vpn_state::ConnectInfo;
+use gpapi::service::vpn_state::{ConnectInfo, MfaChallengeInfo, VpnState};
 use gp_protocol::Gateway;
 use log::info;
+use std::sync::{Arc, Mutex};
+use tokio::sync::{oneshot, watch};
+
+/// Parked interactive-MFA request: the connect flow stores a oneshot here while
+/// the GUI is prompted for the code; `submit_mfa` resolves it with the code, or
+/// `disconnect` resolves it with `None` (cancel).
+pub type MfaSlot = Arc<Mutex<Option<oneshot::Sender<Option<String>>>>>;
+
+/// Emits the `MfaChallenge` state to the GUI and awaits the entered one-time
+/// code. Mirrors the GUI-side PIN prompt bridge, one hop further back.
+pub struct MfaPrompter {
+  vpn_state_tx: Arc<watch::Sender<VpnState>>,
+  slot: MfaSlot,
+}
+
+impl MfaPrompter {
+  pub fn new(vpn_state_tx: Arc<watch::Sender<VpnState>>, slot: MfaSlot) -> Self {
+    Self { vpn_state_tx, slot }
+  }
+
+  /// Show the challenge and wait for the code; `None` if the user cancelled.
+  async fn prompt(&self, message: String) -> Option<String> {
+    let (tx, rx) = oneshot::channel::<Option<String>>();
+    *self.slot.lock().unwrap() = Some(tx);
+    self
+      .vpn_state_tx
+      .send(VpnState::MfaChallenge(Box::new(MfaChallengeInfo::new(message))))
+      .ok();
+    rx.await.unwrap_or(None)
+  }
+}
+
+/// Gateway login that answers interactive MFA / token challenges: on a
+/// `Challenge`, prompt the GUI, then resubmit with the entered code + the
+/// challenge token until the gateway returns a cookie (or the user cancels).
+async fn gateway_login_mfa(
+  server: &str,
+  cred: &Credential,
+  params: &GpParams,
+  mfa: &MfaPrompter,
+) -> anyhow::Result<String> {
+  let mut result = gateway_login(server, cred, params).await.context("gateway login failed")?;
+  loop {
+    match result {
+      GatewayLogin::Cookie(cookie) => return Ok(cookie),
+      GatewayLogin::Mfa(message, input_str) => {
+        info!("Gateway issued an MFA challenge; prompting the user for a code");
+        let code = mfa.prompt(message).await.context("MFA challenge cancelled")?;
+        let mut p = params.clone();
+        p.set_input_str(&input_str);
+        p.set_otp(&code);
+        result = gateway_login(server, cred, &p).await.context("MFA gateway login failed")?;
+      }
+    }
+  }
+}
 
 /// Rebuild the `GpParams` the portal HTTP needs. `is_gateway` selects the
 /// prelogin/config endpoint family: the direct-gateway flow (`true`) or the
@@ -143,7 +199,7 @@ async fn resolve_credential(req: &ConnectAuthRequest, params: &GpParams) -> anyh
 /// [`ConnectRequest`] with the resulting cookie. The caller feeds the request
 /// to the existing tunnel path (`VpnTaskContext::connect`), so all state
 /// broadcasting is unchanged.
-pub async fn build_connect_request(req: &ConnectAuthRequest) -> anyhow::Result<ConnectRequest> {
+pub async fn build_connect_request(req: &ConnectAuthRequest, mfa: &MfaPrompter) -> anyhow::Result<ConnectRequest> {
   // Prelogin/mTLS + credential resolution use the endpoint family the server
   // is (gateway or portal); `resolve_credential`'s CertOnly prelogin must hit
   // the same one.
@@ -151,9 +207,9 @@ pub async fn build_connect_request(req: &ConnectAuthRequest) -> anyhow::Result<C
   let cred = resolve_credential(req, &params).await?;
 
   let (info, cookie) = if req.as_gateway {
-    connect_via_gateway(req, &cred, &params).await?
+    connect_via_gateway(req, &cred, &params, mfa).await?
   } else {
-    connect_via_portal(req, &cred, &params).await?
+    connect_via_portal(req, &cred, &params, mfa).await?
   };
 
   // The GUI's `args` carry the tunnel options; the cookie is filled in here.
@@ -195,15 +251,10 @@ async fn connect_via_gateway(
   req: &ConnectAuthRequest,
   cred: &Credential,
   params: &GpParams,
+  mfa: &MfaPrompter,
 ) -> anyhow::Result<(ConnectInfo, String)> {
   info!("Performing gateway login for {}", req.server);
-  let cookie = match gateway_login(&req.server, cred, params)
-    .await
-    .context("gateway login failed")?
-  {
-    GatewayLogin::Cookie(cookie) => cookie,
-    GatewayLogin::Mfa(..) => bail!("This gateway requires an MFA prompt, which is not supported yet"),
-  };
+  let cookie = gateway_login_mfa(&req.server, cred, params, mfa).await?;
 
   let gateway = Gateway::new(req.server.clone(), req.server.clone());
   let info = ConnectInfo::new(req.server.clone(), gateway.clone(), vec![gateway]);
@@ -217,6 +268,7 @@ async fn connect_via_portal(
   req: &ConnectAuthRequest,
   cred: &Credential,
   portal_params: &GpParams,
+  mfa: &MfaPrompter,
 ) -> anyhow::Result<(ConnectInfo, String)> {
   info!("Retrieving portal config for {}", req.server);
 
@@ -246,15 +298,7 @@ async fn connect_via_portal(
   // gateway endpoint family.
   let gateway_params = gp_params_from(req, true);
   let gw_cred: Credential = portal_config.auth_cookie().into();
-  let cookie = match gateway_login(selected.server(), &gw_cred, &gateway_params)
-    .await
-    .context("gateway login failed")?
-  {
-    GatewayLogin::Cookie(cookie) => cookie,
-    GatewayLogin::Mfa(..) => bail!(
-      "This portal's gateway requires an MFA prompt, which is not supported yet"
-    ),
-  };
+  let cookie = gateway_login_mfa(selected.server(), &gw_cred, &gateway_params, mfa).await?;
 
   let info = ConnectInfo::new(req.server.clone(), selected, all_gateways);
   Ok((info, cookie))
