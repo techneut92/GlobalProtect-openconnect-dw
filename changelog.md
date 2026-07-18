@@ -2,6 +2,13 @@
 
 ## 1.5.0 - Unreleased
 
+- **Disconnect during an auto-reconnect can no longer be lost.** If you hit
+  Disconnect in the brief window while the tunnel was being re-established, the
+  cancel could miss the session (the openconnect command pipe is a process
+  global that's momentarily stale mid-rebuild), and the tunnel would come back
+  up. The connection now re-checks for a pending disconnect the instant a
+  session becomes live and cancels it on the current pipe, so the request always
+  takes effect (GPS-7).
 - **Disconnect can no longer hang the service.** A logout against an
   already-dead gateway session could block openconnect's teardown forever;
   because the shutdown path waits on disconnect, systemd would time out stopping

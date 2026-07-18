@@ -194,6 +194,16 @@ impl Vpn {
   }
 }
 
+/// Cancel the **current** connection without a [`Vpn`] handle, by writing to the
+/// live openconnect command pipe (a process global). Intended for the connected
+/// callback: if the user asked to disconnect while a tunnel was being
+/// re-established, that request can be lost against the previous session's
+/// pipe; calling this once the new session's pipe is live cancels it cleanly.
+/// A no-op unless a connection is active.
+pub fn request_cancel() {
+  ffi::disconnect();
+}
+
 #[derive(Debug)]
 pub struct VpnError {
   message: String,

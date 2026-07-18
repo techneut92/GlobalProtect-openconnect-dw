@@ -654,6 +654,16 @@ removed entirely on 2026-07-14 rather than finished — see below.
 - **Sunset toward GP Client:** `gpgui` shows a "moved to a new app" notice and
   backs up identities once the successor `gp-client` has a public release.
 
+## 2026-07-18 — Close the disconnect-vs-reconnect race (GPS-7)
+
+- The openconnect command pipe (`g_cmd_pipe_fd`) is a process global that is
+  momentarily stale while the connection thread rebuilds a dropped tunnel, so a
+  user disconnect landing in that window wrote its `OC_CMD_CANCEL` to a dead fd
+  and was lost — the tunnel then resurrected. New `openconnect::request_cancel()`
+  lets the connected callback re-check `user_disconnect` the instant a session
+  goes live and cancel it on the (now-live) pipe, complementing the
+  top-of-loop check. Together they close the window.
+
 ## 2026-07-18 — Bounded disconnect (no more SIGABRT on stop)
 
 - `VpnTaskContext::disconnect` now bounds its wait for openconnect's teardown

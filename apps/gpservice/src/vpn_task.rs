@@ -113,9 +113,11 @@ impl VpnTaskContext {
       let mut attempt = 0u32;
       loop {
         // A disconnect that arrived while we were rebuilding (below) must not
-        // resurrect the tunnel to Connected. (A narrow residual window remains
-        // until the openconnect cmd pipe is per-session rather than a process
-        // global — tracked in GPS-7.)
+        // resurrect the tunnel to Connected. This top-of-loop check catches a
+        // request that landed before we re-enter the mainloop; the callback
+        // below catches the residual window (request lands after this check but
+        // before the new session's command pipe is live). Together they close
+        // GPS-7.
         if user_disconnect.load(Ordering::SeqCst) {
           break;
         }
@@ -127,8 +129,18 @@ impl VpnTaskContext {
           let info = info.clone();
           let gateway_route = Arc::clone(&gateway_route);
           let gateway_ip = gateway_ip.clone();
+          let user_disconnect_cb = Arc::clone(&user_disconnect);
           vpn_handle.blocking_read().as_ref().map(|vpn| {
             vpn.connect(move |vpn_session_info| {
+              // If a disconnect was requested during the rebuild, it may have
+              // been lost against the previous session's command pipe. This
+              // session's pipe is live now, so cancel it immediately and skip
+              // the Connected transition — the mainloop exits and the loop
+              // breaks on the flag. Closes the GPS-7 race.
+              if user_disconnect_cb.load(Ordering::SeqCst) {
+                openconnect::request_cancel();
+                return;
+              }
               let tun_iface = vpn_session_info.tun_iface.clone();
               let ipv4 = vpn_session_info.ipv4.clone();
               let ipv6 = vpn_session_info.ipv6.clone();
