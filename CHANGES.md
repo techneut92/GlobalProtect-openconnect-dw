@@ -736,6 +736,20 @@ removed entirely on 2026-07-14 rather than finished — see below.
   default-DNS-route fallback, merging any server-provided split-DNS domains.
   Behavior without the opt-in is unchanged.
 
+## 2026-07-18 — Self-healing PKCS#11 reader re-scan (GPS-15)
+
+- **`crates/gpapi/src/utils/pkcs11.rs`:** the process-global cryptoki context
+  (`pkcs11_context`, cached in a `OnceLock` so `C_Finalize` never tears the
+  module out from under the openconnect/GnuTLS tunnel) now retries its own init
+  once. `build_pkcs11_context` reports whether *this* call ran `C_Initialize`
+  (vs. finding it already initialised); the new `init_pkcs11_context` wrapper, if
+  it owns that init and the module enumerates no token
+  (`get_slots_with_token()` empty), drops the context (`C_Finalize`) and rebuilds
+  it so the module re-scans readers. This runs inside `get_or_init`, before the
+  context is cached and before any tunnel exists, so the re-scan is safe. Fixes a
+  permanent "no PKCS#11 token matching …" that stuck for the gpservice lifetime
+  when the reader was contended at first init.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of

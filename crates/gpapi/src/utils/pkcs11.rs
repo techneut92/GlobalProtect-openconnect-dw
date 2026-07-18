@@ -299,25 +299,60 @@ impl ServerCertVerifier for NoVerifier {
 /// then always against a live module.
 fn pkcs11_context() -> Result<&'static Pkcs11> {
   static CTX: OnceLock<std::result::Result<Pkcs11, String>> = OnceLock::new();
-  match CTX.get_or_init(build_pkcs11_context) {
+  match CTX.get_or_init(init_pkcs11_context) {
     Ok(pkcs11) => Ok(pkcs11),
     Err(e) => bail!("{e}"),
   }
 }
 
-fn build_pkcs11_context() -> std::result::Result<Pkcs11, String> {
+/// Build the process-global cryptoki context, retrying once with a fresh
+/// `C_Initialize` if the module comes up seeing no token.
+///
+/// opensc (and most PKCS#11 modules) scan readers at `C_Initialize` and cache
+/// that list. If the reader is momentarily contended at first init — GNOME's
+/// gsd-smartcard, another pcscd client, or the card still settling — the module
+/// initialises with an empty slot list. Because this context is then cached for
+/// the whole gpservice lifetime, every later prelogin fails with
+/// "no PKCS#11 token matching …" even though the card is plainly there (GPS-15).
+/// Re-scanning readers needs a real `C_Finalize`+`C_Initialize`; that is only
+/// safe when *we* own the init (no GnuTLS tunnel is driving the same module),
+/// so we skip the re-scan when the module was already initialised by someone
+/// else. This runs inside `OnceLock::get_or_init`, before the context is cached
+/// and before any tunnel exists, so the finalise never tears the module out
+/// from under GnuTLS.
+fn init_pkcs11_context() -> std::result::Result<Pkcs11, String> {
+  let (pkcs11, we_initialized) = build_pkcs11_context()?;
+  // Only our own fresh init can be safely finalised and re-scanned.
+  if !we_initialized {
+    return Ok(pkcs11);
+  }
+  let empty = pkcs11.get_slots_with_token().map(|s| s.is_empty()).unwrap_or(true);
+  if !empty {
+    return Ok(pkcs11);
+  }
+  warn!("PKCS#11 module saw no token at first init (reader busy?); finalising and re-scanning");
+  drop(pkcs11); // C_Finalize
+  let (pkcs11, _) = build_pkcs11_context()?; // fresh C_Initialize → re-scan readers
+  Ok(pkcs11)
+}
+
+/// Load and initialise the module. Returns whether *this* call performed the
+/// `C_Initialize` (`true`) or found it already initialised by GnuTLS/openconnect
+/// (`false`) — the caller uses that to decide whether a re-scan is safe.
+fn build_pkcs11_context() -> std::result::Result<(Pkcs11, bool), String> {
   let module = module_path().map_err(|e| e.to_string())?;
   info!("Loading PKCS#11 module: {module}");
   let pkcs11 = Pkcs11::new(&module).map_err(|e| format!("failed to load PKCS#11 module: {e}"))?;
-  match pkcs11.initialize(CInitializeArgs::OsThreads) {
-    Ok(()) => {}
+  let we_initialized = match pkcs11.initialize(CInitializeArgs::OsThreads) {
+    Ok(()) => true,
     // GnuTLS/openconnect may have initialised the same module already.
     Err(cryptoki::error::Error::Pkcs11(cryptoki::error::RvError::CryptokiAlreadyInitialized, _)) => {
       info!("PKCS#11 module already initialised in this process; reusing it");
+      false
     }
     Err(e) => return Err(format!("PKCS#11 initialize failed: {e}")),
-  }
-  Ok(pkcs11)
+  };
+  Ok((pkcs11, we_initialized))
 }
 
 /// Build a rustls `ClientConfig` that authenticates with a PKCS#11 client cert.

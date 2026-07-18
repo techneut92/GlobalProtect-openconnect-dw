@@ -2,6 +2,16 @@
 
 ## 1.5.0 - Unreleased
 
+- **Smart-card prelogin now recovers if the reader was busy at startup.** The
+  PKCS#11 module scans readers once, at `C_Initialize`, and gpservice caches
+  that context for its whole lifetime. If the card was momentarily contended the
+  first time gpservice touched it (GNOME's gsd-smartcard, another pcscd client,
+  or the card still settling), the module came up seeing no token and every
+  later connect failed with "no PKCS#11 token matching …" until the service was
+  restarted — even though the card was plainly present. gpservice now detects an
+  empty first enumeration on a context it owns and re-runs
+  `C_Finalize`+`C_Initialize` once to re-scan readers, so it self-heals instead
+  of staying stuck (GPS-15).
 - **Disconnect during an auto-reconnect can no longer be lost.** If you hit
   Disconnect in the brief window while the tunnel was being re-established, the
   cancel could miss the session (the openconnect command pipe is a process
