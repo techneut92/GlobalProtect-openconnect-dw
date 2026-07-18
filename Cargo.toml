@@ -35,7 +35,9 @@ reqwest = { version = "0.12", features = ["native-tls", "rustls-tls", "json"] }
 openssl = "0.10"
 # PKCS#11 (smart-card / YubiKey PIV) client-cert support for prelogin mTLS
 cryptoki = "0.8"
-rustls = { version = "0.23", features = ["ring"] }
+# Ring-only: our PKCS#11 signing uses rustls::crypto::ring::default_provider(),
+# so drop the default aws-lc-rs backend (and its aws-lc-sys/cmake build).
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 rustls-native-certs = "0.8"
 pem = "3"
 xmltree = "0.12"

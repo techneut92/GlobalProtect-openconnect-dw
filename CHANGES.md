@@ -654,6 +654,16 @@ removed entirely on 2026-07-14 rather than finished — see below.
 - **Sunset toward GP Client:** `gpgui` shows a "moved to a new app" notice and
   backs up identities once the successor `gp-client` has a public release.
 
+## 2026-07-18 — Dependency refresh + rustls build slimming (GPS-10/11)
+
+- Slimmed the rustls dependency to `default-features = false` with
+  `ring/std/tls12/logging` (our PKCS#11 signing already uses the ring provider),
+  dropping the default **aws-lc-rs / aws-lc-sys / cmake** backend from the build
+  graph entirely.
+- Refreshed dependencies on our own cadence (rustls 0.23.40 -> 0.23.42, dbus
+  0.9.11 -> 0.9.12, anyhow, chrono, clap, ...) rather than cherry-picking the
+  upstream lockfile bump. Inspired by upstream 3817227 (see the GPS-5 review).
+
 ## 2026-07-18 — Close the disconnect-vs-reconnect race (GPS-7)
 
 - The openconnect command pipe (`g_cmd_pipe_fd`) is a process global that is
