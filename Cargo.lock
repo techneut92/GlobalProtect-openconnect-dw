@@ -390,7 +390,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
 name = "auth"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "anyhow",
  "block2",
@@ -918,7 +918,7 @@ dependencies = [
 
 [[package]]
 name = "common"
-version = "1.4.0"
+version = "1.5.0"
 
 [[package]]
 name = "compile-time"
@@ -2082,9 +2082,9 @@ dependencies = [
 
 [[package]]
 name = "gp-protocol"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0350fa5afaedd22c9b657f635ef7393f1cf841ad8c7480e964df92cbda65e01e"
+checksum = "f263530e6648e9c4bee0d1c62e97c5560987bdb4df84b00fcf29dd3e37b7f5ba"
 dependencies = [
  "chrono",
  "humantime",
@@ -2095,7 +2095,7 @@ dependencies = [
 
 [[package]]
 name = "gpapi"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -2142,7 +2142,7 @@ dependencies = [
 
 [[package]]
 name = "gpauth"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "anyhow",
  "auth",
@@ -2160,7 +2160,7 @@ dependencies = [
 
 [[package]]
 name = "gpclient"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "anyhow",
  "askama",
@@ -2188,7 +2188,7 @@ dependencies = [
 
 [[package]]
 name = "gpgui"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "anyhow",
  "argon2",
@@ -2221,7 +2221,7 @@ dependencies = [
 
 [[package]]
 name = "gpservice"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "anyhow",
  "axum",
@@ -3792,7 +3792,7 @@ dependencies = [
 
 [[package]]
 name = "openconnect"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "autotools",
  "cc",

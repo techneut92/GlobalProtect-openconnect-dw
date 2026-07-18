@@ -11,6 +11,16 @@
 
 void *g_user_data;
 
+/* Create the GP_DNS_DOMAINS environ slot while the process is still
+ * single-threaded. Later per-connect setenv() calls then only swap the value
+ * of an existing entry instead of reallocating environ, which would race
+ * lock-free getenv() readers on other threads (glibc getenv is not protected
+ * against a concurrently growing environment). */
+__attribute__((constructor)) static void gp_env_init(void)
+{
+	setenv("GP_DNS_DOMAINS", "", 0);
+}
+
 static int g_cmd_pipe_fd;
 static const char *g_vpnc_script;
 static const char *g_vpnc_interface;
@@ -151,6 +161,21 @@ int vpn_connect(const vpn_options *options, vpn_connected_callback callback)
 
 	INFO("LOCAL_HOSTNAME: %s",
 	     effective_local_hostname ? effective_local_hostname : "(not set)");
+
+	/* The vpnc-script child inherits this process's environment (openconnect
+	 * forks and execs it), so the scoped-DNS opt-in travels as an env var.
+	 * Always (re)set it: a value left over from a previous connection must
+	 * not leak into this one. An empty value means "not scoped" (the script
+	 * only acts on a non-empty list) — never unsetenv(): the constructor
+	 * below created the slot before any thread existed, and value-only
+	 * updates don't reallocate environ, which keeps concurrent getenv()
+	 * readers elsewhere in the process out of harm's way. */
+	if (options->dns_domains && options->dns_domains[0]) {
+		INFO("DNS_DOMAINS: %s", options->dns_domains);
+		setenv("GP_DNS_DOMAINS", options->dns_domains, 1);
+	} else {
+		setenv("GP_DNS_DOMAINS", "", 1);
+	}
 
 	if (options->certificate) {
 		/*

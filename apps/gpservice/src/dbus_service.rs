@@ -35,13 +35,22 @@ const POLKIT_ACTION: &str = "io.github.techneut92.gpservice.manage";
 /// Check that the D-Bus caller is authorised (polkit action `io.github.techneut92.gpservice.manage`).
 /// Skipped on the session bus (dev), where polkit isn't in play.
 async fn authorized(header: &Header<'_>) -> bool {
-  if std::env::var("GP_DBUS_SESSION").is_ok() {
+  // Read once: the connect path setenv()s GP_DNS_DOMAINS on the connection
+  // thread, and glibc getenv is not safe against a concurrent setenv that
+  // grows the environment. Latching at first use keeps this hot path off the
+  // environment entirely (the variable is fixed at service start anyway).
+  static DEV_SESSION: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+  if *DEV_SESSION.get_or_init(|| std::env::var("GP_DBUS_SESSION").is_ok()) {
     return true;
   }
-  let Ok(conn) = zbus::Connection::system().await else {
+  // One shared connection for all polkit checks: opening a connection per
+  // call was wasteful and re-read bus-address env vars on a hot path (see the
+  // GP_DNS_DOMAINS note above). get_or_try_init retries on a failed attempt.
+  static POLKIT_CONN: tokio::sync::OnceCell<zbus::Connection> = tokio::sync::OnceCell::const_new();
+  let Ok(conn) = POLKIT_CONN.get_or_try_init(zbus::Connection::system).await else {
     return false;
   };
-  let Ok(authority) = AuthorityProxy::new(&conn).await else {
+  let Ok(authority) = AuthorityProxy::new(conn).await else {
     return false;
   };
   let Ok(subject) = Subject::new_for_message_header(header) else {

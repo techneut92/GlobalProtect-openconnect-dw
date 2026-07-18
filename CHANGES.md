@@ -654,6 +654,24 @@ removed entirely on 2026-07-14 rather than finished — see below.
 - **Sunset toward GP Client:** `gpgui` shows a "moved to a new app" notice and
   backs up identities once the successor `gp-client` has a public release.
 
+## 2026-07-18 — Guaranteed DNS restore + scoped-DNS opt-in (wire-protocol v4)
+
+- **DNS restore on every session end** (`apps/gpservice/src/vpn_task.rs`): the
+  connection thread's epilogue — and the start of a user disconnect — now run a
+  best-effort `resolvectl revert <tundev>` (+ cache flush). Previously only the
+  vpnc-script's clean `reason=disconnect` path reverted resolved, so an abnormal
+  session death (portal-side logout, hung teardown) left the dead corporate
+  resolvers as the system-wide default DNS route until reboot.
+- **Scoped-DNS opt-in** (gp-protocol 1.2 / wire v4, `ConnectArgs::dns_domains`):
+  gpservice validates the client's domain list and hands it to the vpnc-script as
+  `GP_DNS_DOMAINS` (set in the C wrapper `crates/openconnect/src/ffi/vpn.c`,
+  inherited by the script child). The script
+  (`packaging/files/usr/libexec/gpclient/vpnc-script`,
+  `modify_resolved_manager`) then scopes resolved to those domains
+  (`resolvectl domain` + `default-route false`) instead of the `~.`
+  default-DNS-route fallback, merging any server-provided split-DNS domains.
+  Behavior without the opt-in is unchanged.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of

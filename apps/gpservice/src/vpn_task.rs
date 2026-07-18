@@ -107,6 +107,13 @@ impl VpnTaskContext {
     thread::spawn(move || {
       let mut attempt = 0u32;
       loop {
+        // A disconnect that arrived while we were rebuilding (below) must not
+        // resurrect the tunnel to Connected. (A narrow residual window remains
+        // until the openconnect cmd pipe is per-session rather than a process
+        // global — tracked in GPS-7.)
+        if user_disconnect.load(Ordering::SeqCst) {
+          break;
+        }
         // Run openconnect's mainloop (blocks). The callback fires on each
         // (re)connect; openconnect handles its own internal reconnects too.
         {
@@ -183,8 +190,17 @@ impl VpnTaskContext {
         }
       }
 
-      // Notify the VPN is disconnected
-      connected_info.lock().unwrap().take();
+      // Notify the VPN is disconnected. Whatever ended the session — clean
+      // disconnect, retries exhausted, rebuild failure — drop the per-link DNS
+      // config the vpnc-script pushed to systemd-resolved. The script's own
+      // `reason=disconnect` revert only runs when openconnect tears down
+      // cleanly; without this, an abnormal end leaves the (dead) corporate
+      // resolvers pinned as the system's default DNS route.
+      if let Some(ci) = connected_info.lock().unwrap().take() {
+        if let Some(iface) = ci.tun_iface() {
+          revert_tun_dns(iface);
+        }
+      }
       vpn_state_tx.send(VpnState::Disconnected).ok();
       // Remove the VPN handle
       vpn_handle.blocking_write().take();
@@ -253,10 +269,27 @@ impl VpnTaskContext {
     self.user_disconnect.store(true, Ordering::SeqCst);
     if let Some(disconnect_rx) = self.disconnect_rx.write().await.take() {
       info!("Disconnecting VPN...");
+      // Snapshot the tun iface up front so the (blocking) DNS revert below does
+      // not run while we hold the vpn_handle read guard.
+      let iface = self
+        .connected_info
+        .lock()
+        .unwrap()
+        .as_ref()
+        .and_then(|ci| ci.tun_iface().map(str::to_owned));
       if let Some(vpn) = self.vpn_handle.read().await.as_ref() {
         info!("VPN is connected, start disconnecting...");
         self.vpn_state_tx.send(VpnState::Disconnecting).ok();
         vpn.disconnect()
+      }
+      // Restore DNS up front (before awaiting teardown): if the gateway-side
+      // session is already gone the logout can hang, and the system shouldn't
+      // sit on dead corporate resolvers meanwhile. Run it off the runtime —
+      // resolvectl can stall when resolved is busy — and only after dropping
+      // the vpn_handle guard above. The connection thread's epilogue reverts
+      // again on exit; a double revert is harmless.
+      if let Some(iface) = iface {
+        tokio::task::spawn_blocking(move || revert_tun_dns(&iface)).await.ok();
       }
       // Wait for the VPN to be disconnected
       disconnect_rx.await.ok();
@@ -299,6 +332,7 @@ fn build_vpn(
     .local_hostname(args.local_hostname())
     .dpd_interval(args.force_dpd())
     .no_xmlpost(args.no_xmlpost())
+    .dns_domains(scoped_dns_domains(args.dns_domains()))
     .build()
   {
     Ok(vpn) => vpn,
@@ -316,6 +350,68 @@ fn build_vpn(
     }
   });
   Some(vpn)
+}
+
+/// Scoped-DNS opt-in (protocol v4): validate the client's domain list and
+/// comma-join it for the vpnc-script. The script word-splits the value
+/// unquoted and hands it to a root-run `resolvectl`, so validation is strict:
+/// dot-separated labels of `[A-Za-z0-9_-]` that don't start or end with `-`.
+/// That rejects option-injection shapes (leading `-`), empty labels (`..`,
+/// leading/trailing dots — one bad token would make resolved reject the whole
+/// domain set), and resolved's `~` routing syntax (`~.` would silently
+/// re-widen the tunnel to catch-all DNS). Returns `None` when nothing
+/// survives — the default behavior.
+fn scoped_dns_domains(domains: Vec<String>) -> Option<String> {
+  fn valid_domain(d: &str) -> bool {
+    !d.is_empty()
+      && d.split('.').all(|label| {
+        !label.is_empty()
+          && !label.starts_with('-')
+          && !label.ends_with('-')
+          && label.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'))
+      })
+  }
+  let valid: Vec<String> = domains
+    .into_iter()
+    .filter(|d| {
+      let ok = valid_domain(d);
+      if !ok {
+        warn!("ignoring invalid DNS domain in connect request: {:?}", d);
+      }
+      ok
+    })
+    .collect();
+  if valid.is_empty() {
+    None
+  } else {
+    info!("Scoping tunnel DNS to client-provided domains: {}", valid.join(", "));
+    Some(valid.join(","))
+  }
+}
+
+/// Best-effort: drop the per-link DNS configuration the vpnc-script pushed to
+/// systemd-resolved for the tunnel link, then flush the resolver cache so
+/// negative answers from the (now unreachable) corporate resolvers don't
+/// linger. Safe to call redundantly: the script's own `reason=disconnect`
+/// revert, an already-vanished link, or a system without resolved all make
+/// this a no-op (logged at debug).
+fn revert_tun_dns(iface: &str) {
+  match std::process::Command::new("resolvectl").args(["revert", iface]).output() {
+    Ok(out) if out.status.success() => {
+      info!("reverted resolved DNS configuration on {iface}");
+      if let Err(err) = std::process::Command::new("resolvectl").arg("flush-caches").output() {
+        log::debug!("resolvectl flush-caches failed: {err}");
+      }
+    }
+    Ok(out) => {
+      log::debug!(
+        "resolvectl revert {iface} exited with {}: {}",
+        out.status,
+        String::from_utf8_lossy(&out.stderr).trim()
+      );
+    }
+    Err(err) => log::debug!("resolvectl not available, skipping DNS revert: {err}"),
+  }
 }
 
 /// Bare host from a gateway server value (strip scheme/path/port) for a plain TCP

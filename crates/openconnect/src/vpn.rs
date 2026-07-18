@@ -95,6 +95,7 @@ pub struct Vpn {
 
   dpd_interval: u32,
   no_xmlpost: bool,
+  dns_domains: Option<CString>,
 
   callback: OnConnectedCallback,
   reconnected_callback: OnReconnectedCallback,
@@ -180,6 +181,8 @@ impl Vpn {
       no_dtls: self.no_dtls as u32,
       dpd_interval: self.dpd_interval,
       no_xmlpost: self.no_xmlpost as u32,
+
+      dns_domains: Self::option_to_ptr(&self.dns_domains),
     }
   }
 
@@ -238,6 +241,7 @@ pub struct VpnBuilder {
 
   dpd_interval: u32,
   no_xmlpost: bool,
+  dns_domains: Option<String>,
 }
 
 impl VpnBuilder {
@@ -269,6 +273,7 @@ impl VpnBuilder {
       no_dtls: false,
       dpd_interval: 0,
       no_xmlpost: false,
+      dns_domains: None,
     }
   }
 
@@ -372,6 +377,13 @@ impl VpnBuilder {
     self
   }
 
+  /// Comma-separated DNS domains to scope the tunnel's resolver configuration
+  /// to (the scoped-DNS opt-in); `None`/empty keeps the default behavior.
+  pub fn dns_domains<T: Into<Option<String>>>(mut self, dns_domains: T) -> Self {
+    self.dns_domains = dns_domains.into().filter(|d| !d.is_empty());
+    self
+  }
+
   fn determine_script(&self) -> Result<&str, VpnError> {
     match &self.script {
       Some(script) => {
@@ -434,6 +446,7 @@ impl VpnBuilder {
       no_dtls: self.no_dtls,
       dpd_interval: self.dpd_interval,
       no_xmlpost: self.no_xmlpost,
+      dns_domains: self.dns_domains.as_deref().map(Self::to_cstring),
 
       callback: Default::default(),
       reconnected_callback: Default::default(),

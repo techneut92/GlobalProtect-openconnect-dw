@@ -167,7 +167,8 @@ pub async fn build_connect_request(req: &ConnectAuthRequest) -> anyhow::Result<C
     .with_no_xmlpost(a.no_xmlpost())
     .with_force_dpd(a.force_dpd())
     .with_hip(a.hip())
-    .with_allow_extend_session(a.allow_extend_session());
+    .with_allow_extend_session(a.allow_extend_session())
+    .with_dns_domains(a.dns_domains());
 
   if a.reconnect_timeout() > 0 {
     request = request.with_reconnect_timeout(a.reconnect_timeout());

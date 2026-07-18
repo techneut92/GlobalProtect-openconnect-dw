@@ -900,10 +900,19 @@ resolvectl_set_search() {
 }
 
 modify_resolved_manager() {
-	local if_index split_dns_list
+	local if_index split_dns_list user_dns_list
 	if_index=$(get_if_index $TUNDEV)
 	split_dns_list=$(echo $CISCO_SPLIT_DNS | tr ',' ' ')
-	if [ -z "$split_dns_list" ]; then
+	# GP_DNS_DOMAINS (comma-separated, exported by gpservice from the connect
+	# request) is the client's explicit opt-in to scope VPN DNS to a domain
+	# list instead of making the tunnel the system-wide default DNS route.
+	user_dns_list=$(echo $GP_DNS_DOMAINS | tr ',' ' ')
+	if [ -n "$user_dns_list" ]; then
+		# Merge with any server-provided split-DNS domains: the user list
+		# only ever adds scoping, it never widens to '~.'.
+		split_dns_list="$split_dns_list $user_dns_list"
+		log_info "scoping VPN DNS to client-provided domains: $user_dns_list"
+	elif [ -z "$split_dns_list" ]; then
 		split_dns_list='~.'
 		log_info "no split DNS domains provided; using VPN DNS as the default DNS route"
 	else
@@ -912,6 +921,15 @@ modify_resolved_manager() {
 	resolvectl_set_nameservers $if_index $INTERNAL_IP4_DNS
 	if [ -n "$CISCO_DEF_DOMAIN" ] || [ -n "$split_dns_list" ]; then
 		resolvectl_set_search $if_index $CISCO_DEF_DOMAIN $split_dns_list
+	fi
+	if [ -n "$user_dns_list" ]; then
+		# With a scoped domain list the tunnel must not be a candidate for
+		# non-matching lookups either. If this fails (resolvectl too old
+		# for the default-route verb, resolved not running, ...) the
+		# scoping degrades to search domains only — say so instead of
+		# failing silently.
+		/usr/bin/resolvectl default-route $if_index false 2>/dev/null ||
+			log_info "could not disable the tunnel's DNS default-route; VPN DNS may still serve non-listed domains"
 	fi
 }
 

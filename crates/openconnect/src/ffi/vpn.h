@@ -50,6 +50,11 @@ typedef struct vpn_options {
 
 	const int dpd_interval;
 	const int no_xmlpost;
+
+	/* Comma-separated DNS domains to scope the tunnel's resolver config to
+	 * (exported to the vpnc-script as GP_DNS_DOMAINS); NULL/empty for the
+	 * default behavior. */
+	const char *dns_domains;
 } vpn_options;
 
 int vpn_connect(const vpn_options *options, vpn_connected_callback callback);

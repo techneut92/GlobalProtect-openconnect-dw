@@ -36,6 +36,8 @@ pub(crate) struct ConnectOptions {
 
   pub dpd_interval: u32,
   pub no_xmlpost: u32,
+
+  pub dns_domains: *const c_char,
 }
 
 #[repr(C)]

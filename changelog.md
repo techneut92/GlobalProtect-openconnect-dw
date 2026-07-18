@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.5.0 - Unreleased
+
+- **DNS is always restored when a session ends.** gpservice now drops the
+  per-link systemd-resolved configuration on the tunnel interface
+  (`resolvectl revert` + cache flush) on *every* session end — clean disconnect,
+  retries exhausted, or service shutdown — and additionally right when a
+  disconnect starts. Previously the revert only ran via the vpnc-script's clean
+  teardown path, so an abnormal session death (e.g. a portal-side logout while
+  the smart card was absent) could leave the dead corporate resolvers pinned as
+  the system-wide default DNS route: a total DNS blackout until reboot (GPS-1).
+- **Scoped DNS opt-in (protocol v4).** The connect request can now carry a
+  `dns_domains` list. When set, the vpnc-script scopes systemd-resolved to
+  those domains (`resolvectl domain` + `default-route false`) instead of the
+  `~.` default-DNS-route fallback, so only the listed domains resolve through
+  the VPN and everything else stays on the LAN resolvers. Server-provided
+  split-DNS domains are merged in; without the opt-in the behavior is unchanged
+  (GPS-4). Requires gp-protocol 1.2 (older GUIs/backends interoperate — the
+  field is simply absent/ignored).
+
 ## 1.4.0 - 2026-07-14
 
 - **D-Bus only transport.** The GUI (gpgui) now reaches the `gpservice` backend
