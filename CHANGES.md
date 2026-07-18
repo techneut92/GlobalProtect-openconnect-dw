@@ -654,6 +654,15 @@ removed entirely on 2026-07-14 rather than finished — see below.
 - **Sunset toward GP Client:** `gpgui` shows a "moved to a new app" notice and
   backs up identities once the successor `gp-client` has a public release.
 
+## 2026-07-18 — Bounded disconnect (no more SIGABRT on stop)
+
+- `VpnTaskContext::disconnect` now bounds its wait for openconnect's teardown
+  (`DISCONNECT_TIMEOUT`, 5s). A logout POST against a dead gateway session can
+  hang the mainloop indefinitely; since the service-shutdown path awaits
+  disconnect, systemd would SIGABRT the stop job. On timeout the VPN state is
+  forced to Disconnected and the detached connection thread is reaped at process
+  exit (GPS-3).
+
 ## 2026-07-18 — Retired the WS-era launch plumbing; renamed the SSO-callback handler
 
 - Removed the dead remnants of the pre-D-Bus (WebSocket) transport: the

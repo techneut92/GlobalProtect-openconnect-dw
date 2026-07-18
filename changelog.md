@@ -2,6 +2,12 @@
 
 ## 1.5.0 - Unreleased
 
+- **Disconnect can no longer hang the service.** A logout against an
+  already-dead gateway session could block openconnect's teardown forever;
+  because the shutdown path waits on disconnect, systemd would time out stopping
+  the service and kill it with SIGABRT. The teardown wait is now bounded (5s):
+  on timeout the state is forced to Disconnected and the hung mainloop is reaped
+  on process exit (GPS-3).
 - **Removed the in-repo `gpgui` GUI.** The bundled Tauri GUI (`apps/gpgui`) and
   its `-gui` package (and the webkit2gtk dependency it pulled in) are gone. The
   graphical client is now the standalone **GP Client** app

@@ -22,6 +22,11 @@ use crate::gateway_pin::GatewayRoute;
 /// died unexpectedly (e.g. openconnect's own reconnect gave up after a resume)
 /// before giving up.
 const NETWORK_WAIT: Duration = Duration::from_secs(10);
+/// How long a disconnect waits for openconnect to tear the tunnel down before
+/// giving up. A logout POST against an already-dead gateway session can hang;
+/// neither a user disconnect nor a service shutdown (which awaits `disconnect`)
+/// may block on it, or systemd SIGABRTs the stop job (GPS-3).
+const DISCONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_RECONNECT_ATTEMPTS: u32 = 10;
 /// On resume, how many seconds to keep retrying the gateway re-pin (polled every
 /// second) while the NIC comes back before triggering openconnect's reconnect.
@@ -291,9 +296,17 @@ impl VpnTaskContext {
       if let Some(iface) = iface {
         tokio::task::spawn_blocking(move || revert_tun_dns(&iface)).await.ok();
       }
-      // Wait for the VPN to be disconnected
-      disconnect_rx.await.ok();
-      info!("VPN disconnected");
+      // Wait for the tunnel to tear down, but bounded: a dead-session logout
+      // can hang, and this is awaited by the service-shutdown path — a stop job
+      // that never returns gets SIGABRTed (GPS-3). On timeout, force the state
+      // to Disconnected and move on; the connection thread is detached, so a
+      // hung openconnect mainloop is reaped when the process exits.
+      if tokio::time::timeout(DISCONNECT_TIMEOUT, disconnect_rx).await.is_err() {
+        warn!("disconnect timed out after {DISCONNECT_TIMEOUT:?}; logout likely hung, forcing Disconnected");
+        self.vpn_state_tx.send(VpnState::Disconnected).ok();
+      } else {
+        info!("VPN disconnected");
+      }
 
       true
     } else {
