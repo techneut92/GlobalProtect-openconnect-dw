@@ -1,0 +1,16 @@
+[Desktop Entry]
+# Not an app launcher — this registers gpclient as the handler for the
+# `globalprotectcallback:` URL scheme. After a browser SSO sign-in the browser
+# redirects to that scheme; the desktop invokes `gpclient launch-gui <url>`,
+# which delivers the callback to the waiting `gpclient connect`. Hidden from
+# menus (NoDisplay) since there is nothing to launch.
+Type=Application
+Name=GlobalProtect SSO callback
+Comment=Handles GlobalProtect browser single sign-on callbacks
+Exec=/usr/bin/gpclient launch-gui %u
+MimeType=x-scheme-handler/globalprotectcallback;
+Icon=network-vpn
+Terminal=false
+NoDisplay=true
+Categories=Network;
+Keywords=GlobalProtect;OpenConnect;SAML;SSO;VPN;

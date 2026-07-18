@@ -113,8 +113,8 @@
             cp -r packaging/files/usr/lib $out/lib
             cp -r packaging/files/usr/libexec $out/libexec
 
-            # Change the `/usr/bin/gpclient` path in the desktop file
-            substituteInPlace $out/share/applications/gpgui.desktop \
+            # Point the SSO-callback scheme handler at the store gpclient.
+            substituteInPlace $out/share/applications/gpclient.desktop \
               --replace-fail /usr/bin/gpclient $out/bin/gpclient
 
             substituteInPlace $out/lib/NetworkManager/dispatcher.d/pre-down.d/gpclient.down \
@@ -122,10 +122,6 @@
 
             substituteInPlace $out/libexec/gpclient/hipreport.sh \
               --replace-fail /usr/bin/gpclient $out/bin/gpclient
-
-            # Change the `/usr/bin/gpservice` path in the polkit policy file
-            substituteInPlace $out/share/polkit-1/actions/io.github.techneut92.gpgui.policy \
-              --replace-fail /usr/bin/gpservice $out/bin/gpservice
           '';
         };
 

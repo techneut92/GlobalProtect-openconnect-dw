@@ -38,8 +38,8 @@ release_tag() {
 
   echo "Creating release..."
   # Upload the source tarballs and all native packages (deb/rpm/apk/pkg/binary)
-  # built by the build-gp matrix. (The fork builds its own GUI from source, so
-  # there is no separate gpgui artifact.)
+  # built by the build-gp matrix. This repo is backend-only; the graphical
+  # client (gp-client) is released from its own project.
   gh -R "$REPO" release create $TAG \
     --title "$TAG" \
     --notes "$RELEASE_NOTES" \

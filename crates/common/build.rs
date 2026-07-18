@@ -4,11 +4,9 @@ fn main() {
   let manifest_dir = env!("CARGO_MANIFEST_DIR");
   let workspace_dir = Path::new(manifest_dir).ancestors().nth(2).unwrap();
 
-  let gp_service_binary = workspace_dir.join("target/debug/gpservice");
   let gp_client_binary = workspace_dir.join("target/debug/gpclient");
   let gp_auth_binary = workspace_dir.join("target/debug/gpauth");
 
-  println!("cargo:rustc-env=GP_SERVICE_BINARY={}", gp_service_binary.display());
   println!("cargo:rustc-env=GP_CLIENT_BINARY={}", gp_client_binary.display());
   println!("cargo:rustc-env=GP_AUTH_BINARY={}", gp_auth_binary.display());
 }

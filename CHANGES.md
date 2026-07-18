@@ -654,6 +654,20 @@ removed entirely on 2026-07-14 rather than finished — see below.
 - **Sunset toward GP Client:** `gpgui` shows a "moved to a new app" notice and
   backs up identities once the successor `gp-client` has a public release.
 
+## 2026-07-18 — Retired the WS-era launch plumbing; renamed the SSO-callback handler
+
+- Removed the dead remnants of the pre-D-Bus (WebSocket) transport: the
+  `ServiceLauncher` (pkexec-launched gpservice — now D-Bus-activated), the
+  `http_endpoint`/`ws_endpoint` helpers and the `/active-gui` probe, the
+  `CommandExt::new_pkexec` trait method, and the `GP_SERVICE_BINARY` constant +
+  its build.rs env. `gpclient launch-gui` now does only what it is actually
+  reached for — delivering the browser SSO `globalprotectcallback:` data to the
+  waiting `gpclient connect`.
+- Renamed the scheme-handler desktop entry `gpgui.desktop` → `gpclient.desktop`
+  (marked `NoDisplay`, generic icon) and removed the now-unused
+  `io.github.techneut92.gpgui.policy` pkexec action (the live D-Bus path uses
+  `gpservice.policy`). This clears the last gpgui-named artifacts.
+
 ## 2026-07-18 — Removed the in-repo gpgui GUI
 
 - Deleted `apps/gpgui` (the bundled Tauri GUI) and stripped it from every
