@@ -654,6 +654,16 @@ removed entirely on 2026-07-14 rather than finished — see below.
 - **Sunset toward GP Client:** `gpgui` shows a "moved to a new app" notice and
   backs up identities once the successor `gp-client` has a public release.
 
+## 2026-07-18 — Removed the in-repo gpgui GUI
+
+- Deleted `apps/gpgui` (the bundled Tauri GUI) and stripped it from every
+  packaging format: the `-gui` subpackage, the `INCLUDE_GUI` build plumbing, the
+  gpgui binary/desktop/icon installs, and the webkit2gtk build/runtime
+  dependencies that existed only for its embedded webview. The graphical client
+  now lives in its own repository (gp-client, distributed as a Flatpak); this
+  repo is the backend (`gpservice` + `gpclient` CLI + `gpauth`) only, and is now
+  webkit-free.
+
 ## 2026-07-18 — Portal-mode auth handoff (wire-protocol v5)
 
 - **Portal flow in the GUI auth handoff** (`apps/gpservice/src/auth_flow.rs`):

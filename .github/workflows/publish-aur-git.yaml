@@ -46,24 +46,19 @@ jobs:
       - name: Install build tools
         run: |
           pacman -Syu --noconfirm --needed \
-            appmenu-gtk-module \
             cargo \
             curl \
             desktop-file-utils \
             file \
             git \
-            libappindicator-gtk3 \
-            libsecret \
             libxml2 \
             namcap \
             openconnect \
             openssl \
             pkgconf \
-            librsvg \
             shared-mime-info \
             vpnc \
-            wget \
-            webkit2gtk-4.1
+            wget
 
       - name: Save committed .SRCINFO
         if: ${{ github.event_name == 'push' }}

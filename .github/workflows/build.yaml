@@ -174,7 +174,7 @@ jobs:
           yuezk/gpdev:${{ matrix.package }}-builder-tauri2
     # The in-container "install.sh" smoke-test is dropped: it runs `dpkg -i`/`rpm -i`
     # without dependency resolution in a minimal builder image that lacks our
-    # runtime deps (openconnect/opensc/pcsc-lite/webkit/...), so it fails even
+    # runtime deps (openconnect/opensc/pcsc-lite/...), so it fails even
     # though the packages are correct. Real apt/dnf installs resolve them (verified
     # locally in a clean Fedora container).
     # Don't upload package for ubuntu-rolling because it's duplicate of deb package
@@ -188,7 +188,7 @@ jobs:
           build-gp-${{ matrix.package }}/artifacts/*
 
   # Install the freshly built x86_64 RPM in a clean Fedora image, where dnf
-  # resolves the real runtime deps (openconnect/opensc/pcsc-lite/webkit/...) —
+  # resolves the real runtime deps (openconnect/opensc/pcsc-lite/...) —
   # the dependency resolution the dropped in-builder smoke test couldn't do.
   # Also asserts the rpm-ostree-layerable invariants (no scriptlets, /usr-only).
   rpm-install-test:
@@ -202,21 +202,20 @@ jobs:
       with:
         name: artifact-gp-rpm-amd64
         path: rpms
-    - name: Install backend + native GUI (dnf resolves deps)
+    - name: Install backend (dnf resolves deps)
       run: dnf -y install ./rpms/globalprotect-openconnect-dw-*.x86_64.rpm
     - name: Verify the install
       run: |
         set -eux
-        command -v gpclient gpservice gpauth gpgui
+        command -v gpclient gpservice gpauth
         gpclient --help >/dev/null
         test -f /usr/share/dbus-1/system-services/io.github.techneut92.GPService.service
         test -f /usr/share/dbus-1/system.d/io.github.techneut92.GPService.conf
         test -f /usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy
-        test -f /usr/share/applications/io.github.techneut92.gpgui.desktop
     - name: Atomic-safety checks (must layer cleanly with rpm-ostree)
       run: |
         set -e
-        for pkg in globalprotect-openconnect-dw globalprotect-openconnect-dw-gui; do
+        for pkg in globalprotect-openconnect-dw; do
           if [ -n "$(rpm -q --scripts "$pkg")" ]; then
             echo "::error::$pkg ships install scriptlets — breaks rpm-ostree layering"
             rpm -q --scripts "$pkg"; exit 1
@@ -240,7 +239,7 @@ jobs:
       with:
         name: artifact-gp-deb-amd64
         path: debs
-    - name: Install backend + native GUI (apt resolves deps)
+    - name: Install backend (apt resolves deps)
       run: |
         export DEBIAN_FRONTEND=noninteractive
         apt-get update -qq
@@ -248,12 +247,11 @@ jobs:
     - name: Verify the install
       run: |
         set -eux
-        command -v gpclient gpservice gpauth gpgui
+        command -v gpclient gpservice gpauth
         gpclient --help >/dev/null
         test -f /usr/share/dbus-1/system-services/io.github.techneut92.GPService.service
         test -f /usr/share/dbus-1/system.d/io.github.techneut92.GPService.conf
         test -f /usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy
-        test -f /usr/share/applications/io.github.techneut92.gpgui.desktop
 
   # Publish to Fedora COPR — only after rpm-install-test passes, so a package
   # that fails the smoke test is never published. Release tags only. Builds its
@@ -261,16 +259,14 @@ jobs:
   copr-publish:
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     # Gate on the FULL build set (same as gh-release): a release is atomic, so
-    # the backend must not publish to COPR if any build phase failed — including
-    # the GUI flatpak. Otherwise a tag could ship a half-release (backend on COPR
-    # but no GUI / no GitHub release).
+    # the backend must not publish to COPR if any build phase failed. Otherwise a
+    # tag could ship a half-release (backend on COPR but no GitHub release).
     needs:
       - tarball
       - tarball-offline
       - build-gp
       - rpm-install-test
       - deb-install-test
-      - flatpak
     runs-on: ubuntu-latest
     container:
       image: registry.fedoraproject.org/fedora:latest
@@ -367,32 +363,6 @@ jobs:
         if-no-files-found: error
         retention-days: 1
 
-  # Build a single-file Flatpak bundle of the GUI. The artifact is named
-  # `artifact-gp-flatpak` so the release script's `artifact-gp-*` glob ships it.
-  flatpak:
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-48
-      options: --privileged
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-      - name: Build Flatpak bundle
-        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
-        with:
-          bundle: io.github.techneut92.gpgui.flatpak
-          manifest-path: apps/gpgui/packaging/flatpak/io.github.techneut92.gpgui.yml
-          # GNOME 50 runtime/SDK + rust-stable//25.08 are pulled from Flathub by
-          # the action (the image ships an older runtime only).
-          cache-key: flatpak-builder-${{ github.sha }}
-      - name: Upload bundle
-        uses: actions/upload-artifact@v7
-        with:
-          name: artifact-gp-flatpak
-          path: io.github.techneut92.gpgui.flatpak
-          if-no-files-found: error
-
   gh-release:
     if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
@@ -402,7 +372,6 @@ jobs:
       - build-gp
       - rpm-install-test
       - deb-install-test
-      - flatpak
 
     steps:
     - name: Prepare workspace

@@ -105,8 +105,8 @@ impl Cli {
       None => auth_prelogin(&server, &gp_params).await?,
     };
 
-    // Browser-only: the embedded webview SSO now lives in the GUI (gpgui runs it
-    // in-process), so gpauth never needs webkit. Defaults to the system browser.
+    // Browser-only: the embedded webview SSO lives in the GUI (gp-client, its
+    // own project), so gpauth never needs webkit. Defaults to the system browser.
     let browser = self.browser.as_deref().unwrap_or("default");
     let authenticator = BrowserAuthenticator::new(&auth_request, browser);
     let auth_result = authenticator.authenticate().await;

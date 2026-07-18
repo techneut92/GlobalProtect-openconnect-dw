@@ -34,8 +34,9 @@
         };
       in
       {
-        # For `nix build`. Builds the whole workspace — including the in-tree
-        # Tauri GUI (gpgui) — straight from source.
+        # For `nix build`. Builds the whole backend workspace (gpservice, the
+        # gpclient CLI, gpauth) straight from source. The graphical client is a
+        # separate project (gp-client) and is not built here.
         #
         # The openconnect/libxml2 git submodules are compiled by
         # crates/openconnect/build.rs, so the flake source must include them.
@@ -102,7 +103,6 @@
                 substituteInPlace crates/common/src/constants.rs \
                   --replace-fail /usr/bin/gpclient $out/bin/gpclient \
                   --replace-fail /usr/bin/gpservice $out/bin/gpservice \
-                  --replace-fail /usr/bin/gpgui $out/bin/gpgui \
                   --replace-fail /usr/bin/gpauth $out/bin/gpauth \
                   --replace-fail /opt/homebrew/ $out/
               '';

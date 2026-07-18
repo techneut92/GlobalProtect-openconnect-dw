@@ -19,9 +19,6 @@ Build-Depends: debhelper (>= 9),
   libp11-kit-dev,
   nettle-dev,
   libgmp-dev,
-  libwebkit2gtk-4.1-dev,
-  libayatana-appindicator3-dev,
-  librsvg2-dev,
   rust-@RUST_VERSION@-all | rust-all
 Homepage: https://github.com/techneut92/GlobalProtect-openconnect-dw
 
@@ -43,18 +40,4 @@ Description: GlobalProtect VPN backend (PKCS#11 fork)
  The GlobalProtect VPN backend: the gpservice root daemon, gpauth SAML helper,
  and gpclient CLI, based on OpenConnect. Supports SSO, smart-card / PKCS#11
  (YubiKey PIV), certificate, and password authentication. The graphical client
- is packaged separately (globalprotect-openconnect-dw-gui, or a Flatpak).
-
-Package: globalprotect-openconnect-dw-gui
-Architecture: any
-Depends:
-  ${misc:Depends},
-  ${shlibs:Depends},
-  globalprotect-openconnect-dw (= ${binary:Version}),
-  libwebkit2gtk-4.1-0,
-  libsecret-1-0,
-Conflicts: globalprotect-openconnect
-Description: GlobalProtect VPN graphical client (Tauri)
- The GlobalProtect VPN graphical client (gpgui), a Tauri front-end that drives
- the gpservice backend over D-Bus. Requires the globalprotect-openconnect-dw
- backend package.
+ (gp-client) ships separately as a Flatpak.

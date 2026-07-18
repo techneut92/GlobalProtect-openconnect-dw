@@ -1,8 +1,7 @@
 #!/usr/bin/make -f
 
-# Build the GUI too: this source emits both the backend package and the
-# globalprotect-openconnect-dw-gui package (split via debian/*.install).
-export INCLUDE_GUI = 1
+# Backend-only source: emits just the globalprotect-openconnect-dw package
+# (gpservice/gpclient/gpauth). The GUI ships separately as a Flatpak.
 export DISABLE_RUST_TOOLCHAIN = 0
 
 export PATH := /usr/lib/rust-@RUST_VERSION@/bin:/usr/local/cargo/bin:$(PATH)

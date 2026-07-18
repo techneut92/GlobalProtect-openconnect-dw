@@ -31,8 +31,6 @@ COPY . .
 
 RUN RUSTFLAGS="-C target-feature=-crt-static" \
     make build \
-    BUILD_GUI_HELPER=0 \
-    INCLUDE_GUI=0 \
     LIBXML2_STATIC=1
 
 RUN install -Dm755 target/release/gpclient /out/usr/bin/gpclient \

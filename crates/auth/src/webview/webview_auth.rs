@@ -100,7 +100,7 @@ impl<'a> WebviewAuthenticator<'a> {
 
     // Build the window on the main thread. On Linux the builder performs raw
     // GTK widget creation on the *calling* thread, and this method runs on an
-    // async worker (gpgui invokes it from a Tauri command) — GTK is
+    // async worker (a Tauri GUI invokes it from a command) — GTK is
     // single-threaded, and off-main widget work corrupts GTK state and
     // segfaults non-deterministically (same class of bug as the tray
     // reveal fix; see issue #24).

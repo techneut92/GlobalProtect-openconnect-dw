@@ -9,8 +9,6 @@ pub const GP_CLIENT_BINARY: &str = "/opt/homebrew/bin/gpclient";
 #[cfg(all(not(debug_assertions), target_os = "macos", target_arch = "aarch64"))]
 pub const GP_SERVICE_BINARY: &str = "/opt/homebrew/bin/gpservice";
 #[cfg(all(not(debug_assertions), target_os = "macos", target_arch = "aarch64"))]
-pub const GP_GUI_BINARY: &str = "/opt/homebrew/bin/gpgui";
-#[cfg(all(not(debug_assertions), target_os = "macos", target_arch = "aarch64"))]
 pub const GP_AUTH_BINARY: &str = "/opt/homebrew/bin/gpauth";
 
 // Release binaries - macOS (Intel Homebrew)
@@ -18,8 +16,6 @@ pub const GP_AUTH_BINARY: &str = "/opt/homebrew/bin/gpauth";
 pub const GP_CLIENT_BINARY: &str = "/usr/local/bin/gpclient";
 #[cfg(all(not(debug_assertions), target_os = "macos", target_arch = "x86_64"))]
 pub const GP_SERVICE_BINARY: &str = "/usr/local/bin/gpservice";
-#[cfg(all(not(debug_assertions), target_os = "macos", target_arch = "x86_64"))]
-pub const GP_GUI_BINARY: &str = "/usr/local/bin/gpgui";
 #[cfg(all(not(debug_assertions), target_os = "macos", target_arch = "x86_64"))]
 pub const GP_AUTH_BINARY: &str = "/usr/local/bin/gpauth";
 
@@ -29,8 +25,6 @@ pub const GP_CLIENT_BINARY: &str = "/usr/bin/gpclient";
 #[cfg(all(not(debug_assertions), not(target_os = "macos")))]
 pub const GP_SERVICE_BINARY: &str = "/usr/bin/gpservice";
 #[cfg(all(not(debug_assertions), not(target_os = "macos")))]
-pub const GP_GUI_BINARY: &str = "/usr/bin/gpgui";
-#[cfg(all(not(debug_assertions), not(target_os = "macos")))]
 pub const GP_AUTH_BINARY: &str = "/usr/bin/gpauth";
 
 // Debug binaries are set in build.rs via environment variables
@@ -38,7 +32,5 @@ pub const GP_AUTH_BINARY: &str = "/usr/bin/gpauth";
 pub const GP_CLIENT_BINARY: &str = env!("GP_CLIENT_BINARY");
 #[cfg(debug_assertions)]
 pub const GP_SERVICE_BINARY: &str = env!("GP_SERVICE_BINARY");
-#[cfg(debug_assertions)]
-pub const GP_GUI_BINARY: &str = env!("GP_GUI_BINARY");
 #[cfg(debug_assertions)]
 pub const GP_AUTH_BINARY: &str = env!("GP_AUTH_BINARY");

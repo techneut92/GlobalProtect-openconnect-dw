@@ -2,6 +2,12 @@
 
 ## 1.5.0 - Unreleased
 
+- **Removed the in-repo `gpgui` GUI.** The bundled Tauri GUI (`apps/gpgui`) and
+  its `-gui` package (and the webkit2gtk dependency it pulled in) are gone. The
+  graphical client is now the standalone **GP Client** app
+  (<https://github.com/techneut92/gp-client>, shipped as a Flatpak); this repo
+  is the backend only — `gpservice`, the `gpclient` CLI, and the `gpauth` SAML
+  helper. The backend is now fully webkit-free.
 - **Portal mode (experimental).** The auth handoff can now run the portal flow,
   not just direct-gateway: when the connect/probe request sets `as_gateway =
   false` (protocol v5 / gp-protocol 1.3), the backend runs the portal prelogin,

@@ -1,6 +1,5 @@
 .SHELLFLAGS += -e
 
-INCLUDE_GUI ?= 0
 CARGO ?= cargo
 DISABLE_RUST_TOOLCHAIN ?= 0
 RUST_VERSION ?= 1.89
@@ -78,14 +77,9 @@ build-rs:
 	fi
 
 	# The whole backend stays lean + webkit-free: gpauth is now a browser-only
-	# SAML helper — the embedded-webview SSO moved into the GUI (gpgui, in-process).
+	# SAML helper. The GUI ships separately as an external Flatpak app (gp-client),
+	# so nothing here pulls in webkit2gtk.
 	$(CARGO) build $(CARGO_BUILD_ARGS) -p gpclient -p gpservice -p gpauth --no-default-features
-
-	# Optional: build OUR Tauri GUI from source (apps/gpgui) for a native+GUI
-	# package. This is never the upstream proprietary gpgui binary.
-	if [ $(INCLUDE_GUI) -eq 1 ]; then \
-		$(CARGO) build $(CARGO_BUILD_ARGS) -p gpgui; \
-	fi
 
 clean:
 	$(CARGO) clean
@@ -114,20 +108,12 @@ install:
 	install -Dm644 packaging/files/usr/share/polkit-1/rules.d/49-gpservice.rules $(DESTDIR)/usr/share/polkit-1/rules.d/49-gpservice.rules
 	install -Dm644 packaging/files/usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy $(DESTDIR)/usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy
 
-	# Optional: install OUR Tauri GUI (built from source) for a native+GUI package.
-	if [ $(INCLUDE_GUI) -eq 1 ]; then \
-		install -Dm755 target/release/gpgui $(DESTDIR)/usr/bin/gpgui; \
-		install -Dm644 apps/gpgui/packaging/io.github.techneut92.gpgui.desktop $(DESTDIR)/usr/share/applications/io.github.techneut92.gpgui.desktop; \
-		install -Dm644 apps/gpgui/icons/128x128.png $(DESTDIR)/usr/share/icons/hicolor/128x128/apps/gpgui.png; \
-	fi
-
 uninstall:
 	@echo "Uninstalling $(PKG_NAME)..."
 
 	rm -f $(DESTDIR)/usr/bin/gpclient
 	rm -f $(DESTDIR)/usr/bin/gpauth
 	rm -f $(DESTDIR)/usr/bin/gpservice
-	rm -f $(DESTDIR)/usr/bin/gpgui
 
 	rm -f $(DESTDIR)/usr/libexec/gpclient/vpnc-script
 	rm -f $(DESTDIR)/usr/libexec/gpclient/hipreport.sh
@@ -139,11 +125,6 @@ uninstall:
 	rm -f $(DESTDIR)/usr/share/dbus-1/system.d/io.github.techneut92.GPService.conf
 	rm -f $(DESTDIR)/usr/share/polkit-1/rules.d/49-gpservice.rules
 	rm -f $(DESTDIR)/usr/share/polkit-1/actions/io.github.techneut92.gpservice.policy
-
-	# Optional GUI (native+GUI package)
-	rm -f $(DESTDIR)/usr/bin/gpgui
-	rm -f $(DESTDIR)/usr/share/applications/io.github.techneut92.gpgui.desktop
-	rm -f $(DESTDIR)/usr/share/icons/hicolor/128x128/apps/gpgui.png
 
 clean-debian:
 	rm -rf .build/deb
@@ -161,9 +142,8 @@ init-debian: clean-debian tarball
 	cp -f packaging/deb/postrm .build/deb/$(PKG)/debian/postrm
 	cp -f packaging/deb/compat .build/deb/$(PKG)/debian/compat
 
-	# Split into backend + GUI binary packages (dh_install reads these globs)
+	# Backend binary package file list (dh_install reads this glob)
 	cp -f packaging/deb/globalprotect-openconnect-dw.install .build/deb/$(PKG)/debian/globalprotect-openconnect-dw.install
-	cp -f packaging/deb/globalprotect-openconnect-dw-gui.install .build/deb/$(PKG)/debian/globalprotect-openconnect-dw-gui.install
 
 	sed -i "s/@RUST_VERSION@/$(RUST_VERSION)/g" .build/deb/$(PKG)/debian/control
 
@@ -292,7 +272,7 @@ binary: clean-binary tarball
 
 	mkdir -p .build/binary/$(PKG_NAME)_$(VERSION)/artifacts
 
-	make -C .build/binary/${PKG} build INCLUDE_GUI=$(INCLUDE_GUI)
+	make -C .build/binary/${PKG} build
 	make -C .build/binary/${PKG} install DESTDIR=$(PWD)/.build/binary/$(PKG_NAME)_$(VERSION)/artifacts
 
 	cp packaging/binary/Makefile.in .build/binary/$(PKG_NAME)_$(VERSION)/Makefile

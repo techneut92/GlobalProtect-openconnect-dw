@@ -27,14 +27,6 @@ BuildRequires:  gmp-devel
 BuildRequires:  wget
 BuildRequires:  file
 BuildRequires:  perl
-# GUI (gpgui, Tauri) build dependencies — needed to build the -gui subpackage.
-%if 0%{?suse_version}
-BuildRequires:  webkit2gtk3-devel
-%else
-BuildRequires:  webkit2gtk4.1-devel
-%endif
-BuildRequires:  (libappindicator-gtk3-devel or libayatana-appindicator-gtk3-devel)
-BuildRequires:  (librsvg2-devel or librsvg-devel)
 
 # Runtime: openconnect tunnel + PKCS#11 / smart-card (YubiKey PIV) + polkit/D-Bus.
 Requires:       openconnect
@@ -54,22 +46,7 @@ Conflicts:      globalprotect-openconnect-snapshot
 The GlobalProtect VPN backend (PKCS#11 fork): the gpservice root daemon, gpauth
 SAML helper, and gpclient CLI, based on OpenConnect. Supports SSO, smart-card /
 PKCS#11 (YubiKey PIV), certificate, and password authentication. The graphical
-client is packaged separately (the -gui subpackage, or a Flatpak).
-
-%package gui
-Summary:        GlobalProtect VPN graphical client (Tauri)
-Requires:       %{name} = %{version}-%{release}
-%if 0%{?suse_version}
-Requires:       webkit2gtk3
-%else
-Requires:       webkit2gtk4.1
-%endif
-Requires:       libsecret
-Conflicts:      globalprotect-openconnect
-
-%description gui
-The GlobalProtect VPN graphical client (gpgui), a Tauri front-end that drives
-the gpservice backend over D-Bus. Requires the %{name} backend package.
+client is packaged separately (a Flatpak).
 
 %prep
 %setup
@@ -77,10 +54,10 @@ the gpservice backend over D-Bus. Requires the %{name} backend package.
 %build
 # The injected RUSTFLAGS could fail the build
 unset RUSTFLAGS
-make build INCLUDE_GUI=1
+make build
 
 %install
-%make_install INCLUDE_GUI=1
+%make_install
 
 %files
 %defattr(-,root,root)
@@ -103,12 +80,6 @@ make build INCLUDE_GUI=1
 %{_datadir}/polkit-1/actions/io.github.techneut92.gpservice.policy
 
 %dir %{_libexecdir}/gpclient
-
-%files gui
-%defattr(-,root,root)
-%{_bindir}/gpgui
-%{_datadir}/applications/io.github.techneut92.gpgui.desktop
-%{_datadir}/icons/hicolor/128x128/apps/gpgui.png
 
 %changelog
 * @DATE@ Dylan Westra <dylanwestra@gmail.com> - @VERSION@

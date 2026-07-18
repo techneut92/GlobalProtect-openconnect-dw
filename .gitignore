@@ -16,7 +16,6 @@ gen
 # Nix files
 result
 
-# Flatpak: downloaded vendoring tool + builder output
-apps/gpgui/packaging/flatpak/flatpak-cargo-generator.py
+# Flatpak: builder output
 build-flatpak/
 .flatpak-builder/

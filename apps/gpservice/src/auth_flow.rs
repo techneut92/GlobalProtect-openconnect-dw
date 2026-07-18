@@ -5,8 +5,8 @@
 //! prelogin (including the PKCS#11 mTLS), gateway login, and starting the
 //! tunnel — so a GUI that links none of this (gp-client) can still connect.
 //!
-//! This mirrors the proven client-side flow in the fork's `apps/gpgui`
-//! (`connect.rs`), moved into the service.
+//! This mirrors the proven client-side prelogin/gateway-login flow, moved into
+//! the service so the (webkit-free) GUI never links it.
 
 use anyhow::{bail, Context};
 use gpapi::{
