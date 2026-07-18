@@ -2,6 +2,12 @@
 
 ## 1.5.0 - Unreleased
 
+- **gpservice now advertises its wire-protocol range.** `gpservice --protocol`
+  prints the `PROTOCOL_MIN PROTOCOL_MAX` this build speaks (e.g. `2 4`) and
+  exits, without activating the service. This lets a GUI detect a backend that's
+  *too new* for it — one speaking a protocol the GUI can't — and show an
+  "Update GP Client" screen instead of failing to connect (GPC-42 / GPS-18).
+  Older backends lack the flag, which a GUI reads as "compatible".
 - **Smart-card prelogin now recovers if the reader was busy at startup.** The
   PKCS#11 module scans readers once, at `C_Initialize`, and gpservice caches
   that context for its whole lifetime. If the card was momentarily contended the

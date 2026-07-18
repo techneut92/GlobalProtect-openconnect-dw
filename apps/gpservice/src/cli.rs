@@ -23,12 +23,21 @@ struct Cli {
   /// D-Bus-only, so this flag is implied.
   #[clap(long)]
   dbus: bool,
+  /// Print the wire-protocol range this build speaks ("<min> <max>") and exit.
+  /// Lets a GUI detect a backend too new for it (GPC-42) without activating the
+  /// service; older backends lack the flag, which the GUI reads as "compatible".
+  #[clap(long)]
+  protocol: bool,
   #[command(flatten)]
   verbose: InfoLevelVerbosity,
 }
 
 impl Cli {
   async fn run(&mut self) -> anyhow::Result<()> {
+    if self.protocol {
+      println!("{} {}", gp_protocol::PROTOCOL_MIN, gp_protocol::PROTOCOL_MAX);
+      return Ok(());
+    }
     self.init_logger();
     info!("gpservice started: {}", VERSION);
     if !self.dbus {
