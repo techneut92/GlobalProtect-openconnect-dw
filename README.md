@@ -15,10 +15,20 @@ backend service** (`gpservice`, a D-Bus daemon), and the `gpauth` SAML helper.
 A fork of [yuezk/GlobalProtect-openconnect](https://github.com/yuezk/GlobalProtect-openconnect),
 **fully open source under the GPL-3.0**.
 
-> The graphical desktop app, **GP Client**, is developed separately at
-> [github.com/techneut92/gp-client](https://github.com/techneut92/gp-client) and
-> ships as a Flatpak. It drives this backend over D-Bus; this repository is
-> **webkit-free**.
+> **This repository is CLI + service only** — the command-line client
+> (`gpclient`), the privileged D-Bus service (`gpservice`), and the `gpauth`
+> SAML helper. It has **no GUI** and is **webkit-free**.
+>
+> The graphical desktop app, **GP Client**, is a separate side project at
+> [github.com/techneut92/gp-client](https://github.com/techneut92/gp-client)
+> (shipped as a Flatpak). This repository is the privileged backend that GP
+> Client installs and drives over D-Bus — you can also use it entirely on its
+> own from the command line.
+
+<p align="center">
+  <img width="380" src="docs/screenshots/gp-client-backend-required.png" alt="GP Client prompting to install this backend service">
+</p>
+<p align="center"><em>GP Client (the desktop app) installs and drives this backend — this repository is the CLI + service it needs.</em></p>
 
 > **GlobalProtect** is a trademark of Palo Alto Networks. This is an independent,
 > compatible client and is not affiliated with or endorsed by Palo Alto Networks.
@@ -180,22 +190,66 @@ is the command-line client.
 
 ### Command line (`gpclient`)
 
+The tunnel runs as root, so `connect`/`disconnect` need `sudo`.
+
 ```
 Usage: gpclient [OPTIONS] <COMMAND>
 
 Commands:
-  connect     Connect to a portal server
+  connect     Connect to a portal (or gateway) server
   disconnect  Disconnect from the server
-  launch-gui  Launch the GUI
+  launch-gui  Handle the browser-SSO `globalprotectcallback:` URL (scheme handler)
+  hip         Generate a HIP report
   help        Print this message or the help of the given subcommand(s)
+
+Global options:
+      --ignore-tls-errors   Ignore TLS certificate errors
+      --fix-openssl         Extended OpenSSL compatibility mode
+  -v, --verbose...          -v debug, -vv trace
+  -q, --quiet...            -q warnings, -qq errors
 ```
 
-External-browser SSO:
+#### `gpclient connect <SERVER> [OPTIONS]`
+
+By default `<SERVER>` is treated as a **portal** (prelogin → gateway list →
+gateway login); pass `--as-gateway` to connect straight to a gateway.
+
+| Option | Purpose |
+| --- | --- |
+| `-g, --gateway <NAME>` | Pick a gateway (otherwise prompts in portal mode) |
+| `--as-gateway` | Treat `<SERVER>` as a gateway, not a portal |
+| `-u, --user <USER>` | Username (prompts if omitted) |
+| `--passwd-on-stdin` | Read the password from stdin |
+| `-c, --certificate <CERT>` | Client cert: a PEM/PKCS#12 file **or a `pkcs11:` URI** (smart card) |
+| `-k, --sslkey <KEY>` · `-p, --key-password <PW>` | Separate key file / passphrase |
+| `--browser [BROWSER]` | External-browser SSO — auto / `default` / `remote` (headless) / path |
+| `--cookie-on-stdin` · `--cookie-file <PATH>` · `--no-cookie-cache` | Portal-cookie handling |
+| `--hip [SCRIPT]` · `--hip-user <USER>` | Host Integrity Protection reporting |
+| `-s, --script <FILE>` · `-i, --interface <IFNAME>` · `-S, --script-tun` | Tunnel routing / device |
+| `-m, --mtu <N>` · `--disable-ipv6` · `--reconnect-timeout <SECS>` | Tunnel tuning |
+| `--os <Linux\|Windows\|Mac>` · `--os-version` · `--client-version` · `--user-agent` | Reported client identity |
+
+`gpclient disconnect [--wait <SECS>]` tears the tunnel down.
+
+#### Examples
 
 ```bash
-sudo -E gpclient connect --browser <portal>
-# or, piping the cookie:
-gpauth <portal> --browser 2>/dev/null | sudo gpclient connect <portal> --cookie-on-stdin
+# Smart card (YubiKey PIV) against a gateway — the fork's headline feature:
+sudo gpclient connect gp.acme.example --as-gateway \
+  --certificate 'pkcs11:manufacturer=piv_II;id=%03;type=cert'
+
+# Portal mode, pick a gateway non-interactively:
+sudo gpclient connect gp.acme.example --gateway "Gateway-EU"
+
+# Username / password (password from stdin, never argv):
+echo "$PW" | sudo gpclient connect gp.acme.example --user you --passwd-on-stdin
+
+# External-browser SSO (SAML):
+sudo -E gpclient connect gp.acme.example --browser
+# …or pipe the cookie from gpauth:
+gpauth gp.acme.example --browser 2>/dev/null | sudo gpclient connect gp.acme.example --cookie-on-stdin
+
+sudo gpclient disconnect
 ```
 
 Use `--browser remote` on headless hosts to get a URL you complete elsewhere.
