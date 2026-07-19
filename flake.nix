@@ -102,7 +102,6 @@
 
                 substituteInPlace crates/common/src/constants.rs \
                   --replace-fail /usr/bin/gpclient $out/bin/gpclient \
-                  --replace-fail /usr/bin/gpservice $out/bin/gpservice \
                   --replace-fail /usr/bin/gpauth $out/bin/gpauth \
                   --replace-fail /opt/homebrew/ $out/
               '';

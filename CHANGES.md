@@ -750,6 +750,23 @@ removed entirely on 2026-07-14 rather than finished — see below.
   permanent "no PKCS#11 token matching …" that stuck for the gpservice lifetime
   when the reader was contended at first init.
 
+## 2026-07-19 — Packaging fixups for the single-package backend
+
+Follow-ups to the gpgui removal and the constants refactor so the deb and Nix
+builds succeed for the 1.5.0 backend:
+
+- **deb** (`packaging/deb/`): dropped the stale
+  `globalprotect-openconnect-dw.install`. With the `-gui` subpackage gone there
+  is a single binary package, so `dh_auto_install` installs straight into
+  `debian/globalprotect-openconnect-dw/` rather than `debian/tmp/`; the leftover
+  `.install` made `dh_install` look in an empty `debian/tmp` and abort with
+  "missing files, aborting". The Makefile `install` target already stages every
+  file (binaries, libexec scripts, NetworkManager hooks, D-Bus service, polkit).
+- **nix** (`flake.nix`): removed the `--replace-fail /usr/bin/gpservice`
+  substitution — `crates/common/src/constants.rs` no longer defines a gpservice
+  binary path (only `GP_CLIENT_BINARY` / `GP_AUTH_BINARY`), so `--replace-fail`
+  aborted `nix build`.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of
