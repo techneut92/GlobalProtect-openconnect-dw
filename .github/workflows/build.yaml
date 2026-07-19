@@ -93,6 +93,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: artifact-source
+        retention-days: 1
         if-no-files-found: error
         path: |
           source/artifacts/*
@@ -136,6 +137,7 @@ jobs:
       with:
         path: source-offline/*.offline.tar.gz
         name: artifact-source-offline
+        retention-days: 1
         if-no-files-found: error
 
   build-gp:
@@ -183,6 +185,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: artifact-gp-${{ matrix.package }}-${{ matrix.os.arch }}
+        retention-days: 1
         if-no-files-found: error
         path: |
           build-gp-${{ matrix.package }}/artifacts/*

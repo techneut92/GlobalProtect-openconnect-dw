@@ -140,6 +140,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: artifact-${{ matrix.os }}-${{ matrix.package }}
+        retention-days: 1
         if-no-files-found: error
         path: |
           build-${{ matrix.package }}/artifacts/*
