@@ -26,9 +26,14 @@ A fork of [yuezk/GlobalProtect-openconnect](https://github.com/yuezk/GlobalProte
 > own from the command line.
 
 <p align="center">
-  <img width="380" src="docs/screenshots/gp-client-backend-required.png" alt="GP Client prompting to install this backend service">
+  <img width="330" src="docs/screenshots/gp-client-frontend.png" alt="GP Client — the desktop app that drives this backend">
+  <img width="330" src="docs/screenshots/gp-client-backend-required.png" alt="GP Client prompting to install this backend service">
 </p>
-<p align="center"><em>GP Client (the desktop app) installs and drives this backend — this repository is the CLI + service it needs.</em></p>
+<p align="center"><em>GP Client (the desktop app) installs and drives this backend — this repository is the CLI + service it needs. Get it at <a href="https://github.com/techneut92/gp-client">github.com/techneut92/gp-client</a>.</em></p>
+
+> ⚠️ **Early release.** This is a young project — the smart-card / PKCS#11 paths
+> are used daily, but some flows are still lightly tested. Please
+> [report anything that breaks](https://github.com/techneut92/GlobalProtect-openconnect-dw/issues).
 
 > **GlobalProtect** is a trademark of Palo Alto Networks. This is an independent,
 > compatible client and is not affiliated with or endorsed by Palo Alto Networks.
