@@ -176,7 +176,10 @@ fn normalize_arg_value(value: &str) -> anyhow::Result<Option<String>> {
   Ok(Some(decode(value)?.into_owned()))
 }
 
-fn parse_mfa(res: &str) -> Option<(String, String)> {
+/// Parse a `respStatus = "Challenge"` response into `(message, inputStr)`.
+/// Shared with the portal config flow — the portal answers a challenged
+/// getconfig with the same JS blob as the gateway login endpoint.
+pub fn parse_mfa(res: &str) -> Option<(String, String)> {
   let message = res
     .lines()
     .find(|l| l.contains("respMsg"))

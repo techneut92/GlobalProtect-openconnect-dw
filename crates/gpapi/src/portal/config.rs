@@ -9,7 +9,7 @@ use xmltree::Element;
 use crate::{
   credential::{AuthCookieCredential, Credential},
   error::PortalError,
-  gateway::{Gateway, parse_gateways},
+  gateway::{Gateway, parse_gateways, parse_mfa},
   gp_params::GpParams,
   utils::{normalize_server, parse_gp_response, remove_url_scheme, xml::ElementExt},
 };
@@ -111,7 +111,20 @@ impl PortalConfig {
   }
 }
 
-pub async fn retrieve_config(portal: &str, cred: &Credential, gp_params: &GpParams) -> anyhow::Result<PortalConfig> {
+/// Outcome of a portal getconfig: the config, or an interactive MFA / token
+/// challenge the portal wants answered first (mirrors [`GatewayLogin`]).
+///
+/// [`GatewayLogin`]: crate::gateway::GatewayLogin
+pub enum PortalConfigResult {
+  Config(Box<PortalConfig>),
+  Mfa(String, String),
+}
+
+pub async fn retrieve_config(
+  portal: &str,
+  cred: &Credential,
+  gp_params: &GpParams,
+) -> anyhow::Result<PortalConfigResult> {
   let portal = normalize_server(portal)?;
   let server = remove_url_scheme(&portal);
 
@@ -149,6 +162,14 @@ pub async fn retrieve_config(portal: &str, cred: &Credential, gp_params: &GpPara
     bail!(PortalError::ConfigError("Empty portal config response".to_string()))
   }
 
+  // MFA detected: the portal answers a challenged getconfig with the same
+  // `respStatus = "Challenge"` JS blob as the gateway login endpoint (not XML).
+  if res_xml.contains("Challenge") {
+    if let Some((message, input_str)) = parse_mfa(&res_xml) {
+      return Ok(PortalConfigResult::Mfa(message, input_str));
+    }
+  }
+
   debug!("Portal config response: {}", res_xml);
   let root = Element::parse(res_xml.as_bytes()).map_err(|e| PortalError::ConfigError(e.to_string()))?;
 
@@ -178,7 +199,7 @@ pub async fn retrieve_config(portal: &str, cred: &Credential, gp_params: &GpPara
   info!("Detected portal version: {:?}", version);
   let allow_extend_session = parse_allow_extend_session(&root);
 
-  Ok(PortalConfig {
+  Ok(PortalConfigResult::Config(Box::new(PortalConfig {
     portal: server.to_string(),
     auth_cookie: AuthCookieCredential::new(cred.username(), &user_auth_cookie, &prelogon_user_auth_cookie),
     config_cred: cred.clone(),
@@ -187,7 +208,7 @@ pub async fn retrieve_config(portal: &str, cred: &Credential, gp_params: &GpPara
     internal_host_detection: if ihd_enabled { Some(prefer_internal) } else { None },
     version,
     allow_extend_session,
-  })
+  })))
 }
 
 fn parse_allow_extend_session(root: &Element) -> Option<bool> {

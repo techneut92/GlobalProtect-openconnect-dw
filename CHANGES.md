@@ -750,18 +750,40 @@ removed entirely on 2026-07-14 rather than finished — see below.
   permanent "no PKCS#11 token matching …" that stuck for the gpservice lifetime
   when the reader was contended at first init.
 
+## 2026-07-19 — Portal-mode MFA / token challenges (GPS-16 follow-up)
+
+In portal mode the RSA/OTP challenge is normally issued by the *portal* (the
+gateway then reuses the portal cookie without re-challenging), but the
+interactive-MFA loop added for GPS-16 only wrapped the gateway login — a
+challenged portal `getconfig` just errored out. Wired the portal path into the
+same challenge machinery; no protocol change (the GUI sees the same
+`MfaChallenge` state / `submit_mfa` call regardless of which step challenged):
+
+- **`crates/gpapi/src/portal/config.rs`:** `retrieve_config` now returns
+  `PortalConfigResult` — `Config(PortalConfig)` or `Mfa(message, inputStr)`,
+  mirroring `GatewayLogin`. A challenged getconfig is detected before XML
+  parsing (the portal answers with the same `respStatus = "Challenge"` JS blob
+  as the gateway login endpoint) via the now-shared
+  `gateway::parse_mfa`.
+- **`apps/gpservice/src/auth_flow.rs`:** new `retrieve_config_mfa` loop —
+  prompt the GUI through the existing `MfaPrompter`, resubmit with
+  `inputStr` + the entered code, repeat until the config comes back (or the
+  user cancels); `connect_via_portal` uses it.
+- **`apps/gpclient/src/connect.rs`:** the CLI's portal flow gained the same
+  loop with an inline prompt (`retrieve_portal_config`), matching its existing
+  gateway-MFA handling.
+
 ## 2026-07-19 — Packaging fixups for the single-package backend
 
 Follow-ups to the gpgui removal and the constants refactor so the deb and Nix
 builds succeed for the 1.5.0 backend:
 
-- **deb** (`packaging/deb/`): dropped the stale
-  `globalprotect-openconnect-dw.install`. With the `-gui` subpackage gone there
-  is a single binary package, so `dh_auto_install` installs straight into
-  `debian/globalprotect-openconnect-dw/` rather than `debian/tmp/`; the leftover
-  `.install` made `dh_install` look in an empty `debian/tmp` and abort with
-  "missing files, aborting". The Makefile `install` target already stages every
-  file (binaries, libexec scripts, NetworkManager hooks, D-Bus service, polkit).
+- **deb** (`packaging/deb/rules.in`): with the `-gui` subpackage gone this is a
+  single-binary source, so `dh_auto_install` switched its default destdir from
+  `debian/tmp/` to `debian/globalprotect-openconnect-dw/` — leaving
+  `dh_install`'s file list staring at an empty `debian/tmp` and aborting with
+  "missing files, aborting". Added an `override_dh_auto_install` that keeps
+  staging in `debian/tmp`, where the `.install` list distributes from.
 - **nix** (`flake.nix`): removed the `--replace-fail /usr/bin/gpservice`
   substitution — `crates/common/src/constants.rs` no longer defines a gpservice
   binary path (only `GP_CLIENT_BINARY` / `GP_AUTH_BINARY`), so `--replace-fail`

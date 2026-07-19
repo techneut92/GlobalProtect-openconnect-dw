@@ -16,7 +16,7 @@ use gpapi::{
   error::PortalError,
   gateway::{GatewayLogin, SessionExtensionAuth, gateway_login},
   gp_params::{ClientOs, GpParams},
-  portal::{Prelogin, StandardPrelogin, prelogin, retrieve_config},
+  portal::{PortalConfig, PortalConfigResult, Prelogin, StandardPrelogin, prelogin, retrieve_config},
   process::{
     auth_launcher::SamlAuthLauncher,
     users::{get_non_root_user, get_user_by_name},
@@ -387,7 +387,7 @@ impl<'a> ConnectHandler<'a> {
     let prelogin = prelogin(portal, &gp_params).await?;
 
     let cred = self.obtain_credential(&prelogin, portal).await?;
-    let mut portal_config = retrieve_config(portal, &cred, &gp_params).await?;
+    let mut portal_config = self.retrieve_portal_config(portal, &cred, &gp_params).await?;
 
     let selected_gateway = match &self.args.gateway {
       Some(gateway) => portal_config
@@ -483,6 +483,32 @@ impl<'a> ConnectHandler<'a> {
         login_session.extension_auth,
       )
       .await
+  }
+
+  /// Portal getconfig that answers interactive MFA / token challenges, the
+  /// same way [`Self::login_gateway`] does for the gateway. In portal mode the
+  /// RSA/OTP challenge is normally issued by the portal itself; the later
+  /// gateway login reuses the portal cookie without re-challenging.
+  async fn retrieve_portal_config(
+    &self,
+    portal: &str,
+    cred: &Credential,
+    gp_params: &GpParams,
+  ) -> anyhow::Result<PortalConfig> {
+    let mut gp_params = gp_params.clone();
+
+    loop {
+      match retrieve_config(portal, cred, &gp_params).await? {
+        PortalConfigResult::Config(config) => return Ok(*config),
+        PortalConfigResult::Mfa(message, input_str) => {
+          let otp = Text::new(&message).prompt()?;
+          gp_params.set_input_str(&input_str);
+          gp_params.set_otp(&otp);
+
+          info!("Retrying portal config with MFA...");
+        }
+      }
+    }
   }
 
   async fn login_gateway(

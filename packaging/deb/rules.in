@@ -10,3 +10,11 @@ export PATH := /usr/lib/rust-@RUST_VERSION@/bin:/usr/local/cargo/bin:$(PATH)
 	which cargo
 	which rustc
 	dh $@ --no-parallel
+
+# With the -gui subpackage gone this is a single-binary source, so
+# dh_auto_install switched its default destdir from debian/tmp to
+# debian/globalprotect-openconnect-dw/ — leaving dh_install's file list
+# (globalprotect-openconnect-dw.install) staring at an empty debian/tmp.
+# Keep staging in debian/tmp, where the .install list distributes from.
+override_dh_auto_install:
+	dh_auto_install --destdir=debian/tmp

@@ -43,8 +43,11 @@
   retrieves the gateway list, picks the region-preferred gateway, and logs into
   it with the portal cookie — reusing the same gpapi code the `gpclient` CLI
   uses. Direct-gateway remains the default and is unchanged. Interactive
-  MFA/token challenges during portal auth are not handled yet (they still error
-  out). Portal mode is untested against a live portal — see GPS-6.
+  MFA/token challenges are answered in *both* flows: a challenged portal
+  getconfig is detected the same way as a challenged gateway login (the portal
+  answers with the same `Challenge` response) and prompts through the same
+  channel — the GUI's MFA dialog over D-Bus, or an inline prompt in the
+  `gpclient` CLI. Portal mode is untested against a live portal — see GPS-6.
 - **DNS is always restored when a session ends.** gpservice now drops the
   per-link systemd-resolved configuration on the tunnel interface
   (`resolvectl revert` + cache flush) on *every* session end — clean disconnect,

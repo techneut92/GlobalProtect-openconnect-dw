@@ -14,7 +14,7 @@ use gpapi::{
   credential::{Credential, PasswordCredential},
   gateway::{gateway_login, GatewayLogin},
   gp_params::{ClientOs, GpParams},
-  portal::{prelogin, retrieve_config, Prelogin},
+  portal::{prelogin, retrieve_config, PortalConfig, PortalConfigResult, Prelogin},
   service::request::{AuthCredential, ConnectAuthRequest, ConnectRequest, ProbeReply, ProbeRequest},
 };
 use gpapi::service::vpn_state::{ConnectInfo, MfaChallengeInfo, VpnState};
@@ -72,6 +72,36 @@ async fn gateway_login_mfa(
         p.set_input_str(&input_str);
         p.set_otp(&code);
         result = gateway_login(server, cred, &p).await.context("MFA gateway login failed")?;
+      }
+    }
+  }
+}
+
+/// Portal getconfig that answers interactive MFA / token challenges, the same
+/// way [`gateway_login_mfa`] does for the gateway: in portal mode the RSA/OTP
+/// challenge is normally issued by the *portal*, and the later gateway login
+/// reuses the portal cookie without re-challenging.
+async fn retrieve_config_mfa(
+  server: &str,
+  cred: &Credential,
+  params: &GpParams,
+  mfa: &MfaPrompter,
+) -> anyhow::Result<PortalConfig> {
+  let mut result = retrieve_config(server, cred, params)
+    .await
+    .context("failed to retrieve the portal configuration")?;
+  loop {
+    match result {
+      PortalConfigResult::Config(config) => return Ok(*config),
+      PortalConfigResult::Mfa(message, input_str) => {
+        info!("Portal issued an MFA challenge; prompting the user for a code");
+        let code = mfa.prompt(message).await.context("MFA challenge cancelled")?;
+        let mut p = params.clone();
+        p.set_input_str(&input_str);
+        p.set_otp(&code);
+        result = retrieve_config(server, cred, &p)
+          .await
+          .context("MFA portal config retrieval failed")?;
       }
     }
   }
@@ -280,9 +310,7 @@ async fn connect_via_portal(
     .map(|p| p.region().to_string())
     .unwrap_or_default();
 
-  let mut portal_config = retrieve_config(&req.server, cred, portal_params)
-    .await
-    .context("failed to retrieve the portal configuration")?;
+  let mut portal_config = retrieve_config_mfa(&req.server, cred, portal_params, mfa).await?;
 
   if portal_config.gateways().is_empty() {
     bail!("the portal returned no gateways");
