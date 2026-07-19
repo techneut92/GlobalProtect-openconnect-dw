@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.0 - Unreleased
+## 1.5.0 - 2026-07-19
 
 - **gpservice now advertises its wire-protocol range.** `gpservice --protocol`
   prints the `PROTOCOL_MIN PROTOCOL_MAX` this build speaks (e.g. `2 4`) and

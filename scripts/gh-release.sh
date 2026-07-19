@@ -17,6 +17,18 @@ if [ -z "$TAG" ]; then
   exit 1
 fi
 
+# Use this version's changelog.md section as the release notes (falls back to
+# "Release <tag>" if the section is missing). Header format: "## <version> - <date>".
+CHANGELOG="$PROJECT_DIR/changelog.md"
+if [ -f "$CHANGELOG" ]; then
+  NOTES="$(awk -v v="${TAG#v}" '
+    index($0, "## " v) == 1 { p = 1; next }   # this version header — start, drop it
+    /^## [0-9]/ { if (p) exit }               # next version header — stop
+    p
+  ' "$CHANGELOG")"
+  [ -n "$NOTES" ] && RELEASE_NOTES="$NOTES"
+fi
+
 # For snapshot release, we don't create a release, just clear the existing assets and upload new ones.
 # This is to avoid notification spam.
 release_snapshot() {
