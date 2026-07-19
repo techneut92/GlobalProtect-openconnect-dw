@@ -773,6 +773,24 @@ same challenge machinery; no protocol change (the GUI sees the same
   loop with an inline prompt (`retrieve_portal_config`), matching its existing
   gateway-MFA handling.
 
+## 2026-07-19 — Portal gateway picker (GatewaySelect / select_gateway)
+
+In portal mode the region-preferred gateway was chosen silently. The connect
+pipeline can now hand the choice to the user, mirroring the interactive-MFA
+plumbing (gp-protocol 1.5.1 adds `VpnState::GatewaySelect`; the protocol
+constants are unchanged — nothing pre-release speaks the old shape):
+
+- **`apps/gpservice/src/auth_flow.rs`:** new `GatewaySlot`/`GatewayPrompter`
+  (the `MfaSlot`/`MfaPrompter` pattern). `connect_via_portal`, when the portal
+  returns more than one gateway, emits `GatewaySelect` — the same `ConnectInfo`
+  shape as `Connecting`, with `gateway` = the region-preferred pick and
+  `gateways` = the full sorted list — and parks until the client answers (or
+  cancels, which aborts the connect). Single-gateway portals are unchanged.
+- **`apps/gpservice/src/dbus_service.rs`:** new `select_gateway(address)`
+  method resolving the parked prompt; polkit-gated like `submit_mfa`.
+- **`apps/gpservice/src/vpn_task.rs` / `cli.rs`:** the gateway slot is threaded
+  beside the MFA slot; `Disconnect` cancels a pending picker too.
+
 ## 2026-07-19 — Packaging fixups for the single-package backend
 
 Follow-ups to the gpgui removal and the constants refactor so the deb and Nix

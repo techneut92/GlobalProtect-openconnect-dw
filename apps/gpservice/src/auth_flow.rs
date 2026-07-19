@@ -52,6 +52,38 @@ impl MfaPrompter {
   }
 }
 
+/// Parked gateway-selection request: the portal connect flow stores a oneshot
+/// here while the GUI shows the gateway picker; `select_gateway` resolves it
+/// with the chosen gateway's address, or `disconnect` with `None` (cancel).
+pub type GatewaySlot = Arc<Mutex<Option<oneshot::Sender<Option<String>>>>>;
+
+/// Emits the `GatewaySelect` state to the GUI and awaits the chosen gateway.
+/// Mirrors [`MfaPrompter`] for the portal's multi-gateway case.
+pub struct GatewayPrompter {
+  vpn_state_tx: Arc<watch::Sender<VpnState>>,
+  slot: GatewaySlot,
+}
+
+impl GatewayPrompter {
+  pub fn new(vpn_state_tx: Arc<watch::Sender<VpnState>>, slot: GatewaySlot) -> Self {
+    Self { vpn_state_tx, slot }
+  }
+
+  /// Show the picker (preferred pre-selected, full list attached) and wait for
+  /// the chosen gateway address; `None` if the user cancelled.
+  async fn prompt(&self, portal: String, preferred: Gateway, gateways: Vec<Gateway>) -> Option<String> {
+    let (tx, rx) = oneshot::channel::<Option<String>>();
+    *self.slot.lock().unwrap() = Some(tx);
+    self
+      .vpn_state_tx
+      .send(VpnState::GatewaySelect(Box::new(ConnectInfo::new(
+        portal, preferred, gateways,
+      ))))
+      .ok();
+    rx.await.unwrap_or(None)
+  }
+}
+
 /// Gateway login that answers interactive MFA / token challenges: on a
 /// `Challenge`, prompt the GUI, then resubmit with the entered code + the
 /// challenge token until the gateway returns a cookie (or the user cancels).
@@ -229,7 +261,11 @@ async fn resolve_credential(req: &ConnectAuthRequest, params: &GpParams) -> anyh
 /// [`ConnectRequest`] with the resulting cookie. The caller feeds the request
 /// to the existing tunnel path (`VpnTaskContext::connect`), so all state
 /// broadcasting is unchanged.
-pub async fn build_connect_request(req: &ConnectAuthRequest, mfa: &MfaPrompter) -> anyhow::Result<ConnectRequest> {
+pub async fn build_connect_request(
+  req: &ConnectAuthRequest,
+  mfa: &MfaPrompter,
+  gw: &GatewayPrompter,
+) -> anyhow::Result<ConnectRequest> {
   // Prelogin/mTLS + credential resolution use the endpoint family the server
   // is (gateway or portal); `resolve_credential`'s CertOnly prelogin must hit
   // the same one.
@@ -239,7 +275,7 @@ pub async fn build_connect_request(req: &ConnectAuthRequest, mfa: &MfaPrompter) 
   let (info, cookie) = if req.as_gateway {
     connect_via_gateway(req, &cred, &params, mfa).await?
   } else {
-    connect_via_portal(req, &cred, &params, mfa).await?
+    connect_via_portal(req, &cred, &params, mfa, gw).await?
   };
 
   // The GUI's `args` carry the tunnel options; the cookie is filled in here.
@@ -299,6 +335,7 @@ async fn connect_via_portal(
   cred: &Credential,
   portal_params: &GpParams,
   mfa: &MfaPrompter,
+  gw: &GatewayPrompter,
 ) -> anyhow::Result<(ConnectInfo, String)> {
   info!("Retrieving portal config for {}", req.server);
 
@@ -318,8 +355,26 @@ async fn connect_via_portal(
   portal_config.sort_gateways(&region);
 
   // Clone out of the borrow so the async gateway login below doesn't hold it.
-  let selected = portal_config.find_preferred_gateway(&region).clone();
+  let preferred = portal_config.find_preferred_gateway(&region).clone();
   let all_gateways: Vec<Gateway> = portal_config.gateways().into_iter().cloned().collect();
+
+  // More than one gateway: let the user pick (preferred pre-selected). A single
+  // gateway connects straight through, and a cancelled picker aborts the
+  // connect like a cancelled MFA prompt.
+  let selected = if all_gateways.len() > 1 {
+    info!("Portal offered {} gateways; prompting for a choice", all_gateways.len());
+    let chosen = gw
+      .prompt(req.server.clone(), preferred.clone(), all_gateways.clone())
+      .await
+      .context("gateway selection cancelled")?;
+    all_gateways
+      .iter()
+      .find(|g| g.server() == chosen)
+      .cloned()
+      .ok_or_else(|| anyhow::anyhow!("selected gateway is not in the portal's list: {chosen}"))?
+  } else {
+    preferred
+  };
   info!("Portal selected gateway: {} ({})", selected.name(), selected.server());
 
   // The gateway login authenticates with the portal's auth cookie, over the

@@ -48,11 +48,13 @@ impl Cli {
     let (req_tx, req_rx) = mpsc::channel::<WsRequest>(32);
     // Channel for receiving the VPN state from the VPN task.
     let (vpn_state_tx, vpn_state_rx) = watch::channel(VpnState::Disconnected);
-    // Shared slot for an interactive MFA challenge's code, bridged between the
-    // D-Bus front-end (submit_mfa) and the connect pipeline (MfaPrompter).
+    // Shared slots for the connect pipeline's interactive prompts, bridged to
+    // the D-Bus front-end: the MFA challenge code (submit_mfa / MfaPrompter)
+    // and the portal gateway pick (select_gateway / GatewayPrompter).
     let mfa_slot: crate::auth_flow::MfaSlot = std::sync::Arc::new(std::sync::Mutex::new(None));
+    let gw_slot: crate::auth_flow::GatewaySlot = std::sync::Arc::new(std::sync::Mutex::new(None));
 
-    let mut vpn_task = VpnTask::new(req_rx, vpn_state_tx, mfa_slot.clone());
+    let mut vpn_task = VpnTask::new(req_rx, vpn_state_tx, mfa_slot.clone(), gw_slot.clone());
 
     // Resume-from-sleep watcher: force an immediate tunnel reconnect after
     // suspend instead of waiting minutes for DPD.
@@ -69,7 +71,7 @@ impl Cli {
 
     let dbus_shutdown_tx = shutdown_tx.clone();
     let dbus_handle = tokio::spawn(async move {
-      if let Err(err) = crate::dbus_service::run(req_tx, vpn_state_rx, dbus_shutdown_tx, mfa_slot).await {
+      if let Err(err) = crate::dbus_service::run(req_tx, vpn_state_rx, dbus_shutdown_tx, mfa_slot, gw_slot).await {
         warn!("D-Bus service error: {}", err);
       }
       let _ = shutdown_tx.send(()).await;

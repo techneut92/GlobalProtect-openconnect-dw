@@ -72,6 +72,12 @@ impl VpnTaskContext {
     crate::auth_flow::MfaPrompter::new(self.vpn_state_tx.clone(), slot)
   }
 
+  /// Build a gateway prompter that emits `GatewaySelect` on this task's state
+  /// channel and awaits the pick parked in `slot` (resolved by `select_gateway`).
+  pub fn gateway_prompter(&self, slot: crate::auth_flow::GatewaySlot) -> crate::auth_flow::GatewayPrompter {
+    crate::auth_flow::GatewayPrompter::new(self.vpn_state_tx.clone(), slot)
+  }
+
   pub async fn connect(&self, req: ConnectRequest) {
     let vpn_state = self.vpn_state_tx.borrow().clone();
     if !matches!(vpn_state, VpnState::Disconnected) {
@@ -501,6 +507,7 @@ pub(crate) struct VpnTask {
   ctx: Arc<VpnTaskContext>,
   cancel_token: CancellationToken,
   mfa_slot: crate::auth_flow::MfaSlot,
+  gw_slot: crate::auth_flow::GatewaySlot,
 }
 
 impl VpnTask {
@@ -508,6 +515,7 @@ impl VpnTask {
     ws_req_rx: mpsc::Receiver<WsRequest>,
     vpn_state_tx: watch::Sender<VpnState>,
     mfa_slot: crate::auth_flow::MfaSlot,
+    gw_slot: crate::auth_flow::GatewaySlot,
   ) -> Self {
     let ctx = Arc::new(VpnTaskContext::new(vpn_state_tx));
     let cancel_token = CancellationToken::new();
@@ -517,6 +525,7 @@ impl VpnTask {
       ctx,
       cancel_token,
       mfa_slot,
+      gw_slot,
     }
   }
 
@@ -546,20 +555,33 @@ impl VpnTask {
 
   async fn recv(&mut self) {
     while let Some(req) = self.ws_req_rx.recv().await {
-      tokio::spawn(process_ws_req(req, self.ctx.clone(), self.mfa_slot.clone()));
+      tokio::spawn(process_ws_req(
+        req,
+        self.ctx.clone(),
+        self.mfa_slot.clone(),
+        self.gw_slot.clone(),
+      ));
     }
   }
 }
 
-async fn process_ws_req(req: WsRequest, ctx: Arc<VpnTaskContext>, mfa_slot: crate::auth_flow::MfaSlot) {
+async fn process_ws_req(
+  req: WsRequest,
+  ctx: Arc<VpnTaskContext>,
+  mfa_slot: crate::auth_flow::MfaSlot,
+  gw_slot: crate::auth_flow::GatewaySlot,
+) {
   match req {
     WsRequest::Connect(req) => {
       ctx.connect(*req).await;
     }
     WsRequest::Disconnect(_) => {
-      // Cancel a pending MFA prompt too, so Disconnect unblocks a ConnectAuth
-      // task that is waiting for a code.
+      // Cancel a pending MFA or gateway prompt too, so Disconnect unblocks a
+      // ConnectAuth task that is waiting on the user.
       if let Some(tx) = mfa_slot.lock().unwrap().take() {
+        let _ = tx.send(None);
+      }
+      if let Some(tx) = gw_slot.lock().unwrap().take() {
         let _ = tx.send(None);
       }
       ctx.disconnect().await;
@@ -576,7 +598,8 @@ async fn process_ws_req(req: WsRequest, ctx: Arc<VpnTaskContext>, mfa_slot: crat
       // including any interactive MFA challenge) then starts the tunnel via the
       // normal connect path, so state broadcasting is unchanged.
       let mfa = ctx.mfa_prompter(mfa_slot);
-      match crate::auth_flow::build_connect_request(&req, &mfa).await {
+      let gw = ctx.gateway_prompter(gw_slot);
+      match crate::auth_flow::build_connect_request(&req, &mfa, &gw).await {
         Ok(request) => ctx.connect(request).await,
         Err(err) => {
           warn!("ConnectAuth failed: {:#}", err);

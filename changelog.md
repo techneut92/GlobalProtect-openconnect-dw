@@ -48,6 +48,14 @@
   answers with the same `Challenge` response) and prompts through the same
   channel — the GUI's MFA dialog over D-Bus, or an inline prompt in the
   `gpclient` CLI. Portal mode is untested against a live portal — see GPS-6.
+- **Gateway picker for portal mode.** When the portal returns more than one
+  gateway, gpservice now pauses the connect on a `GatewaySelect` state carrying
+  the full gateway list (region-preferred first); the client answers with the
+  chosen gateway's address via the new `select_gateway` D-Bus method and the
+  login continues. Single-gateway portals connect straight through, and
+  cancelling the picker aborts the connect like a cancelled MFA prompt. The
+  `gpclient` CLI keeps its own interactive prompt. (gp-protocol 1.5.1; no
+  protocol-constant change.)
 - **DNS is always restored when a session ends.** gpservice now drops the
   per-link systemd-resolved configuration on the tunnel interface
   (`resolvectl revert` + cache flush) on *every* session end — clean disconnect,

@@ -81,6 +81,9 @@ struct GpService {
   /// The parked interactive-MFA oneshot the connect pipeline is waiting on;
   /// `submit_mfa` resolves it with the entered code.
   mfa_slot: crate::auth_flow::MfaSlot,
+  /// The parked gateway-selection oneshot the portal connect pipeline is
+  /// waiting on; `select_gateway` resolves it with the chosen address.
+  gw_slot: crate::auth_flow::GatewaySlot,
   /// zbus runs interface methods on its own executor, which is not a tokio
   /// runtime — so `reqwest`-based work (prelogin) must be spawned onto tokio.
   tokio: tokio::runtime::Handle,
@@ -171,6 +174,20 @@ impl GpService {
     Ok(())
   }
 
+  /// Answer a `GatewaySelect` prompt with the chosen gateway's address (the
+  /// `server` field of one of the offered gateways). Resolves the oneshot the
+  /// portal connect pipeline parked; the backend then logs into that gateway
+  /// and continues.
+  async fn select_gateway(&self, #[zbus(header)] header: Header<'_>, gateway: String) -> zbus::fdo::Result<()> {
+    if !authorized(&header).await {
+      return Err(zbus::fdo::Error::AccessDenied("not authorised to manage the VPN".into()));
+    }
+    if let Some(tx) = self.gw_slot.lock().unwrap().take() {
+      let _ = tx.send(Some(gateway));
+    }
+    Ok(())
+  }
+
   /// Re-request the MFA challenge. GP code challenges come from the user's
   /// authenticator, so there is nothing to re-send server-side yet — this is a
   /// no-op placeholder so the GUI's "resend" affordance has an endpoint.
@@ -198,6 +215,7 @@ pub async fn run(
   mut vpn_state_rx: watch::Receiver<VpnState>,
   shutdown_tx: mpsc::Sender<()>,
   mfa_slot: crate::auth_flow::MfaSlot,
+  gw_slot: crate::auth_flow::GatewaySlot,
 ) -> anyhow::Result<()> {
   let controller: Controller = Arc::new(Mutex::new(None));
   let service = GpService {
@@ -205,6 +223,7 @@ pub async fn run(
     vpn_state_rx: vpn_state_rx.clone(),
     controller: controller.clone(),
     mfa_slot,
+    gw_slot,
     tokio: tokio::runtime::Handle::current(),
   };
 
