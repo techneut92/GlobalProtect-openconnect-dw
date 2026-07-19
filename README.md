@@ -21,9 +21,14 @@ A fork of [yuezk/GlobalProtect-openconnect](https://github.com/yuezk/GlobalProte
 >
 > The graphical desktop app, **GP Client**, is a separate side project at
 > [github.com/techneut92/gp-client](https://github.com/techneut92/gp-client)
-> (shipped as a Flatpak). This repository is the privileged backend that GP
-> Client installs and drives over D-Bus — you can also use it entirely on its
-> own from the command line.
+> (shipped as a Flatpak). This repository is the privileged backend it drives
+> over D-Bus.
+>
+> **Want the GUI? Install GP Client first and launch it** — that's the easiest
+> path. On first run it detects this backend and, if it's missing, walks you
+> through installing it with a single prompt, so you don't need to set anything
+> up here by hand. Reach for this repository directly only if you want the
+> **command-line** client, or prefer to install the backend yourself first.
 
 <p align="center">
   <img width="330" src="docs/screenshots/gp-client-frontend.png" alt="GP Client — the desktop app that drives this backend">
