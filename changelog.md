@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.5.1 - 2026-07-20
 
 - **Portal-mode smart-card connect no longer fails on the second sign-in.**
   Connecting to an identity configured for *portal mode* with a PKCS#11 smart
