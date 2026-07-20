@@ -80,7 +80,13 @@ impl VpnTaskContext {
 
   pub async fn connect(&self, req: ConnectRequest) {
     let vpn_state = self.vpn_state_tx.borrow().clone();
-    if !matches!(vpn_state, VpnState::Disconnected) {
+    // `GatewaySelect` is a mid-auth pause, not a live tunnel: the portal picker
+    // parks the connect there, and the ConnectAuth handoff resolves the pick and
+    // calls us to start the tunnel. So it is a valid precursor here — without
+    // this, a picked gateway never connects (the request is dropped and the
+    // picker just stays up). Any *other* non-Disconnected state means a tunnel is
+    // already active/connecting, so we still ignore the request.
+    if !matches!(vpn_state, VpnState::Disconnected | VpnState::GatewaySelect(_)) {
       info!("VPN is not disconnected, ignore the request");
       return;
     }

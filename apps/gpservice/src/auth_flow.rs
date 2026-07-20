@@ -358,11 +358,12 @@ async fn connect_via_portal(
   let preferred = portal_config.find_preferred_gateway(&region).clone();
   let all_gateways: Vec<Gateway> = portal_config.gateways().into_iter().cloned().collect();
 
-  // More than one gateway: let the user pick (preferred pre-selected). A single
-  // gateway connects straight through, and a cancelled picker aborts the
-  // connect like a cancelled MFA prompt.
-  let selected = if all_gateways.len() > 1 {
-    info!("Portal offered {} gateways; prompting for a choice", all_gateways.len());
+  // Always let the user pick (preferred pre-selected), even when the portal
+  // offers a single gateway — for now we surface the picker unconditionally so
+  // the choice is always visible. A cancelled picker aborts the connect like a
+  // cancelled MFA prompt. (The list is non-empty; we bail above otherwise.)
+  let selected = {
+    info!("Portal offered {} gateway(s); prompting for a choice", all_gateways.len());
     let chosen = gw
       .prompt(req.server.clone(), preferred.clone(), all_gateways.clone())
       .await
@@ -372,8 +373,6 @@ async fn connect_via_portal(
       .find(|g| g.server() == chosen)
       .cloned()
       .ok_or_else(|| anyhow::anyhow!("selected gateway is not in the portal's list: {chosen}"))?
-  } else {
-    preferred
   };
   info!("Portal selected gateway: {} ({})", selected.name(), selected.server());
 

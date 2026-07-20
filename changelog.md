@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+- **Portal-mode smart-card connect no longer fails on the second sign-in.**
+  Connecting to an identity configured for *portal mode* with a PKCS#11 smart
+  card could silently return to idle with no error — a retry usually worked, so
+  it read as flakiness. Portal mode signs in twice (prelogin, then the
+  portal-config fetch); because the token's login is shared process-wide, the
+  second sign-in hit `CKR_USER_ALREADY_LOGGED_IN` and the connect was abandoned.
+  That state is now treated as already-authenticated, so portal-mode connects go
+  through on the first try. (Gateway mode signs in once and was never affected.)
+- **The gateway picker now always appears in portal mode**, even when the portal
+  offers a single gateway, so the selected gateway is always visible and
+  confirmable before connecting.
+- **Picking a gateway now actually starts the tunnel.** Choosing a gateway from
+  the picker and pressing Continue previously did nothing — the connect was
+  dropped after the pick and the picker just stayed up. (The tunnel-start guard
+  rejected the mid-auth picker state; it now accepts it.)
+
 ## 1.5.0 - 2026-07-19
 
 - **gpservice now advertises its wire-protocol range.** `gpservice --protocol`

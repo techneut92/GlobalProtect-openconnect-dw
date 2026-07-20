@@ -807,6 +807,32 @@ builds succeed for the 1.5.0 backend:
   binary path (only `GP_CLIENT_BINARY` / `GP_AUTH_BINARY`), so `--replace-fail`
   aborted `nix build`.
 
+## 2026-07-20 — Portal mode: reliable smart-card re-login + always-on gateway picker
+
+Two portal-mode connect fixes (gateway mode was unaffected):
+
+- **`crates/gpapi/src/utils/pkcs11.rs`:** `create_pkcs11_client_config` opens a
+  fresh session and issues `C_Login` per outbound request, and the `Pkcs11`
+  context is a process-wide static — so per the PKCS#11 spec the login state is
+  shared across every session of the application. Portal mode authenticates
+  twice (prelogin, then the portal-config fetch); the second `C_Login` returned
+  `CKR_USER_ALREADY_LOGGED_IN` and the connect failed (a retry, which found the
+  token logged out again, usually succeeded — so it looked like flakiness). That
+  return code is now treated as success: the freshly opened session already
+  inherits the token's authenticated state. The login error is also no longer
+  mislabelled as a wrong PIN.
+- **`apps/gpservice/src/auth_flow.rs`:** the connect-time gateway picker now
+  fires for a single-gateway portal too (previously only when the portal offered
+  more than one gateway), superseding the "single-gateway portals are unchanged"
+  note in the 2026-07-19 entry above.
+- **`apps/gpservice/src/vpn_task.rs`:** `connect()` guarded on
+  `VpnState::Disconnected`, so the ConnectAuth handoff — which parks on
+  `VpnState::GatewaySelect` for the picker — had its tunnel-start request dropped
+  after the user picked a gateway (the pick appeared to do nothing). The guard
+  now also accepts `GatewaySelect` as a valid mid-auth precursor; any other
+  non-Disconnected state (an already-active or connecting tunnel) is still
+  ignored.
+
 ### Third-party components
 
 This program is GPL-3.0-or-later, a fork of

@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use anyhow::{anyhow, bail, Context, Result};
 use cryptoki::{
   context::{CInitializeArgs, Pkcs11},
+  error::{Error as Pkcs11Error, RvError},
   mechanism::{
     rsa::{PkcsMgfType, PkcsPssParams},
     Mechanism, MechanismType,
@@ -19,7 +20,7 @@ use cryptoki::{
   session::{Session, UserType},
   types::AuthPin,
 };
-use log::{info, warn};
+use log::{debug, info, warn};
 use rustls::{
   client::{
     danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier},
@@ -389,9 +390,21 @@ pub fn create_pkcs11_client_config(
     .ok_or_else(|| anyhow!("no PKCS#11 token matching {:?}", want_token))?;
 
   let session = pkcs11.open_ro_session(slot).context("failed to open PKCS#11 session")?;
-  session
-    .login(UserType::User, Some(&AuthPin::new(pin)))
-    .context("PKCS#11 login failed (wrong PIN?)")?;
+  // PKCS#11 login state belongs to the token *per application*, not to the
+  // individual session — and our `Pkcs11` context is a process-wide static, so
+  // every session shares one login. Portal mode authenticates twice (prelogin,
+  // then the portal-config fetch), each opening a fresh session, so the second
+  // C_Login returns CKR_USER_ALREADY_LOGGED_IN. The desired state already holds
+  // — the new session inherits the token's authenticated state — so treat that
+  // as success instead of failing the connection. (Gateway mode only logs in
+  // once, which is why the bug was invisible there.)
+  match session.login(UserType::User, Some(&AuthPin::new(pin))) {
+    Ok(()) => {}
+    Err(Pkcs11Error::Pkcs11(RvError::UserAlreadyLoggedIn, _)) => {
+      debug!("PKCS#11 token already logged in; reusing the existing login for this session");
+    }
+    Err(e) => return Err(e).context("PKCS#11 login failed"),
+  }
 
   // Find the client certificate and read its DER value.
   let mut cert_template = vec![Attribute::Class(ObjectClass::CERTIFICATE)];
