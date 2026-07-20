@@ -821,10 +821,6 @@ Two portal-mode connect fixes (gateway mode was unaffected):
   return code is now treated as success: the freshly opened session already
   inherits the token's authenticated state. The login error is also no longer
   mislabelled as a wrong PIN.
-- **`apps/gpservice/src/auth_flow.rs`:** the connect-time gateway picker now
-  fires for a single-gateway portal too (previously only when the portal offered
-  more than one gateway), superseding the "single-gateway portals are unchanged"
-  note in the 2026-07-19 entry above.
 - **`apps/gpservice/src/vpn_task.rs`:** `connect()` guarded on
   `VpnState::Disconnected`, so the ConnectAuth handoff — which parks on
   `VpnState::GatewaySelect` for the picker — had its tunnel-start request dropped
