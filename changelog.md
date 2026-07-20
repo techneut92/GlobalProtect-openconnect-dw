@@ -15,6 +15,9 @@
   the connect was dropped after the pick and the picker just stayed up. (The
   tunnel-start guard rejected the mid-auth picker state; it now accepts it.)
 
+Verified end-to-end against a live GlobalProtect portal using a PKCS#11 smart
+card (portal login, gateway login and tunnel).
+
 ## 1.5.0 - 2026-07-19
 
 - **gpservice now advertises its wire-protocol range.** `gpservice --protocol`
